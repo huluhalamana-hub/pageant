@@ -4,6 +4,6 @@
   "compatibility_date": "2025-01-01",
   "assets": { "directory": "./public", "binding": "ASSETS" },
   "d1_databases": [
-    { "binding": "DB", "database_name": "pageant-db", "database_id": "ใส่ID-ตรงนี้" }
+    { "binding": "DB", "database_name": "pageant-db", "database_id": "aa7d2fdc-535c-452d-882c-fba686af8dad" }
   ]
 }
