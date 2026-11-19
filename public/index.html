@@ -86,6 +86,12 @@ table{border-collapse:collapse;width:100%;font-size:.9rem}th,td{border-bottom:1p
 .rk-t{font-size:40px;font-weight:700;color:var(--c1);align-self:center}
 @keyframes pop{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
 @keyframes up{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes slideout{from{opacity:1;transform:none}to{opacity:0;transform:translateY(50px)}}
+@keyframes popout{from{opacity:1;transform:none}to{opacity:0;transform:scale(.6)}}
+@keyframes upout{from{opacity:1;transform:none}to{opacity:0;transform:translateY(16px)}}
+.bar.out,.rkp.out{animation:slideout .5s both}
+.js.out{animation:popout .3s both}
+.rrow:not(.hd).out{animation:upout .3s both}
 @keyframes slide{from{opacity:0;transform:translateY(50px)}to{opacity:1;transform:none}}
 
 .lg{position:absolute;right:80px;top:50px;width:170px;height:100px;display:flex;align-items:center;justify-content:center;border-radius:14px;color:var(--c1);font-size:30px;font-weight:600;overflow:hidden}.lg.ph{border:2px dashed var(--c1)}.lg img{width:100%;height:100%;object-fit:contain}
