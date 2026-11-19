@@ -147,6 +147,21 @@ function innerVM(vm) {
 const varsOf = vm => `--c1:${vm.col.c1};--c2:${vm.col.c2};--c3:${vm.col.c3}`;
 const dHTMLp = (p, force) => { const vm = buildDisplay(p, {force}); return `<div class="sw" style="${varsOf(vm)}"><div class="cv">${innerVM(vm)}</div></div>`; };
 
+/* เฟดออก 1 วินาที (ใช้ทั้งจอไลฟ์จริงและตัวอย่างในหน้าแอดมิน) */
+async function fadeOut(cv, scoresOnly) {
+  const bar = cv && cv.querySelector('.bar'), pan = cv && cv.querySelector('.rkp');
+  if (!bar && !pan) return false;
+  if (bar) {
+    bar.querySelectorAll(scoresOnly ? '.js:not(.dim)' : '.js').forEach(e => { e.style.animationDelay = '0s'; e.classList.add('fo'); });
+    if (!scoresOnly) { bar.style.animationDelay = '0s'; bar.classList.add('fo'); }
+  } else {
+    const rows = [...pan.querySelectorAll('.rrow:not(.hd)')], n = rows.length, st = n > 1 ? .4 / (n - 1) : 0;
+    rows.forEach((e, i) => { e.style.animationDelay = ((n - 1 - i) * st) + 's'; e.classList.add('fo'); });
+    pan.style.animationDelay = '0s'; pan.classList.add('fo');
+  }
+  await new Promise(res => setTimeout(res, 1050));
+  return true;
+}
 /* ---------- หน้าจอไลฟ์สาธารณะ (/?display=1&pg=เลขเวที พื้นหลังโปร่งใสเสมอ) ---------- */
 function displayMode() {
   document.body.classList.add('disp'); if (!Q.get('bg')) document.body.classList.add('tr');
@@ -155,21 +170,6 @@ function displayMode() {
   const fitD = () => { cv.style.transform = `scale(${Math.min(innerWidth / 1920, innerHeight / 1080)})`; };
   fitD(); addEventListener('resize', fitD);
   let lastPart = '', lastBid = '', busy = false;
-  const playOut = async scoresOnly => {
-    const bar = cv.querySelector('.bar'), pan = cv.querySelector('.rkp');
-    if (!bar && !pan) return false;
-    // ทุกอย่างเฟดออกพร้อมกันนาน 1 วินาที (แถวในตารางไล่เหลื่อมกันเล็กน้อยแต่จบพร้อมกัน)
-    if (bar) {
-      bar.querySelectorAll(scoresOnly ? '.js:not(.dim)' : '.js').forEach(e => { e.style.animationDelay = '0s'; e.classList.add('fo'); });
-      if (!scoresOnly) { bar.style.animationDelay = '0s'; bar.classList.add('fo'); }
-    } else {
-      const rows = [...pan.querySelectorAll('.rrow:not(.hd)')], n = rows.length, st = n > 1 ? .4 / (n - 1) : 0;
-      rows.forEach((e, i) => { e.style.animationDelay = ((n - 1 - i) * st) + 's'; e.classList.add('fo'); });
-      pan.style.animationDelay = '0s'; pan.classList.add('fo');
-    }
-    await new Promise(res => setTimeout(res, 1050));
-    return true;
-  };
   const tick = async () => {
     if (busy) return; busy = true;
     try {
@@ -179,7 +179,7 @@ function displayMode() {
       if (k !== lastKey) {
         // แอนิเมชันออก (ย้อนกลับของตอนเข้า) เมื่อแถบคะแนน/ตารางอันดับเปลี่ยนหรือถูกซ่อน
         const bid = vm.bar ? vm.bar.c.no + '|' + vm.bar.c.name : '';
-        if (part !== lastPart) await playOut(bid && bid === lastBid);
+        if (part !== lastPart) await fadeOut(cv, bid && bid === lastBid);
         lastBid = bid;
         lastKey = k; lastPart = part; cv.setAttribute('style', cv.getAttribute('style').replace(/--c\d:[^;]*;?/g, '') + ';' + varsOf(vm)); cv.innerHTML = html;
       }
@@ -218,7 +218,15 @@ async function sact(a, body) { try { await api('super/' + a, body); await superL
 
 /* ---------- แอดมินเวที ---------- */
 async function load() { ST.p = await api('admin'); }
-async function act(a, body) { try { await api('admin/' + a, body || {}); } catch (e) { alert(e.message); } try { await load(); } catch (e) {} render(); }
+function fadeKind(a, b) {
+  if (a === 'step' || a === 'cur' || a === 'rd') return 'all';
+  if (a === 'settings' && b && b.k === 'hide' && b.v === '1') return 'all';
+  if (a === 'reveal' && b && b.on === false) return 'scores';
+  return null;
+}
+async function act(a, body) {
+  const fk = fadeKind(a, body), pv = fk ? document.querySelector('.sw .cv') : null;
+  try { await Promise.all([api('admin/' + a, body || {}), pv ? fadeOut(pv, fk === 'scores') : 0]); } catch (e) { alert(e.message); } try { await load(); } catch (e) {} render(); }
 function linkBox(p) {
   const u = `${location.origin}/?display=1&pg=${p.id}`;
   return `<div class="box noprint" style="margin-top:12px"><h2>ลิงก์จอไลฟ์สำหรับ OBS</h2><p class="mu">ใน OBS เพิ่มแหล่งภาพแบบ Browser ใส่ลิงก์นี้ ขนาด 1920 x 1080 พื้นหลังโปร่งใสให้อัตโนมัติ ซ้อนบนภาพกล้องได้เลย</p><input readonly value="${esc(u)}" onclick="this.select()"><p class="mu" style="margin-top:8px">เปิดในเบราว์เซอร์ธรรมดาจะเห็นพื้นหลังเป็นสีขาว ซึ่งปกติ ถ้าอยากดูบนพื้นเข้มตอนทดสอบ ต่อท้ายลิงก์ด้วย &amp;bg=1</p></div>`;
