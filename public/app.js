@@ -154,12 +154,14 @@ function displayMode() {
   const cv = $('#cv'), pg = +Q.get('pg') || 0; let last = -1, lastKey = '';
   const fitD = () => { cv.style.transform = `scale(${Math.min(innerWidth / 1920, innerHeight / 1080)})`; };
   fitD(); addEventListener('resize', fitD);
-  let lastPart = '', busy = false;
-  const playOut = async () => {
+  let lastPart = '', lastBid = '', busy = false;
+  const playOut = async scoresOnly => {
     const bar = cv.querySelector('.bar'), pan = cv.querySelector('.rkp');
     if (!bar && !pan) return false;
     let total = 0;
-    if (bar) {
+    if (bar && scoresOnly) {
+      bar.querySelectorAll('.js:not(.dim)').forEach(e => { e.style.animationDelay = '0s'; e.classList.add('out'); }); total = .3;
+    } else if (bar) {
       const js = [...bar.querySelectorAll('.js')], n = js.length;
       js.forEach((e, i) => { e.style.animationDelay = ((n - 1 - i) * .06) + 's'; e.classList.add('out'); });
       const d = n * .06 + .1; bar.style.animationDelay = d + 's'; bar.classList.add('out'); total = d + .5;
@@ -179,7 +181,9 @@ function displayMode() {
       const html = innerVM(vm), k = varsOf(vm) + html, part = vm.bar ? barHTML(vm.bar, vm.L) : vm.sum ? sumVMHTML(vm.sum, vm.L) : '';
       if (k !== lastKey) {
         // แอนิเมชันออก (ย้อนกลับของตอนเข้า) เมื่อแถบคะแนน/ตารางอันดับเปลี่ยนหรือถูกซ่อน
-        if (part !== lastPart && await playOut()) { /* รอจนเล่นจบ */ }
+        const bid = vm.bar ? vm.bar.c.no + '|' + vm.bar.c.name : '';
+        if (part !== lastPart) await playOut(bid && bid === lastBid);
+        lastBid = bid;
         lastKey = k; lastPart = part; cv.setAttribute('style', cv.getAttribute('style').replace(/--c\d:[^;]*;?/g, '') + ';' + varsOf(vm)); cv.innerHTML = html;
       }
     } catch (e) {} finally { busy = false; }
