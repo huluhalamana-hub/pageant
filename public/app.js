@@ -68,8 +68,9 @@ function manageV(p) {
     return `<div class="ci ${rs.out ? 'out' : ''}"><div class="l">${th(c.img, c.name)}<div style="min-width:0"><b style="color:var(--gold)">${esc(c.no)}</b> ${esc(c.name)}${c.country ? ` <span class="mu">· ${esc(c.country)}</span>` : ''}${rs.rev ? ' <span class="ok">· เปิดแล้ว</span>' : ''}${rs.out ? ' <span class="chip">ไม่อยู่ในรอบนี้</span>' : ''}<div class="mu">กรรมการให้แล้ว ${got}/${n}${got ? ' · เฉลี่ยรอบนี้ ' + fmtn(k.avg) : ''}${cu && !rs.out ? ' · กำลังให้คะแนน' : ''}</div></div></div>
     <div class="btns">${cu || rs.out ? '' : `<button data-a="cur" data-id="${c.id}">ให้คะแนนคนนี้</button>`}${rs.out ? '' : `<button data-a="rev" data-id="${c.id}" class="${cu && !rs.rev ? 'p' : ''}">${rs.rev ? 'ซ่อนคะแนน' : 'เปิดคะแนน'}</button><button data-a="edsc" data-id="${c.id}">ใส่/แก้คะแนน</button>`}<button data-a="out" data-id="${c.id}">${rs.out ? 'ใส่กลับรอบนี้' : 'ตัดออกจากรอบนี้'}</button><button data-a="img" data-k="C" data-id="${c.id}">รูป</button><button data-a="editc" data-id="${c.id}">แก้ไข</button><button class="d" data-a="del" data-id="${c.id}">ลบ</button></div></div>${ed}`;
   }).join('') || '<p class="mu">ยังไม่มีผู้เข้าประกวด</p>'}
-    <div class="row" style="margin-top:10px"><input id="cno" type="number" placeholder="เลขที่" style="max-width:80px;flex:none"><input id="cnm" placeholder="ชื่อ"></div>
-    <div class="row" style="margin-top:6px"><input id="cct" placeholder="ประเทศ (ไม่บังคับ)"><button class="p" data-a="addc">เพิ่ม</button></div>
+    <h2 style="margin:16px 0 2px">เพิ่มผู้เข้าประกวด</h2><p class="mu" style="margin:0 0 8px">กรอกแค่ชื่อก็เพิ่มได้ ส่วนรูป ประเทศ เลขที่ ใส่หรือไม่ใส่ก็ได้ (เว้นเลขที่ไว้ ระบบรันเลขต่อให้เอง) วางข้อมูลจาก Excel / Google Sheets ลงช่องไหนก็ได้ แล้วค่อยกลับมาแก้ทีหลังได้</p>
+    <div id="addt">${addRowsV()}</div>
+    <div class="row" style="margin-top:6px"><button data-a="aadd" data-v="1">+ เพิ่มแถว</button><button data-a="aadd" data-v="5">+ 5 แถว</button><button class="p" data-a="addcs">เพิ่มทั้งหมด (<span id="addn">${addCount()}</span> คน)</button></div>
     <p class="mu">"ตัดออกจากรอบนี้" ใช้เมื่อบางคนไม่ได้เข้ารอบต่อ (เช่น รอบชิงเหลือ 5 คน) เขาจะไม่ขึ้นในรอบนั้นและไม่ถูกนับในอันดับของรอบนั้น</p></div>
   <div class="box"><h2>กรรมการ</h2>${p.J.map(j => `<div class="ci"><div class="l">${th(j.img, j.name)}<div>${esc(j.name)}<div class="mu">รหัสเข้าระบบ: <b>${esc(j.code)}</b></div></div></div><div class="btns"><button data-a="img" data-k="J" data-id="${j.id}">รูป</button><button data-a="jcode" data-id="${j.id}">แก้รหัส</button><button class="d" data-a="jdel" data-id="${j.id}">ลบ</button></div></div>`).join('') || '<p class="mu">ยังไม่มีกรรมการ</p>'}
     <div class="row" style="margin-top:10px"><input id="jnm" placeholder="ชื่อกรรมการ"><input id="jcd" placeholder="รหัสเข้าระบบ (ตั้งเอง)"><button class="p" data-a="addj">เพิ่ม</button></div>
@@ -89,6 +90,13 @@ const PRE = [['ทอง', '#e3b95a', '#1c1006', '#f4e9d3'], ['ชมพู', '#
 let ST = {code: '', pg: 0, role: null, fromSuper: false, p: null, list: [], sel: null};
 let view = 'd', editing = 0, timer = null;
 const SK = 'pg_sess2';
+
+/* ---------- ตารางเพิ่มผู้เข้าประกวดหลายคน (ร่างเก็บไว้ในหน้า ไม่หายเวลาวาดหน้าใหม่) ---------- */
+const MAXADD = 60, blankAdd = n => Array.from({length: n}, () => ({no: '', country: '', name: '', img: null}));
+let ADD = blankAdd(5);
+const addCount = () => ADD.filter(r => r.name.trim()).length;
+const addRowsV = () => '<div class="addr addh"><span>เลขที่</span><span>รูป</span><span>ประเทศ</span><span>ชื่อ</span><span></span></div>' + ADD.map((r, i) => `<div class="addr"><input class="a-no" data-i="${i}" data-f="no" inputmode="numeric" placeholder="เลขที่" value="${esc(r.no)}"><button class="ap a-ph" data-a="aph" data-id="${i}" title="เลือกรูป (ไม่บังคับ)">${r.img ? `<img src="${r.img}" alt="">` : '+'}</button><input class="a-ct" data-i="${i}" data-f="country" placeholder="ประเทศ (ไม่บังคับ)" value="${esc(r.country)}"><input class="a-nm" data-i="${i}" data-f="name" placeholder="ชื่อ" value="${esc(r.name)}"><button class="d a-dl" data-a="adel" data-id="${i}" title="ลบแถว">✕</button></div>`).join('');
+const refreshAdd = () => { const t = $('#addt'); if (t) t.innerHTML = addRowsV(); const n = $('#addn'); if (n) n.textContent = addCount(); };
 const saveSess = () => localStorage.setItem(SK, JSON.stringify({code: ST.code, pg: ST.pg, role: ST.role, fromSuper: ST.fromSuper}));
 const clearSess = () => localStorage.removeItem(SK);
 const poll = (fn, ms) => { clearInterval(timer); timer = setInterval(() => fn().catch(() => {}), ms); };
@@ -109,21 +117,24 @@ function barHTML(b, L) {
   const jp = Math.max(40, Math.min(92, col - 14)), jn = Math.max(11, Math.min(19, Math.round(col * .13))), jsz = Math.max(22, Math.min(48, Math.round(col * .36))), t0 = n * .3 + .2;
   const jc = b.judges.map((j, i) => { const v = R ? R.scores[i] : null; return `<div class="jc" style="width:${col}px"><div class="jp">${ph(j.img, j.name)}</div><div class="jn">${esc(j.name)}</div><div class="js ${v == null ? 'dim' : ''}" ${v != null ? `style="animation-delay:${i * .3}s"` : ''}>${v == null ? '–' : fmtn(v)}</div></div>`; }).join('');
   const av = `<div class="jc av" style="width:${col}px"><div class="jp ic bars"><b style="height:30%"></b><b style="height:60%"></b><b style="height:90%"></b></div><div class="jn">${esc(L.avg)}</div><div class="js ${R ? '' : 'dim'}" ${R ? `style="animation-delay:${t0}s"` : ''}>${R ? fmtn(R.avg) : '–'}</div></div>`;
-  return `<div class="bar" style="width:${b.cols ? 1680 : 760}px;--jp:${jp}px;--jn:${jn}px;--js:${jsz}px"><div class="cph">${ph(b.c.img, b.c.no)}</div><div class="info"><div class="cn2">${esc(b.c.name)}</div>${b.c.country ? `<div class="cc">${esc(b.c.country)}</div>` : ''}</div>${b.cols ? `<div class="jrow">${jc}${av}</div>` : ''}</div>`;
+  // ไม่มีรูป: ไม่วาดวงกลมรูป ย่อแถบลง แล้วจัดทั้งแถบให้อยู่กึ่งกลางจอ (มีรูป: ตำแหน่งเดิม ซึ่งรวมวงกลมรูปแล้วก็อยู่กึ่งกลางพอดี)
+  const ni = !b.c.img, W = (b.cols ? 1680 : 760) - (ni ? 120 : 0), left = ni ? (1920 - W) / 2 : 150;
+  return `<div class="bar${ni ? ' ni' : ''}${b.cols ? '' : ' nc'}" style="left:${left}px;width:${W}px;--jp:${jp}px;--jn:${jn}px;--js:${jsz}px">${ni ? '' : `<div class="cph"><img src="${b.c.img}" alt=""></div>`}<div class="info"><div class="cn2">${esc(b.c.name)}</div>${b.c.country ? `<div class="cc">${esc(b.c.country)}</div>` : ''}</div>${b.cols ? `<div class="jrow">${jc}${av}</div>` : ''}</div>`;
 }
 function sumVMHTML(s, L) {
   const {n, single, show, C, J, rows} = s, nc = show.length * C.g + C.tail;
-  const gaps = (nc + 2) * 6; let nameW = 300, cw = Math.floor((1760 - 112 - nameW - gaps) / nc);
-  if (cw < 56) { nameW = 150; cw = Math.floor((1760 - 112 - nameW - gaps) / nc); }
+  // ไม่มีใครมีรูปเลย → ตัดคอลัมน์รูปออก (pc=0) ตารางจะแคบลงและยังอยู่กึ่งกลางจอ
+  const pc = rows.some(r => r.c.img) ? 1 : 0, lead = 2 + pc, fx = 56 + 56 * pc, gaps = (nc + lead - 1) * 6; let nameW = 300, cw = Math.floor((1760 - fx - nameW - gaps) / nc);
+  if (cw < 56) { nameW = 150; cw = Math.floor((1760 - fx - nameW - gaps) / nc); }
   cw = Math.max(30, Math.min(118, cw));
-  const W = 80 + 112 + nameW + nc * cw + gaps, k = W > 1840 ? 1840 / W : 1, fs = Math.max(16, Math.min(32, Math.round(cw * .36))), hs = Math.max(10, Math.min(20, Math.round(cw * .17))), pw = Math.max(18, Math.min(40, cw - 6));
-  const tpl = `56px 56px ${nameW}px repeat(${nc}, ${cw}px)`;
+  const W = 80 + fx + nameW + nc * cw + gaps, k = W > 1840 ? 1840 / W : 1, fs = Math.max(16, Math.min(32, Math.round(cw * .36))), hs = Math.max(10, Math.min(20, Math.round(cw * .17))), pw = Math.max(18, Math.min(40, cw - 6));
+  const tpl = `56px ${pc ? '56px ' : ''}${nameW}px repeat(${nc}, ${cw}px)`;
   const jh = J.map((j, k2) => `<div class="jh ${k2 === 0 ? 'bd' : ''}"><div class="ph2">${ph(j.img, j.name)}</div><div class="nm">${esc(j.name)}</div></div>`).join('');
   const tailA = !C.tail ? '' : `<span class="rh g bd" style="grid-column:span ${C.tail}">${esc(C.tail > 1 ? L.total : L.tot)}</span>`;
   const tailB = !C.tail ? '' : C.tail > 1 ? `<span class="rh bd">${esc(L.jtot)}</span><span class="rh">${esc(L.votes)}</span><span class="rh">${esc(L.vsc)}</span><span class="rh g">${esc(L.tot)}</span>` : '<span></span>';
-  const h1 = `<div class="rrow hd h1" style="grid-template-columns:${tpl}"><span class="rk-t" style="grid-column:span 3">${esc(s.title)}</span>${show.map(r => `<span class="rh g bd" style="grid-column:span ${C.g}">${esc(r.name)}</span>`).join('')}${tailA}</div>`;
-  const h2 = `<div class="rrow hd h2" style="grid-template-columns:${tpl}"><span></span><span></span><span></span>${show.map(() => jh + `<span class="rh g">${esc(L.avg)}</span>` + (C.gv ? `<span class="rh">${esc(L.rv)}</span>` : '')).join('')}${tailB}</div>`;
-  const body = rows.map((r, i) => `<div class="rrow" style="grid-template-columns:${tpl};--fs:${fs}px;animation-delay:${i * .1}s"><span class="rn">${r.rank}</span><span class="rp">${ph(r.c.img, r.c.name)}</span><span class="rtn">${r.c.country ? esc(r.c.country) + `<small>${esc(r.c.name)}</small>` : esc(r.c.name)}</span>${r.per.map(x => J.map((j, k2) => `<span class="sc ${k2 === 0 ? 'bd' : ''}">${x && x.scores[k2] != null ? fmtn(x.scores[k2]) : '–'}</span>`).join('') + `<span class="sc av">${x ? fmtn(x.avg) : '–'}</span>` + (C.gv ? `<span class="sc">${x && x.vote != null ? fmtn(x.vote) : '–'}</span>` : '')).join('')}${C.tail > 1 ? `<span class="sc bd av">${fmtn(r.jt)}</span><span class="sc">${r.votes == null ? '–' : r.votes.toLocaleString('en-US')}</span><span class="sc">${r.vsc == null ? '–' : fmtn(r.vsc)}</span><span class="sc av">${fmtn(r.tot)}</span>` : C.tail === 1 ? `<span class="sc bd av">${fmtn(r.tot)}</span>` : ''}</div>`).join('');
+  const h1 = `<div class="rrow hd h1" style="grid-template-columns:${tpl}"><span class="rk-t" style="grid-column:span ${lead}">${esc(s.title)}</span>${show.map(r => `<span class="rh g bd" style="grid-column:span ${C.g}">${esc(r.name)}</span>`).join('')}${tailA}</div>`;
+  const h2 = `<div class="rrow hd h2" style="grid-template-columns:${tpl}">${'<span></span>'.repeat(lead)}${show.map(() => jh + `<span class="rh g">${esc(L.avg)}</span>` + (C.gv ? `<span class="rh">${esc(L.rv)}</span>` : '')).join('')}${tailB}</div>`;
+  const body = rows.map((r, i) => `<div class="rrow" style="grid-template-columns:${tpl};--fs:${fs}px;animation-delay:${i * .1}s"><span class="rn">${r.rank}</span>${pc ? `<span class="rp">${ph(r.c.img, r.c.name)}</span>` : ''}<span class="rtn">${r.c.country ? esc(r.c.country) + `<small>${esc(r.c.name)}</small>` : esc(r.c.name)}</span>${r.per.map(x => J.map((j, k2) => `<span class="sc ${k2 === 0 ? 'bd' : ''}">${x && x.scores[k2] != null ? fmtn(x.scores[k2]) : '–'}</span>`).join('') + `<span class="sc av">${x ? fmtn(x.avg) : '–'}</span>` + (C.gv ? `<span class="sc">${x && x.vote != null ? fmtn(x.vote) : '–'}</span>` : '')).join('')}${C.tail > 1 ? `<span class="sc bd av">${fmtn(r.jt)}</span><span class="sc">${r.votes == null ? '–' : r.votes.toLocaleString('en-US')}</span><span class="sc">${r.vsc == null ? '–' : fmtn(r.vsc)}</span><span class="sc av">${fmtn(r.tot)}</span>` : C.tail === 1 ? `<span class="sc bd av">${fmtn(r.tot)}</span>` : ''}</div>`).join('');
   return `<div class="rkw" style="left:${k < 1 ? 40 : (1920 - W) / 2}px;width:${W}px;transform:scale(${k})"><div class="rkp" style="width:${W}px;--hs:${hs}px;--pw:${pw}px">${h1}${h2}${body}</div></div>`;
 }
 function innerVM(vm) {
@@ -171,7 +182,7 @@ async function loginV(msg, cached) {
   };
   $('#go').onclick = go; $('#code').onkeydown = e => { if (e.key === 'Enter') go(); };
 }
-function logout() { clearInterval(timer); clearSess(); ST = {code: '', pg: 0, role: null, fromSuper: false, p: null, list: [], sel: ST.sel}; view = 'd'; editing = 0; loginV(); }
+function logout() { clearInterval(timer); clearSess(); ST = {code: '', pg: 0, role: null, fromSuper: false, p: null, list: [], sel: ST.sel}; view = 'd'; editing = 0; ADD = blankAdd(5); loginV(); }
 
 /* ---------- ผู้ดูแลหลัก ---------- */
 async function superLoad() { ST.list = (await api('super')).pageants; }
@@ -231,7 +242,7 @@ const onClick = async e => {
   if (a === 'csv') return csvTable();
   if (a === 'edsc') { editing = editing === id ? 0 : id; return render(); }
   // ผู้ดูแลหลัก
-  if (a === 'enter') { ST.pg = id; ST.role = 'admin'; ST.fromSuper = true; view = 'm'; editing = 0; saveSess(); try { await load(); } catch (er) { alert(er.message); } render(); return start(true); }
+  if (a === 'enter') { ST.pg = id; ST.role = 'admin'; ST.fromSuper = true; view = 'm'; editing = 0; ADD = blankAdd(5); saveSess(); try { await load(); } catch (er) { alert(er.message); } render(); return start(true); }
   if (a === 'pgadd') return sact('pgadd', {name: $('#npn').value, adm: $('#npc').value});
   if (a === 'pgren') { const x = ST.list.find(y => y.id === id), n = prompt('ชื่อเวที', x.name); return n === null ? null : sact('pgren', {id, name: n}); }
   if (a === 'pgcode') { const x = ST.list.find(y => y.id === id), n = prompt('รหัสแอดมินเวทีใหม่', x.adm); return n === null ? null : sact('pgcode', {id, adm: n}); }
@@ -267,7 +278,23 @@ const onClick = async e => {
     const nm = prompt('ชื่อ', c.name); if (nm === null) return; const ct = prompt('ประเทศ/จังหวัด (เว้นว่างได้)', c.country || ''); if (ct === null) return;
     return act('editc', {id, no, name: nm, country: ct});
   }
-  if (a === 'addc') return act('addc', {no: $('#cno').value, name: $('#cnm').value, country: $('#cct').value});
+  if (a === 'aadd') { ADD.push(...blankAdd(Math.max(0, Math.min(+v || 1, MAXADD - ADD.length)))); return refreshAdd(); }
+  if (a === 'adel') { ADD.splice(id, 1); if (!ADD.length) ADD = blankAdd(1); return refreshAdd(); }
+  if (a === 'aph') return pick(false, d => { if (ADD[id]) { ADD[id].img = d; refreshAdd(); } });
+  if (a === 'addcs') {
+    const bad = ADD.findIndex(r => !r.name.trim() && (r.no.trim() || r.country.trim() || r.img));
+    if (bad >= 0) return alert('แถวที่ ' + (bad + 1) + ' ยังไม่ได้กรอกชื่อ');
+    const rows = ADD.filter(r => r.name.trim());
+    if (!rows.length) return alert('กรอกชื่อผู้เข้าประกวดอย่างน้อย 1 คน');
+    b.disabled = true;
+    // ส่งทีละ 15 คน (กันชนลิมิตจำนวน query ต่อคำขอของ Cloudflare) ถ้าล้มกลางทาง แถวที่บันทึกแล้วจะถูกเอาออกจากตาราง กดซ้ำได้โดยไม่ซ้ำคน
+    let done = 0, warn = '', fail = '';
+    try { for (; done < rows.length; done += 15) { const r = await api('admin/addcs', {rows: rows.slice(done, done + 15)}); warn = warn || r.warn || ''; } done = rows.length; } catch (er) { fail = er.message; }
+    const saved = new Set(rows.slice(0, done)); ADD = ADD.filter(r => !saved.has(r)); if (!fail || !ADD.length) ADD = fail ? ADD : blankAdd(5);
+    if (fail) alert(fail + (done ? '\n(บันทึกไปแล้ว ' + done + ' คน ที่เหลือยังอยู่ในตาราง แก้แล้วกด "เพิ่มทั้งหมด" ได้เลย)' : '')); else if (warn) alert(warn);
+    try { await load(); } catch (er) {}
+    return render();
+  }
   if (a === 'addj') return act('addj', {name: $('#jnm').value, code: $('#jcd').value});
   if (a === 'jcode') { const j = p.J.find(x => x.id === id), n = prompt('รหัสเข้าระบบใหม่', j.code); return n === null ? null : act('jcode', {id, code: n}); }
   if (a === 'editj') { const j = p.J.find(x => x.id === id), n = prompt('ชื่อกรรมการ', j.name); return n === null ? null : act('editj', {id, name: n}); }
@@ -278,6 +305,21 @@ const onClick = async e => {
     p.C.forEach(c => { if (mr) p.rounds.forEach(r => { const t = rd('vr-' + r.id + '-' + c.id); if (t !== undefined) (V[r.id] = V[r.id] || {})[c.id] = t; }); else { const t = rd('va-' + c.id); if (t !== undefined) V[c.id] = t; } });
     return act('savevotes', {votes: V});
   }
+};
+const onInput = e => {
+  const t = e.target, f = t.dataset && t.dataset.f, r = f && ADD[+t.dataset.i]; if (!r || ST.role !== 'admin') return;
+  r[f] = t.value; if (f === 'name') { const n = $('#addn'); if (n) n.textContent = addCount(); }
+};
+// วางข้อมูลหลายบรรทัด/หลายคอลัมน์จากสเปรดชีต: 1 คอลัมน์ = ลงช่องที่วาง · 2 คอลัมน์ = ประเทศ, ชื่อ · 3 คอลัมน์ = เลขที่, ประเทศ, ชื่อ
+const onPaste = e => {
+  const t = e.target, f = t.dataset && t.dataset.f; if (!f || !ADD[+t.dataset.i] || ST.role !== 'admin') return;
+  const tx = ((e.clipboardData || window.clipboardData).getData('text') || '').replace(/\r/g, '').replace(/\n+$/, ''); if (!/[\t\n]/.test(tx)) return;
+  e.preventDefault();
+  const lines = tx.split('\n').filter(l => l.trim() !== ''), k = Math.max(...lines.map(l => l.split('\t').length)), cols = k === 1 ? [f] : k === 2 ? ['country', 'name'] : ['no', 'country', 'name'], i0 = +t.dataset.i;
+  while (ADD.length < Math.min(MAXADD, i0 + lines.length)) ADD.push(...blankAdd(1));
+  lines.forEach((l, li) => { const r = ADD[i0 + li]; if (r) l.split('\t').slice(0, cols.length).forEach((x, ci) => { r[cols[ci]] = x.trim(); }); });
+  if (i0 + lines.length > MAXADD) alert('วางได้สูงสุด ' + MAXADD + ' แถว ส่วนที่เกินถูกตัดออก');
+  refreshAdd();
 };
 const onChange = e => {
   if (ST.role !== 'admin') return; const t = e.target;
@@ -294,7 +336,7 @@ async function judgeLoad() { JD = await api('judge'); }
 function judgeRender() {
   const d = JD, c = d.current, mine = d.mine, k2 = d.round + ':' + (c ? c.id : 0);
   if (jkey !== k2) { jkey = k2; kv = mine == null ? '' : String(mine); jmsg = ''; }
-  app.innerHTML = topbar('กรรมการ: ' + esc(d.name)) + `<div class="box" style="text-align:center"><div class="mu">${esc(d.pgName)} · ${esc(d.round)}</div>` + (!c ? '<p class="mu">รอผู้ดูแลเลือกผู้เข้าประกวด…</p>' : `<div class="jph" style="margin-top:8px">${ph(c.img, c.no)}</div><div style="font-size:1.4rem;font-weight:600">${esc(c.name)}</div><div class="mu">หมายเลข ${esc(c.no)}${c.country ? ' · ' + esc(c.country) : ''}</div>`
+  app.innerHTML = topbar('กรรมการ: ' + esc(d.name)) + `<div class="box" style="text-align:center"><div class="mu">${esc(d.pgName)} · ${esc(d.round)}</div>` + (!c ? '<p class="mu">รอผู้ดูแลเลือกผู้เข้าประกวด…</p>' : `<div class="jph" style="margin-top:8px">${c.img ? ph(c.img) : esc(c.no)}</div><div style="font-size:1.4rem;font-weight:600">${esc(c.name)}</div><div class="mu">หมายเลข ${esc(c.no)}${c.country ? ' · ' + esc(c.country) : ''}</div>`
     + (c.revealed ? `<p class="mu">เปิดคะแนนแล้ว แก้ไขไม่ได้ คะแนนที่คุณให้: ${mine ?? '-'}</p>` : mine != null ? `<div class="val">${fmtn(mine)}</div><p class="ok" style="margin:6px 0">ส่งคะแนนแล้ว ล็อกเรียบร้อย แก้ไขไม่ได้</p><p class="mu">ถ้าต้องแก้ไข ให้แจ้งผู้ดูแล</p>` : `<div class="val">${kv === '' ? '<span class="mu">–</span>' : esc(kv)}</div><div class="mu">คะแนนเต็ม ${d.max}</div><div class="kp">${'123456789'.split('').map(k => `<button data-k="${k}">${k}</button>`).join('')}<button data-k="max">${d.max}</button><button data-k=".">.</button><button data-k="0">0</button><button data-k="del">⌫</button><button class="cf" data-k="ok">ยืนยัน</button></div><p class="bad" style="margin:8px 0 0">${esc(jmsg)}</p>`)) + '</div>';
 }
 async function press(k) {
@@ -340,7 +382,7 @@ async function start(fromEnter) {
 }
 async function boot() {
   if (Q.get('display')) return displayMode();
-  app.addEventListener('click', onClick); app.addEventListener('change', onChange);
+  app.addEventListener('click', onClick); app.addEventListener('change', onChange); app.addEventListener('input', onInput); app.addEventListener('paste', onPaste);
   addEventListener('resize', fit);
   addEventListener('keydown', e => {
     if (ST.role !== 'admin' || (view !== 'd' && view !== 'c')) return;
