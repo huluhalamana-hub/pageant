@@ -129,16 +129,16 @@ function sumVMHTML(s, L) {
 function innerVM(vm) {
   let h = '';
   if (vm.chip) h += `<div class="stg">${esc(vm.chip)}</div>`;
-  if (vm.logo !== null && vm.logo !== undefined) h += `<div class="lg">${vm.logo ? `<img src="${vm.logo}" alt="">` : 'LOGO'}</div>`;
+  if (vm.logo !== null && vm.logo !== undefined) h += `<div class="lg${vm.logo ? '' : ' ph'}">${vm.logo ? `<img src="${vm.logo}" alt="">` : 'LOGO'}</div>`;
   if (vm.bar) h += barHTML(vm.bar, vm.L); else if (vm.sum) h += sumVMHTML(vm.sum, vm.L);
   return h;
 }
 const varsOf = vm => `--c1:${vm.col.c1};--c2:${vm.col.c2};--c3:${vm.col.c3}`;
 const dHTMLp = (p, force) => { const vm = buildDisplay(p, {force}); return `<div class="sw" style="${varsOf(vm)}"><div class="cv">${innerVM(vm)}</div></div>`; };
 
-/* ---------- หน้าจอไลฟ์สาธารณะ (/?display=1&pg=เลขเวที&t=1 โปร่งใส) ---------- */
+/* ---------- หน้าจอไลฟ์สาธารณะ (/?display=1&pg=เลขเวที พื้นหลังโปร่งใสเสมอ) ---------- */
 function displayMode() {
-  document.body.classList.add('disp'); if (Q.get('t')) document.body.classList.add('tr');
+  document.body.classList.add('disp'); if (!Q.get('bg')) document.body.classList.add('tr');
   app.innerHTML = '<div class="cv" id="cv"></div>';
   const cv = $('#cv'), pg = +Q.get('pg') || 0; let last = -1, lastKey = '';
   const fitD = () => { cv.style.transform = `scale(${Math.min(innerWidth / 1920, innerHeight / 1080)})`; };
@@ -187,7 +187,7 @@ async function load() { ST.p = await api('admin'); }
 async function act(a, body) { try { await api('admin/' + a, body || {}); } catch (e) { alert(e.message); } try { await load(); } catch (e) {} render(); }
 function linkBox(p) {
   const u = `${location.origin}/?display=1&pg=${p.id}`;
-  return `<div class="box noprint" style="margin-top:12px"><h2>ลิงก์จอไลฟ์สำหรับ OBS</h2><p class="mu">ใน OBS เพิ่มแหล่งภาพแบบ Browser ใส่ลิงก์นี้ ขนาด 1920 x 1080</p><input readonly value="${esc(u)}" onclick="this.select()"><p class="mu" style="margin-top:8px">แบบพื้นหลังโปร่งใส (ซ้อนบนภาพกล้อง)</p><input readonly value="${esc(u + '&t=1')}" onclick="this.select()"></div>`;
+  return `<div class="box noprint" style="margin-top:12px"><h2>ลิงก์จอไลฟ์สำหรับ OBS</h2><p class="mu">ใน OBS เพิ่มแหล่งภาพแบบ Browser ใส่ลิงก์นี้ ขนาด 1920 x 1080 พื้นหลังโปร่งใสให้อัตโนมัติ ซ้อนบนภาพกล้องได้เลย</p><input readonly value="${esc(u)}" onclick="this.select()"><p class="mu" style="margin-top:8px">เปิดในเบราว์เซอร์ธรรมดาจะเห็นพื้นหลังเป็นสีขาว ซึ่งปกติ ถ้าอยากดูบนพื้นเข้มตอนทดสอบ ต่อท้ายลิงก์ด้วย &amp;bg=1</p></div>`;
 }
 function tableData(p) {
   const n = p.J.length, d = sumData(p, p.rounds), list = d.ranked.concat(d.rows.filter(r => r.tot == null)), C = colsCfg(p, false, n), c = v => v == null ? '' : fmtn(v);
