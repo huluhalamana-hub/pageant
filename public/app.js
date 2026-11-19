@@ -158,19 +158,16 @@ function displayMode() {
   const playOut = async scoresOnly => {
     const bar = cv.querySelector('.bar'), pan = cv.querySelector('.rkp');
     if (!bar && !pan) return false;
-    let total = 0;
-    if (bar && scoresOnly) {
-      bar.querySelectorAll('.js:not(.dim)').forEach(e => { e.style.animationDelay = '0s'; e.classList.add('out'); }); total = .3;
-    } else if (bar) {
-      const js = [...bar.querySelectorAll('.js')], n = js.length;
-      js.forEach((e, i) => { e.style.animationDelay = ((n - 1 - i) * .06) + 's'; e.classList.add('out'); });
-      const d = n * .06 + .1; bar.style.animationDelay = d + 's'; bar.classList.add('out'); total = d + .5;
+    // ทุกอย่างเฟดออกพร้อมกันนาน 1 วินาที (แถวในตารางไล่เหลื่อมกันเล็กน้อยแต่จบพร้อมกัน)
+    if (bar) {
+      bar.querySelectorAll(scoresOnly ? '.js:not(.dim)' : '.js').forEach(e => { e.style.animationDelay = '0s'; e.classList.add('fo'); });
+      if (!scoresOnly) { bar.style.animationDelay = '0s'; bar.classList.add('fo'); }
     } else {
-      const rows = [...pan.querySelectorAll('.rrow:not(.hd)')], n = rows.length;
-      rows.forEach((e, i) => { e.style.animationDelay = ((n - 1 - i) * .06) + 's'; e.classList.add('out'); });
-      const d = n * .06 + .15; pan.style.animationDelay = d + 's'; pan.classList.add('out'); total = d + .5;
+      const rows = [...pan.querySelectorAll('.rrow:not(.hd)')], n = rows.length, st = n > 1 ? .4 / (n - 1) : 0;
+      rows.forEach((e, i) => { e.style.animationDelay = ((n - 1 - i) * st) + 's'; e.classList.add('fo'); });
+      pan.style.animationDelay = '0s'; pan.classList.add('fo');
     }
-    await new Promise(res => setTimeout(res, total * 1000 + 50));
+    await new Promise(res => setTimeout(res, 1050));
     return true;
   };
   const tick = async () => {
