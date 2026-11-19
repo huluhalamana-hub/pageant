@@ -154,13 +154,35 @@ function displayMode() {
   const cv = $('#cv'), pg = +Q.get('pg') || 0; let last = -1, lastKey = '';
   const fitD = () => { cv.style.transform = `scale(${Math.min(innerWidth / 1920, innerHeight / 1080)})`; };
   fitD(); addEventListener('resize', fitD);
+  let lastPart = '', busy = false;
+  const playOut = async () => {
+    const bar = cv.querySelector('.bar'), pan = cv.querySelector('.rkp');
+    if (!bar && !pan) return false;
+    let total = 0;
+    if (bar) {
+      const js = [...bar.querySelectorAll('.js')], n = js.length;
+      js.forEach((e, i) => { e.style.animationDelay = ((n - 1 - i) * .06) + 's'; e.classList.add('out'); });
+      const d = n * .06 + .1; bar.style.animationDelay = d + 's'; bar.classList.add('out'); total = d + .5;
+    } else {
+      const rows = [...pan.querySelectorAll('.rrow:not(.hd)')], n = rows.length;
+      rows.forEach((e, i) => { e.style.animationDelay = ((n - 1 - i) * .06) + 's'; e.classList.add('out'); });
+      const d = n * .06 + .15; pan.style.animationDelay = d + 's'; pan.classList.add('out'); total = d + .5;
+    }
+    await new Promise(res => setTimeout(res, total * 1000 + 50));
+    return true;
+  };
   const tick = async () => {
+    if (busy) return; busy = true;
     try {
       const r = await pub('rev?pg=' + pg); if (r.rev === undefined || r.rev === last) return;
       const vm = await pub('display?pg=' + pg); last = r.rev;
-      const html = innerVM(vm), k = varsOf(vm) + html;
-      if (k !== lastKey) { lastKey = k; cv.setAttribute('style', cv.getAttribute('style').replace(/--c\d:[^;]*;?/g, '') + ';' + varsOf(vm)); cv.innerHTML = html; }
-    } catch (e) {}
+      const html = innerVM(vm), k = varsOf(vm) + html, part = vm.bar ? barHTML(vm.bar, vm.L) : vm.sum ? sumVMHTML(vm.sum, vm.L) : '';
+      if (k !== lastKey) {
+        // แอนิเมชันออก (ย้อนกลับของตอนเข้า) เมื่อแถบคะแนน/ตารางอันดับเปลี่ยนหรือถูกซ่อน
+        if (part !== lastPart && await playOut()) { /* รอจนเล่นจบ */ }
+        lastKey = k; lastPart = part; cv.setAttribute('style', cv.getAttribute('style').replace(/--c\d:[^;]*;?/g, '') + ';' + varsOf(vm)); cv.innerHTML = html;
+      }
+    } catch (e) {} finally { busy = false; }
   };
   tick(); setInterval(tick, 2000);
 }
