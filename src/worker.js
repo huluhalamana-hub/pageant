@@ -111,6 +111,29 @@ async function adminAction(env, a, b, pg, role) {
       const no = parseInt(b.no, 10) || (await db.prepare('SELECT COALESCE(MAX(no),0)+1 n FROM contestants WHERE pg=?').bind(pg).first()).n;
       await db.prepare('INSERT INTO contestants(pg,no,name,country) VALUES(?,?,?,?)').bind(pg, no, name, txt(b.country) || null).run(); break;
     }
+    case 'addcs': {
+      // เพิ่มผู้เข้าประกวดหลายคนพร้อมรูป (ไม่บังคับ) ในครั้งเดียว ใช้ D1 batch เพื่อไม่ให้ชนลิมิตจำนวน query ต่อคำขอ
+      const rows = Array.isArray(b.rows) ? b.rows : [];
+      if (!rows.length) return bad('ไม่มีรายชื่อที่จะเพิ่ม');
+      if (rows.length > 30) return bad('เพิ่มได้ครั้งละไม่เกิน 30 คน');
+      const list = [];
+      for (const r of rows) {
+        const name = txt(r && r.name); if (!name) return bad('มีแถวที่ยังไม่ได้กรอกชื่อ');
+        const img = r.img || null;
+        if (img && (typeof img !== 'string' || img.length > 450000 || !/^data:image\/(jpeg|png);base64,[A-Za-z0-9+/=]+$/.test(img))) return bad('รูปของ "' + name + '" ไม่ถูกต้องหรือใหญ่เกินไป');
+        list.push({ no: Math.min(parseInt(r.no, 10) || 0, 99999), name, country: txt(r.country) || null, img });
+      }
+      // เลขที่ที่เว้นว่าง = เลขของแถวก่อนหน้า + 1 (แถวแรกต่อจากเลขสูงสุดที่มีอยู่)
+      let cur = (await db.prepare('SELECT COALESCE(MAX(no),0) n FROM contestants WHERE pg=?').bind(pg).first()).n;
+      for (const r of list) { if (r.no <= 0) r.no = cur + 1; cur = r.no; }
+      const ins = await db.batch(list.map(r => db.prepare('INSERT INTO contestants(pg,no,name,country) VALUES(?,?,?,?)').bind(pg, r.no, r.name, r.country)));
+      const now = Date.now(), imgs = [];
+      ins.forEach((res, i) => { const cid = Number(res.meta && res.meta.last_row_id); if (cid && list[i].img) imgs.push(db.prepare('INSERT INTO images(kind,id,data,updated) VALUES(?,?,?,?) ON CONFLICT(kind,id) DO UPDATE SET data=excluded.data, updated=excluded.updated').bind('contestant', cid, list[i].img, now)); });
+      let warn = '';
+      if (imgs.length) { try { await db.batch(imgs); } catch (e) { warn = 'เพิ่มรายชื่อแล้ว แต่บันทึกรูปไม่สำเร็จ ลองใส่รูปทีหลังที่ปุ่ม "รูป" ของแต่ละคน'; } }
+      await bump(env, pg);
+      return J(warn ? { ok: true, warn } : { ok: true });
+    }
     case 'editc': {
       if (!(await own(env, 'contestants', id, pg))) return bad('ไม่พบผู้เข้าประกวด');
       const name = txt(b.name); if (!name) return bad('กรุณากรอกชื่อ');
