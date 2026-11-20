@@ -4,7 +4,7 @@ const J = (d, s = 200) => new Response(JSON.stringify(d), { status: s, headers: 
 const eq = (a, b) => { if (!a || !b || a.length !== b.length) return false; let r = 0; for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i); return r === 0; };
 const txt = (s, n = 100) => String(s ?? '').trim().slice(0, n);
 const r2 = n => Math.round(n * 100) / 100;
-const DEF = { max: '10', jw: '100', vm: 'share', agg: 'avg', vmode: 'all', rank: '0', mode: 'current', hide: '0', pre: 'dash', introSec: '4', holdSec: '0', barScale: '100', cardScale: '100', lang: 'th', showLogo: '0', showRound: '1', auto: '0', c1: '#e3b95a', c2: '#1c1006', c3: '#f4e9d3', round: '0', cur: '0' };
+const DEF = { max: '10', jw: '100', vm: 'share', agg: 'avg', vmode: 'all', rank: '0', mode: 'current', hide: '0', pre: 'dash', introSec: '4', holdSec: '0', sumPer: '10', sumSec: '8', showPV: '1', barScale: '100', cardScale: '100', lang: 'th', showLogo: '0', showRound: '1', auto: '0', c1: '#e3b95a', c2: '#1c1006', c3: '#f4e9d3', round: '0', cur: '0' };
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
 async function getS(env, pg) {
@@ -31,7 +31,7 @@ async function snapshot(env, pgId, opt = {}) {
   const iu = (k, id) => (im[k + id] ? `/api/img/${k}/${id}?v=${im[k + id]}` : null);
   let round = +s.round; if (!rounds.some(r => r.id === round)) round = rounds[0] ? rounds[0].id : 0;
   const p = {
-    id: P.id, name: P.name, rev: P.rev, max: +s.max, jw: +s.jw, vm: s.vm, agg: s.agg, vmode: s.vmode, rank: +s.rank, mode: s.mode, hide: s.hide === '1', pre: s.pre, introSec: +s.introSec, holdSec: +s.holdSec, barScale: +s.barScale, cardScale: +s.cardScale, lang: s.lang,
+    id: P.id, name: P.name, rev: P.rev, max: +s.max, jw: +s.jw, vm: s.vm, agg: s.agg, vmode: s.vmode, rank: +s.rank, mode: s.mode, hide: s.hide === '1', pre: s.pre, introSec: +s.introSec, holdSec: +s.holdSec, sumPer: +s.sumPer, sumSec: +s.sumSec, showPV: s.showPV === '1', barScale: +s.barScale, cardScale: +s.cardScale, lang: s.lang,
     showLogo: s.showLogo === '1', showRound: s.showRound === '1', auto: s.auto === '1', col: { c1: s.c1, c2: s.c2, c3: s.c3 }, logo: iu('logo', pgId), round, cur: +s.cur,
     rounds: rounds.map(r => ({ id: r.id, name: r.name, inTotal: !!r.in_total })),
     C: cs.map(c => ({ id: c.id, no: c.no, name: c.name, country: c.country || '', votes: c.votes, img: iu('contestant', c.id) })),
@@ -90,6 +90,25 @@ const curRound = async (env, pg, s) => {
   const r = s ? await ownRound(env, +s.round, pg) : null;
   return r || (await env.DB.prepare('SELECT * FROM rounds WHERE pg=? ORDER BY id LIMIT 1').bind(pg).first());
 };
+const activeIds = async (env, pg, rid) => (await env.DB.prepare('SELECT c.id FROM contestants c WHERE c.pg=? AND ' + NOT_ELIM + ' ORDER BY c.no,c.id').bind(pg, rid).all()).results.map(x => x.id);
+// ซ่อนจออัตโนมัติ: เมื่อคะแนนของ "คนสุดท้ายของรอบ" เปิดอยู่บนจอและตั้งเวลาค้างไว้ (holdSec > 0) พอคะแนนเฟดหายแล้วให้ตั้ง hide=1 เอง
+// ahAt = เวลาที่คะแนนคนสุดท้ายเริ่มโชว์ (0 = ไม่มีอะไรรอซ่อน) เซิร์ฟเวอร์เป็นคนเช็กตอนมีคนโพลล์ /api/rev จึงไม่ต้องเปิดหน้าแอดมินค้างไว้
+const ahSet = (env, pg, v) => setS(env, pg, 'ahAt', v);
+async function lastShown(env, pg, s) {
+  if (!(+s.holdSec > 0) || s.mode !== 'current' || s.hide === '1' || !+s.cur) return false;
+  const rd = await curRound(env, pg, s); if (!rd) return false;
+  const l = await activeIds(env, pg, rd.id); if (!l.length || l[l.length - 1] !== +s.cur) return false;
+  const rs = await env.DB.prepare('SELECT revealed FROM results WHERE round_id=? AND contestant_id=?').bind(rd.id, +s.cur).first();
+  return !!(rs && rs.revealed);
+}
+async function armAH(env, pg) { await ahSet(env, pg, (await lastShown(env, pg, await getS(env, pg))) ? Date.now() : 0); }
+async function autoHide(env, pg, at) {
+  const s = await getS(env, pg);
+  if (!(await lastShown(env, pg, s))) { await ahSet(env, pg, 0); return false; }
+  if (Date.now() < at + +s.holdSec * 1000 + 1500) return false;
+  await ahSet(env, pg, 0); await setS(env, pg, 'hide', '1'); await bump(env, pg);
+  return true;
+}
 const setReveal = (env, rid, cid, on) => env.DB.prepare('INSERT INTO results(round_id,contestant_id,revealed) VALUES(?,?,?) ON CONFLICT(round_id,contestant_id) DO UPDATE SET revealed=excluded.revealed').bind(rid, cid, on ? 1 : 0).run();
 
 async function judgeSubmit(env, me, b) {
@@ -106,7 +125,7 @@ async function judgeSubmit(env, me, b) {
   if (s.auto === '1') {
     const n = (await env.DB.prepare('SELECT COUNT(*) n FROM scores WHERE round_id=? AND contestant_id=?').bind(rd.id, c.id).first()).n;
     const t = (await env.DB.prepare('SELECT COUNT(*) n FROM judges WHERE pg=?').bind(pg).first()).n;
-    if (t > 0 && n >= t) await setReveal(env, rd.id, c.id, 1);
+    if (t > 0 && n >= t) { await setReveal(env, rd.id, c.id, 1); await armAH(env, pg); }
   }
   await bump(env, pg);
   return J({ ok: true, score: v });
@@ -200,7 +219,8 @@ async function adminAction(env, a, b, pg, role) {
     }
     case 'rd': { // เริ่มรอบใหม่ แล้วกลับไปคนที่ 1 ของรอบนั้น
       if (!(await ownRound(env, id, pg))) return bad('ไม่พบรอบ');
-      await setS(env, pg, 'round', id); await setS(env, pg, 'cur', await firstContestant(env, pg, id)); break;
+      await setS(env, pg, 'round', id); await setS(env, pg, 'cur', await firstContestant(env, pg, id));
+      await setS(env, pg, 'hide', '1'); break; // ซ่อนจอทั้งหมดไว้ก่อน จนกว่าจะกด "แสดงจอ" คนแรกถึงจะขึ้น
     }
     case 'intotal': {
       if (!(await ownRound(env, id, pg))) return bad('ไม่พบรอบ');
@@ -293,10 +313,11 @@ async function adminAction(env, a, b, pg, role) {
       else if (k === 'vm' && ['share', 'top'].includes(v)) await setS(env, pg, k, v);
       else if (k === 'vmode' && ['all', 'round'].includes(v)) await setS(env, pg, k, v);
       else if (k === 'pre' && ['name', 'dash', 'none', 'card'].includes(v)) await setS(env, pg, k, v);
-      else if (['introSec', 'holdSec'].includes(k) && v !== '' && Number(v) >= 0 && Number(v) <= 600) await setS(env, pg, k, Math.round(Number(v) * 10) / 10);
+      else if (k === 'sumPer' && v !== '' && Number(v) >= 1 && Number(v) <= 20) await setS(env, pg, k, Math.round(Number(v)));
+      else if (['introSec', 'holdSec', 'sumSec'].includes(k) && v !== '' && Number(v) >= 0 && Number(v) <= 600) await setS(env, pg, k, Math.round(Number(v) * 10) / 10);
       else if (['barScale', 'cardScale'].includes(k) && v !== '' && Number(v) >= 30 && Number(v) <= 150) await setS(env, pg, k, Math.round(Number(v)));
       else if (k === 'lang' && ['th', 'en'].includes(v)) await setS(env, pg, k, v);
-      else if (['auto', 'hide', 'showLogo', 'showRound'].includes(k)) await setS(env, pg, k, bool(v));
+      else if (['auto', 'hide', 'showLogo', 'showRound', 'showPV'].includes(k)) await setS(env, pg, k, bool(v));
       else if (k === 'max' && Number(v) >= 1 && Number(v) <= 1000) await setS(env, pg, k, Number(v));
       else if (k === 'jw' && v !== '' && Number(v) >= 0 && Number(v) <= 100) await setS(env, pg, k, Math.round(Number(v)));
       else if (k === 'rank' && (Number(v) === 0 || (await ownRound(env, Number(v), pg)))) await setS(env, pg, k, Number(v));
@@ -318,6 +339,7 @@ async function adminAction(env, a, b, pg, role) {
     }
     default: return J({ error: 'not found' }, 404);
   }
+  if (['reveal', 'revmany', 'step', 'cur', 'rd', 'rddel', 'settings', 'out', 'outmany', 'delc', 'delmany'].includes(a)) await armAH(env, pg);
   await bump(env, pg);
   return J({ ok: true });
 }
@@ -358,7 +380,13 @@ export default {
     try {
       // ---------- สาธารณะ (ไม่ต้องล็อกอิน) ----------
       if (p === 'pageants' && m === 'GET') return J((await env.DB.prepare('SELECT id,name FROM pageants ORDER BY id').all()).results);
-      if (p === 'rev' && m === 'GET') { const r = await env.DB.prepare('SELECT rev FROM pageants WHERE id=?').bind(+url.searchParams.get('pg') || 0).first(); return r ? J({ rev: r.rev }) : J({ error: 'ไม่พบเวที' }, 404); }
+      if (p === 'rev' && m === 'GET') {
+        const pgId = +url.searchParams.get('pg') || 0;
+        const r = await env.DB.prepare("SELECT rev,(SELECT value FROM settings WHERE pg=pageants.id AND key='ahAt') ah FROM pageants WHERE id=?").bind(pgId).first();
+        if (!r) return J({ error: 'ไม่พบเวที' }, 404);
+        if (+r.ah > 0 && (await autoHide(env, pgId, +r.ah))) return J({ rev: (await env.DB.prepare('SELECT rev FROM pageants WHERE id=?').bind(pgId).first()).rev });
+        return J({ rev: r.rev });
+      }
       if (p === 'display' && m === 'GET') {
         const sn = await snapshot(env, +url.searchParams.get('pg') || 0); if (!sn) return J({ error: 'ไม่พบเวที' }, 404);
         return J(buildDisplay(sn));
@@ -381,7 +409,10 @@ export default {
           const mine = c && rd ? await env.DB.prepare('SELECT score FROM scores WHERE round_id=? AND contestant_id=? AND judge_id=?').bind(rd.id, c.id, me.jid).first() : null;
           const hasImg = c ? await env.DB.prepare("SELECT updated FROM images WHERE kind='contestant' AND id=?").bind(c.id).first() : null;
           const ok = c && rd && !(await elimBefore(env, me.pg, rd.id, c.id));
-          return J({ name: me.name, pgName: me.pgName, max: +s.max, round: rd ? rd.name : '', rev: (await env.DB.prepare('SELECT rev FROM pageants WHERE id=?').bind(me.pg).first()).rev,
+          // ตอนจอไลฟ์กำลังโชว์ตารางคะแนนรวม ส่งข้อมูลชุดเดียวกันให้จอกรรมการด้วย (เฉพาะคะแนนที่เปิดแล้ว เหมือนจอสาธารณะ)
+          let ranking = null;
+          if (s.mode === 'ranking') { const sn = await snapshot(env, me.pg); ranking = sn ? buildDisplay(sn).sum : null; }
+          return J({ ranking, name: me.name, pgName: me.pgName, max: +s.max, round: rd ? rd.name : '', rev: (await env.DB.prepare('SELECT rev FROM pageants WHERE id=?').bind(me.pg).first()).rev,
             current: ok ? { id: c.id, no: c.no, name: c.name, country: c.country || '', img: hasImg ? `/api/img/contestant/${c.id}?v=${hasImg.updated}` : null, revealed: !!(rs && rs.revealed) } : null, mine: mine ? mine.score : null });
         }
         if (p === 'score' && m === 'POST') return judgeSubmit(env, me, await req.json());
