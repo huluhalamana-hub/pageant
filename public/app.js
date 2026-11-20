@@ -152,7 +152,26 @@ function innerVM(vm) {
   return h;
 }
 const varsOf = vm => `--c1:${vm.col.c1};--c2:${vm.col.c2};--c3:${vm.col.c3}`;
-const dHTMLp = (p, force) => { const vm = buildDisplay(p, {force}); return `<div class="sw" style="${varsOf(vm)}"><div class="cv">${innerVM(vm)}</div></div>`; };
+/* ตัวอย่างจอในหน้าแอดมิน: ทำตามเวลาค้างของการ์ดชื่อ/คะแนนเหมือนจอไลฟ์จริง */
+const pv = {part: '', t0: 0, exp: false, tm: 0, timed: 0, vm: null};
+function pvVM(p) {
+  const vm = buildDisplay(p), part = partOf(vm), timed = vm.card ? vm.t.intro : vm.bar && vm.bar.R ? vm.t.hold : 0;
+  if (part !== pv.part) { pv.part = part; pv.t0 = Date.now(); pv.exp = false; }
+  if (timed > 0 && !pv.exp && Date.now() - pv.t0 >= timed * 1000) pv.exp = true;
+  pv.timed = timed; pv.vm = vm;
+  return timed > 0 && pv.exp ? {...vm, bar: null, card: null} : vm;
+}
+function pvArm() {
+  clearTimeout(pv.tm);
+  const sw = document.querySelector('.sw[data-live]'); if (!sw || !(pv.timed > 0) || pv.exp) return;
+  pv.tm = setTimeout(async () => {
+    const part = pv.part, cv = sw.querySelector('.cv'); if (!cv || !document.contains(sw)) return;
+    await fadeOut(cv, false);
+    if (pv.part !== part || !document.contains(sw)) return;
+    pv.exp = true; cv.innerHTML = innerVM({...pv.vm, bar: null, card: null});
+  }, Math.max(0, pv.t0 + pv.timed * 1000 - Date.now()));
+}
+const dHTMLp = (p, force) => { const vm = force ? buildDisplay(p, {force}) : pvVM(p); return `<div class="sw"${force ? '' : ' data-live="1"'} style="${varsOf(vm)}"><div class="cv">${innerVM(vm)}</div></div>`; };
 
 /* เฟดออก 1 วินาที (ใช้ทั้งจอไลฟ์จริงและตัวอย่างในหน้าแอดมิน) */
 async function fadeOut(cv, scoresOnly) {
@@ -414,7 +433,7 @@ async function press(k) {
 function render() {
   if (!ST.role) return loginV();
   if (ST.role === 'super') return superV();
-  if (ST.role === 'admin') return adminV();
+  if (ST.role === 'admin') { const r = adminV(); pvArm(); return r; }
   if (JD) judgeRender();
 }
 async function start(fromEnter) {
