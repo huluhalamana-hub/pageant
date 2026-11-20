@@ -4,7 +4,7 @@ const J = (d, s = 200) => new Response(JSON.stringify(d), { status: s, headers: 
 const eq = (a, b) => { if (!a || !b || a.length !== b.length) return false; let r = 0; for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i); return r === 0; };
 const txt = (s, n = 100) => String(s ?? '').trim().slice(0, n);
 const r2 = n => Math.round(n * 100) / 100;
-const DEF = { max: '10', jw: '100', vm: 'share', agg: 'avg', vmode: 'all', rank: '0', mode: 'current', hide: '0', pre: 'dash', introSec: '4', holdSec: '0', sumPer: '10', sumSec: '8', showPV: '1', barScale: '100', cardScale: '100', lang: 'th', showLogo: '0', showRound: '1', auto: '0', c1: '#e3b95a', c2: '#1c1006', c3: '#f4e9d3', round: '0', cur: '0' };
+const DEF = { max: '10', jw: '100', vm: 'share', agg: 'avg', vmode: 'all', rank: '0', mode: 'current', hide: '0', pre: 'dash', introSec: '4', holdSec: '0', sumPer: '10', sumSec: '8', showPV: '1', sumScale: '100', barScale: '100', cardScale: '100', lang: 'th', showLogo: '0', showRound: '1', auto: '0', c1: '#e3b95a', c2: '#1c1006', c3: '#f4e9d3', round: '0', cur: '0' };
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
 async function getS(env, pg) {
@@ -31,7 +31,7 @@ async function snapshot(env, pgId, opt = {}) {
   const iu = (k, id) => (im[k + id] ? `/api/img/${k}/${id}?v=${im[k + id]}` : null);
   let round = +s.round; if (!rounds.some(r => r.id === round)) round = rounds[0] ? rounds[0].id : 0;
   const p = {
-    id: P.id, name: P.name, rev: P.rev, max: +s.max, jw: +s.jw, vm: s.vm, agg: s.agg, vmode: s.vmode, rank: +s.rank, mode: s.mode, hide: s.hide === '1', pre: s.pre, introSec: +s.introSec, holdSec: +s.holdSec, sumPer: +s.sumPer, sumSec: +s.sumSec, showPV: s.showPV === '1', barScale: +s.barScale, cardScale: +s.cardScale, lang: s.lang,
+    id: P.id, name: P.name, rev: P.rev, max: +s.max, jw: +s.jw, vm: s.vm, agg: s.agg, vmode: s.vmode, rank: +s.rank, mode: s.mode, hide: s.hide === '1', pre: s.pre, introSec: +s.introSec, holdSec: +s.holdSec, sumPer: +s.sumPer, sumSec: +s.sumSec, showPV: s.showPV === '1', sumScale: +s.sumScale, barScale: +s.barScale, cardScale: +s.cardScale, lang: s.lang,
     showLogo: s.showLogo === '1', showRound: s.showRound === '1', auto: s.auto === '1', col: { c1: s.c1, c2: s.c2, c3: s.c3 }, logo: iu('logo', pgId), round, cur: +s.cur,
     rounds: rounds.map(r => ({ id: r.id, name: r.name, inTotal: !!r.in_total })),
     C: cs.map(c => ({ id: c.id, no: c.no, name: c.name, country: c.country || '', votes: c.votes, img: iu('contestant', c.id) })),
@@ -315,7 +315,7 @@ async function adminAction(env, a, b, pg, role) {
       else if (k === 'pre' && ['name', 'dash', 'none', 'card'].includes(v)) await setS(env, pg, k, v);
       else if (k === 'sumPer' && v !== '' && Number(v) >= 1 && Number(v) <= 20) await setS(env, pg, k, Math.round(Number(v)));
       else if (['introSec', 'holdSec', 'sumSec'].includes(k) && v !== '' && Number(v) >= 0 && Number(v) <= 600) await setS(env, pg, k, Math.round(Number(v) * 10) / 10);
-      else if (['barScale', 'cardScale'].includes(k) && v !== '' && Number(v) >= 30 && Number(v) <= 150) await setS(env, pg, k, Math.round(Number(v)));
+      else if (['barScale', 'cardScale', 'sumScale'].includes(k) && v !== '' && Number(v) >= 30 && Number(v) <= 150) await setS(env, pg, k, Math.round(Number(v)));
       else if (k === 'lang' && ['th', 'en'].includes(v)) await setS(env, pg, k, v);
       else if (['auto', 'hide', 'showLogo', 'showRound', 'showPV'].includes(k)) await setS(env, pg, k, bool(v));
       else if (k === 'max' && Number(v) >= 1 && Number(v) <= 1000) await setS(env, pg, k, Number(v));
