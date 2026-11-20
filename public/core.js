@@ -8,7 +8,7 @@ export const inR = (p, r, c) => { for (const x of p.rounds) { if (x.id === r) re
 
 export const LBL = {
   th: {avg: 'เฉลี่ย', rank: 'อันดับ ', sum: 'สรุปคะแนน', total: 'คะแนนรวม', tot: 'รวม', jtot: 'คะแนนกรรมการ', votes: 'โหวต', vsc: 'คะแนนโหวต', rv: 'โหวต'},
-  en: {avg: 'AVERAGE', rank: 'RANKING · ', sum: 'SUMMARY', total: 'OVERALL', tot: 'TOTAL', jtot: 'JUDGES AVERAGE', votes: 'POPULAR VOTE', vsc: 'VOTE SCORE', rv: 'VOTE'}
+  en: {avg: 'AVG', rank: 'RANKING · ', sum: 'SUMMARY', total: 'OVERALL', tot: 'TOTAL', jtot: 'JUDGES AVG', votes: 'POPULAR VOTE', vsc: 'VOTE SCORE', rv: 'VOTE'}
 };
 export const LB = p => LBL[p.lang === 'en' ? 'en' : 'th'];
 
@@ -44,16 +44,21 @@ export function sumData(p, show, opts) {
   return {rows, ranked};
 }
 
+const tn = (v, d) => (v === '' || v == null || !Number.isFinite(+v) ? d : +v);
 // ข้อมูลสำหรับวาดจอไลฟ์ (view model) เซิร์ฟเวอร์ส่งเฉพาะสิ่งที่เปิดคะแนนแล้วให้หน้าจอสาธารณะ
 function summaryVM(p) {
   const n = p.J.length, single = !!p.rank, L = LB(p); let show, title;
   if (single) { const r = p.rounds.find(x => x.id === p.rank); show = r ? [r] : []; title = L.rank + (r ? r.name : ''); }
   else { show = p.rounds.filter(x => x.inTotal !== false); title = L.sum; }
   const d = sumData(p, show, {single}); if (!d.ranked.length) return null;
-  const rows = d.ranked.slice(0, 10).map(r => ({rank: r.rank, c: {no: r.c.no, name: r.c.name, country: r.c.country, img: r.c.img}, per: r.per, jt: r.jt, votes: r.votes, vsc: r.vsc, tot: r.tot}));
-  return {title, show: show.map(x => ({id: x.id, name: x.name})), single, rows, C: colsCfg(p, single, n), n, J: p.J.map(j => ({name: j.name, img: j.img})), agg: p.agg, jw: p.jw};
+  // ส่งทุกคนเรียงจากคะแนนรวมมาก→น้อย ฝั่งหน้าจอเป็นคนแบ่งหน้าต่างตาม per (คนต่อหน้าต่าง) และ sec (วินาทีต่อหน้าต่าง)
+  const per = Math.max(1, Math.min(20, Math.round(tn(p.sumPer, 10)))), sec = Math.max(0, tn(p.sumSec, 8));
+  // POPULAR VOTE = จำนวนโหวตดิบ แสดงเฉยๆ ไม่นำไปคิดคะแนน (โหวตแยกรอบ = รวมโหวตของรอบที่แสดง)
+  const pvOf = r => { if (p.vmode !== 'round') return r.c.votes ?? null; const v = show.map(x => gr(p, x.id, r.c.id).votes).filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) : null; };
+  const CC = colsCfg(p, single, n);
+  const rows = d.ranked.map(r => ({rank: r.rank, c: {no: r.c.no, name: r.c.name, country: r.c.country, img: r.c.img}, per: r.per, jt: r.jt, votes: r.votes, vsc: r.vsc, tot: r.tot, pvv: pvOf(r)}));
+  return {title, show: show.map(x => ({id: x.id, name: x.name})), single, rows, C: CC, pv: p.showPV !== false && CC.tail <= 1, n, J: p.J.map(j => ({name: j.name, img: j.img})), agg: p.agg, jw: p.jw, per, sec};
 }
-const tn = (v, d) => (v === '' || v == null || !Number.isFinite(+v) ? d : +v);
 export function buildDisplay(p, opts) {
   const force = !!(opts && opts.force);
   const rd = p.rounds.find(x => x.id === p.round) || {name: ''};

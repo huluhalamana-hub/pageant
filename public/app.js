@@ -85,6 +85,10 @@ function manageV(p) {
     <label>การ์ดชื่อค้างไว้ก่อนเฟดหาย (วินาที)</label><div class="row"><input id="introSec" type="number" min="0" max="600" step="0.5" value="${p.introSec}" style="max-width:120px;flex:none"><button data-a="introSec">บันทึก</button></div>
     <label>คะแนนค้างไว้ก่อนเฟดออก (วินาที · 0 = ค้างไว้ไม่เฟดเอง)</label><div class="row"><input id="holdSec" type="number" min="0" max="600" step="0.5" value="${p.holdSec}" style="max-width:120px;flex:none"><button data-a="holdSec">บันทึก</button></div><label>ขนาดการ์ดชื่อบนจอ (% · 100 = ปกติ)</label><div class="row"><input id="cardScale" type="number" min="30" max="150" value="${p.cardScale}" style="max-width:120px;flex:none"><button data-a="cardScale">บันทึก</button></div>
     <label>ขนาดแถบคะแนนบนจอ (% · 100 = ปกติ)</label><div class="row"><input id="barScale" type="number" min="30" max="150" value="${p.barScale}" style="max-width:120px;flex:none"><button data-a="barScale">บันทึก</button></div>
+    <label>ตารางคะแนนรวม: แสดงทีละกี่คน (ต่อ 1 หน้าต่าง)</label><div class="row"><input id="sumPer" type="number" min="1" max="20" value="${p.sumPer}" style="max-width:120px;flex:none"><button data-a="sumPer">บันทึก</button></div>
+    <label>ตารางคะแนนรวม: แต่ละหน้าต่างแสดงกี่วินาที (0 = ค้างหน้าแรกไว้ ไม่เปลี่ยนหน้า ไม่เฟดเอง)</label><div class="row"><input id="sumSec" type="number" min="0" max="600" step="0.5" value="${p.sumSec}" style="max-width:120px;flex:none"><button data-a="sumSec">บันทึก</button></div>
+    <label><input type="checkbox" id="showpv" style="width:auto" ${p.showPV !== false ? 'checked' : ''}> แสดงคอลัมน์ POPULAR VOTE ต่อจาก TOTAL (จำนวนโหวตดิบ แสดงเฉยๆ ไม่นำไปคิดคะแนน)</label>
+    <p class="mu">เรียงจากคะแนนรวมมาก→น้อย เช่น มี 24 คน ตั้ง 10 คน = หน้าต่าง 1 (อันดับ 1-10) → 2 (11-20) → 3 (21-24) พอหน้าต่างสุดท้ายครบเวลาจะเฟดหายไปเลย ตัวอย่างในหน้าแอดมินแสดงเฉพาะหน้าต่างแรก</p>
     <p class="mu">เวลาทั้งสองค่าทำงานบนจอไลฟ์จริง (ตัวอย่างในหน้าแอดมินแสดงค้างไว้ไม่เฟดเอง) การ์ดชื่อใช้เฉพาะเมื่อเลือกโหมด "การ์ดชื่อ" ด้านบน</p>
     <label>คะแนนรวม คิดแบบ</label><div class="row">${B('agg', 'avg', 'เฉลี่ยทุกรอบ', p.agg === 'avg')}${B('agg', 'sum', 'บวกรวมทุกรอบ', p.agg === 'sum')}</div>
     <label><input type="checkbox" id="auto" style="width:auto" ${p.auto ? 'checked' : ''}> เปิดคะแนนอัตโนมัติเมื่อกรรมการส่งครบ</label>
@@ -93,7 +97,7 @@ function manageV(p) {
     <label>การนับโหวต</label><div class="row">${B('vmode', 'all', 'โหวตรวมครั้งเดียวทุกรอบ', (p.vmode || 'all') === 'all')}${B('vmode', 'round', 'โหวตแยกแต่ละรอบ', p.vmode === 'round')}</div>
     <label>แปลงจำนวนโหวตเป็นคะแนน</label><div class="row">${B('vm', 'share', 'สัดส่วนจากโหวตรวม', p.vm === 'share')}${B('vm', 'top', 'อิงคนโหวตสูงสุด', p.vm === 'top')}</div>
     <p class="mu">${p.vm === 'share' ? `สัดส่วนจากโหวตรวม: คะแนนโหวต = โหวตของคนนั้น ÷ โหวตรวมของทุกคน x ${p.max} เช่น โหวตรวม 1600 ได้ 1000 → ${fmtn(1000 / 1600 * p.max)}, 500 → ${fmtn(500 / 1600 * p.max)}, 100 → ${fmtn(100 / 1600 * p.max)}` : `อิงคนโหวตสูงสุด: คนโหวตมากสุดได้เต็ม ${p.max} คนอื่นตามสัดส่วน เช่น 1000 → ${p.max}, 500 → ${fmtn(p.max / 2)}, 100 → ${fmtn(p.max / 10)}`}</p></div>
-  <div class="box"><h2>รอบ</h2>${p.rounds.map(x => `<div class="ci"><div>${esc(x.name)} ${x.id === p.round ? '<span class="ok">· กำลังใช้</span>' : ''}<label style="margin:4px 0 0;color:var(--ink)"><input type="checkbox" data-t="${x.id}" ${x.inTotal !== false ? 'checked' : ''} style="width:auto"> นับในคะแนนรวม</label></div><div class="btns">${x.id === p.round ? '' : `<button data-a="rd" data-id="${x.id}">ใช้รอบนี้</button>`}<button data-a="rdren" data-id="${x.id}">เปลี่ยนชื่อ</button><button class="d" data-a="rddel" data-id="${x.id}">ลบ</button></div></div>`).join('')}
+  <div class="box"><h2>รอบ</h2><p class="mu" style="margin:0 0 8px">กด "ใช้รอบนี้" แล้วจอจะถูกซ่อนไว้ก่อน (เหมือนกด "ซ่อนจอทั้งหมด") กด "แสดงจอ" เมื่อพร้อมให้คนแรกขึ้น</p>${p.rounds.map(x => `<div class="ci"><div>${esc(x.name)} ${x.id === p.round ? '<span class="ok">· กำลังใช้</span>' : ''}<label style="margin:4px 0 0;color:var(--ink)"><input type="checkbox" data-t="${x.id}" ${x.inTotal !== false ? 'checked' : ''} style="width:auto"> นับในคะแนนรวม</label></div><div class="btns">${x.id === p.round ? '' : `<button data-a="rd" data-id="${x.id}">ใช้รอบนี้</button>`}<button data-a="rdren" data-id="${x.id}">เปลี่ยนชื่อ</button><button class="d" data-a="rddel" data-id="${x.id}">ลบ</button></div></div>`).join('')}
     <div class="row" style="margin-top:10px"><input id="rn" placeholder="ชื่อรอบ เช่น รอบชุดราตรี"><button class="p" data-a="rdadd">เพิ่มรอบ</button></div></div>
   <div class="box"><h2>ผู้เข้าประกวด · รอบ: ${esc(rd.name)}</h2>${bulkBar(p)}${p.C.map(c => {
     const rs = gr(p, p.round, c.id), k = calc(p, p.round, c), got = p.J.filter(j => gs(p, p.round, c.id, j.id) != null).length, cu = c.id === p.cur, gone = !inR(p, p.round, c), er = gone ? elimRound(p, c) : null;
@@ -158,27 +162,41 @@ function barHTML(b, L, z) {
   const ni = !b.c.img, W = (b.cols ? 1680 : 760) - (ni ? 120 : 0), s = Math.min((z || 100) / 100, 1880 / W);
   return `<div class="scl" style="transform:scale(${+s.toFixed(3)});transform-origin:50% 1000px">${barCore(b, L)}</div>`;
 }
+/* แบ่งตารางคะแนนรวมเป็นหน้าต่างละ per คน (หน้าละกี่คนตั้งได้ที่แท็บจัดการ) */
+const sumPages = s => Math.max(1, Math.ceil(s.rows.length / (s.per || 10)));
+const sumPage = (s, i) => { const per = s.per || 10, n = s.rows.length, np = sumPages(s); i = Math.min(Math.max(0, i | 0), np - 1); return {...s, rows: s.rows.slice(i * per, (i + 1) * per), cap: Math.min(per, n)}; };
 function sumVMHTML(s, L) {
-  const {n, single, show, C, J, rows} = s, nc = show.length * C.g + C.tail;
+  const {n, single, show, C, J, rows} = s, nc = show.length * C.g + C.tail, pv = s.pv ? 1 : 0, pvW = 110;
   // ไม่มีใครมีรูปเลย → ตัดคอลัมน์รูปออก (pc=0) ตารางจะแคบลงและยังอยู่กึ่งกลางจอ
-  const pc = rows.some(r => r.c.img) ? 1 : 0, lead = 2 + pc, fx = 56 + 56 * pc, gaps = (nc + lead - 1) * 6; let nameW = 300, cw = Math.floor((1760 - fx - nameW - gaps) / nc);
-  if (cw < 56) { nameW = 150; cw = Math.floor((1760 - fx - nameW - gaps) / nc); }
+  const pc = rows.some(r => r.c.img) ? 1 : 0, lead = 2 + pc, fx = 56 + 56 * pc, gaps = (nc + lead - 1 + pv) * 6, avail = 1760 - fx - gaps - pv * pvW; let nameW = 300, cw = Math.floor((avail - nameW) / nc);
+  if (cw < 56) { nameW = 150; cw = Math.floor((avail - nameW) / nc); }
   cw = Math.max(30, Math.min(118, cw));
-  const W = 80 + fx + nameW + nc * cw + gaps, k = W > 1840 ? 1840 / W : 1, fs = Math.max(16, Math.min(32, Math.round(cw * .36))), hs = Math.max(10, Math.min(20, Math.round(cw * .17))), pw = Math.max(18, Math.min(40, cw - 6));
-  const tpl = `56px ${pc ? '56px ' : ''}${nameW}px repeat(${nc}, ${cw}px)`;
-  const jh = J.map((j, k2) => `<div class="jh ${k2 === 0 ? 'bd' : ''}"><div class="ph2">${ph(j.img, j.name)}</div><div class="nm">${esc(j.name)}</div></div>`).join('');
-  const tailA = !C.tail ? '' : `<span class="rh g bd" style="grid-column:span ${C.tail}">${esc(C.tail > 1 ? L.total : L.tot)}</span>`;
-  const tailB = !C.tail ? '' : C.tail > 1 ? `<span class="rh bd">${esc(L.jtot)}</span><span class="rh">${esc(L.votes)}</span><span class="rh">${esc(L.vsc)}</span><span class="rh g">${esc(L.tot)}</span>` : '<span></span>';
-  const h1 = `<div class="rrow hd h1" style="grid-template-columns:${tpl}"><span class="rk-t" style="grid-column:span ${lead}">${esc(s.title)}</span>${show.map(r => `<span class="rh g bd" style="grid-column:span ${C.g}">${esc(r.name)}</span>`).join('')}${tailA}</div>`;
-  const h2 = `<div class="rrow hd h2" style="grid-template-columns:${tpl}">${'<span></span>'.repeat(lead)}${show.map(() => jh + `<span class="rh g">${esc(L.avg)}</span>` + (C.gv ? `<span class="rh">${esc(L.rv)}</span>` : '')).join('')}${tailB}</div>`;
-  const body = rows.map((r, i) => `<div class="rrow" style="grid-template-columns:${tpl};--fs:${fs}px;animation-delay:${i * .1}s"><span class="rn">${r.rank}</span>${pc ? `<span class="rp">${ph(r.c.img, r.c.name)}</span>` : ''}<span class="rtn">${r.c.country ? esc(r.c.country) + `<small>${esc(r.c.name)}</small>` : esc(r.c.name)}</span>${r.per.map(x => J.map((j, k2) => `<span class="sc ${k2 === 0 ? 'bd' : ''}">${x && x.scores[k2] != null ? fmtn(x.scores[k2]) : '–'}</span>`).join('') + `<span class="sc av">${x ? fmtn(x.avg) : '–'}</span>` + (C.gv ? `<span class="sc">${x && x.vote != null ? fmtn(x.vote) : '–'}</span>` : '')).join('')}${C.tail > 1 ? `<span class="sc bd av">${fmtn(r.jt)}</span><span class="sc">${r.votes == null ? '–' : r.votes.toLocaleString('en-US')}</span><span class="sc">${r.vsc == null ? '–' : fmtn(r.vsc)}</span><span class="sc av">${fmtn(r.tot)}</span>` : C.tail === 1 ? `<span class="sc bd av">${fmtn(r.tot)}</span>` : ''}</div>`).join('');
-  return `<div class="rkw" style="left:${k < 1 ? 40 : (1920 - W) / 2}px;width:${W}px;transform:scale(${k})"><div class="rkp" style="width:${W}px;--hs:${hs}px;--pw:${pw}px">${h1}${h2}${body}</div></div>`;
+  const W = 80 + fx + nameW + nc * cw + gaps + pv * pvW, H = 178 + 72 * (s.cap || rows.length), k = Math.min(W > 1840 ? 1840 / W : 1, H > 1000 ? 1000 / H : 1), fs = Math.max(16, Math.min(32, Math.round(cw * .36))), hs = Math.max(10, Math.min(20, Math.round(cw * .17))), pw = Math.max(18, Math.min(40, cw - 6));
+  const tpl = `56px ${pc ? '56px ' : ''}${nameW}px repeat(${nc}, ${cw}px)${pv ? ` ${pvW}px` : ''}`;
+  // หัวตาราง 2 แถวอยู่ใน grid เดียว ช่องที่ผสาน 2 แถว (ชื่อตาราง, TOTAL, POPULAR VOTE) วางกึ่งกลางช่อง เส้นนอนใต้แถวบนจึงไม่ลากผ่านช่องที่ผสาน
+  const leadW = fx + nameW + (lead - 1) * 6, tl = [...String(s.title)].length, tfs = Math.max(24, Math.min(54, Math.floor((leadW - 20) / (tl * .66))));
+  const c0 = lead + 1, ts = c0 + show.length * C.g, ps = ts + C.tail;
+  const cell = (c, r, t, cls) => `<span class="${cls}" style="grid-column:${c}${t ? ` / span ${t}` : ''};grid-row:${r}">`;
+  let h = `<span class="rk-t mg" style="grid-column:1 / span ${lead};grid-row:1 / span 2;font-size:${tfs}px">${esc(s.title)}</span>`;
+  show.forEach((r, i) => {
+    const c = c0 + i * C.g;
+    h += `${cell(c, 1, C.g, 'rh g bd hb')}${esc(r.name)}</span>`;
+    J.forEach((j, k2) => { h += `<div class="jh ${k2 === 0 ? 'bd' : ''}" style="grid-column:${c + k2};grid-row:2"><div class="ph2">${ph(j.img, j.name)}</div><div class="nm">${esc(j.name)}</div></div>`; });
+    h += `${cell(c + n, 2, 0, 'rh g')}${esc(L.avg)}</span>`;
+    if (C.gv) h += `${cell(c + n + 1, 2, 0, 'rh')}${esc(L.rv)}</span>`;
+  });
+  if (C.tail > 1) h += `${cell(ts, 1, C.tail, 'rh g bd hb')}${esc(L.total)}</span>${cell(ts, 2, 0, 'rh bd')}${esc(L.jtot)}</span>${cell(ts + 1, 2, 0, 'rh')}${esc(L.votes)}</span>${cell(ts + 2, 2, 0, 'rh')}${esc(L.vsc)}</span>${cell(ts + 3, 2, 0, 'rh g')}${esc(L.tot)}</span>`;
+  else if (C.tail === 1) h += `<span class="rh g bd" style="grid-column:${ts};grid-row:1 / span 2">${esc(L.tot)}</span>`;
+  if (pv) h += `<span class="rh g bd" style="grid-column:${ps};grid-row:1 / span 2">${esc(L.votes)}</span>`;
+  const head = `<div class="rrow hd h2 hg" style="grid-template-columns:${tpl}">${h}</div>`;
+  const body = rows.map((r, i) => `<div class="rrow" style="grid-template-columns:${tpl};--fs:${fs}px;animation-delay:${i * .1}s"><span class="rn">${r.rank}</span>${pc ? `<span class="rp">${ph(r.c.img, r.c.name)}</span>` : ''}<span class="rtn">${r.c.country ? esc(r.c.country) + `<small>${esc(r.c.name)}</small>` : esc(r.c.name)}</span>${r.per.map(x => J.map((j, k2) => `<span class="sc ${k2 === 0 ? 'bd' : ''}">${x && x.scores[k2] != null ? fmtn(x.scores[k2]) : '–'}</span>`).join('') + `<span class="sc av">${x ? fmtn(x.avg) : '–'}</span>` + (C.gv ? `<span class="sc">${x && x.vote != null ? fmtn(x.vote) : '–'}</span>` : '')).join('')}${C.tail > 1 ? `<span class="sc bd av">${fmtn(r.jt)}</span><span class="sc">${r.votes == null ? '–' : r.votes.toLocaleString('en-US')}</span><span class="sc">${r.vsc == null ? '–' : fmtn(r.vsc)}</span><span class="sc av">${fmtn(r.tot)}</span>` : C.tail === 1 ? `<span class="sc bd av">${fmtn(r.tot)}</span>` : ''}${pv ? `<span class="sc bd" style="font-size:${Math.min(fs, 26)}px">${r.pvv == null ? '–' : r.pvv.toLocaleString('en-US')}</span>` : ''}</div>`).join('');
+  return `<div class="rkw" style="left:${(1920 - W * k) / 2}px;width:${W}px;transform:scale(${k})"><div class="rkp" style="width:${W}px;--hs:${hs}px;--pw:${pw}px">${head}${body}</div></div>`;
 }
 function cardHTML(d, z) {
   const c = d.c, big = c.country || c.name, len = [...big].length, fs = len > 22 ? 46 : len > 16 ? 58 : len > 11 ? 70 : 86, s = (z || 100) / 100;
   return `<div class="scl" style="transform:scale(${s});transform-origin:50% 990px"><div class="ncard"><div class="n1" style="font-size:${fs}px">${esc(big)}</div>${c.country ? `<i></i><div class="n2">${esc(c.name)}</div>` : ''}</div></div>`;
 }
-const partOf = vm => vm.bar ? barHTML(vm.bar, vm.L, (vm.z || {}).bar) : vm.card ? cardHTML(vm.card, (vm.z || {}).card) : vm.sum ? sumVMHTML(vm.sum, vm.L) : '';
+const partOf = vm => vm.bar ? barHTML(vm.bar, vm.L, (vm.z || {}).bar) : vm.card ? cardHTML(vm.card, (vm.z || {}).card) : vm.sum ? sumVMHTML(sumPage(vm.sum, vm.pg || 0), vm.L) : '';
 function innerVM(vm) {
   let h = '';
   if (vm.chip) h += `<div class="stg">${esc(vm.chip)}</div>`;
@@ -232,32 +250,46 @@ function displayMode() {
   const cv = $('#cv'), pg = +Q.get('pg') || 0; let last = -1, lastKey = '';
   const fitD = () => { cv.style.transform = `scale(${Math.min(innerWidth / 1920, innerHeight / 1080)})`; };
   fitD(); addEventListener('resize', fitD);
-  let lastPart = '', lastBid = '', busy = false, gen = 0, timer = 0, expired = '';
+  let lastPart = '', lastBid = '', busy = false, gen = 0, timer = 0, expired = '', latest = null, pidx = 0, skey = '';
   // หมดเวลาค้าง: เฟดออกแล้วจอว่าง (ไม่แสดงซ้ำจนกว่าเนื้อหาจะเปลี่ยน)
   const expire = async (g, part, vm) => {
     if (g !== gen) return;
     await fadeOut(cv, false); if (g !== gen) return;
-    expired = part; const sh = {...vm, bar: null, card: null}, h = innerVM(sh);
+    expired = part; const sh = {...vm, bar: null, card: null, sum: null}, h = innerVM(sh);
     lastKey = varsOf(vm) + h; lastPart = ''; lastBid = ''; cv.innerHTML = h;
+  };
+  // ตารางคะแนนรวม: หมดเวลาหน้าต่างนี้ → เฟดออกแล้วขึ้นหน้าต่างถัดไป
+  const nextPage = async g => {
+    if (g !== gen) return;
+    if (busy) { timer = setTimeout(() => nextPage(g), 300); return; }
+    busy = true;
+    try { pidx++; await apply(latest); } catch (e) {} finally { busy = false; }
+  };
+  const apply = async vm0 => {
+    const sk = vm0.sum ? JSON.stringify(vm0.sum) : '';
+    if (sk !== skey) { skey = sk; pidx = 0; }
+    const np = vm0.sum ? sumPages(vm0.sum) : 1; if (pidx >= np) pidx = np - 1;
+    const vm = {...vm0, pg: pidx};
+    const part = partOf(vm), timed = vm.card ? vm.t.intro : vm.bar && vm.bar.R ? vm.t.hold : vm.sum ? vm.sum.sec : 0;
+    if (part !== expired) expired = '';
+    const isExp = !!timed && part === expired, sh = isExp ? {...vm, bar: null, card: null, sum: null} : vm;
+    const html = innerVM(sh), k = varsOf(vm) + html, shownPart = isExp ? '' : part;
+    if (k !== lastKey) {
+      // แอนิเมชันออก (ย้อนกลับของตอนเข้า) เมื่อแถบคะแนน/การ์ดชื่อ/ตารางอันดับเปลี่ยนหรือถูกซ่อน
+      const bid = !isExp && vm.bar ? vm.bar.c.no + '|' + vm.bar.c.name : '';
+      clearTimeout(timer);
+      if (shownPart !== lastPart) await fadeOut(cv, bid && bid === lastBid);
+      lastBid = bid; lastKey = k; lastPart = shownPart; const g = ++gen;
+      cv.setAttribute('style', cv.getAttribute('style').replace(/--c\d:[^;]*;?/g, '') + ';' + varsOf(vm)); cv.innerHTML = html;
+      if (timed > 0 && !isExp) timer = setTimeout(() => (vm.sum && pidx + 1 < np ? nextPage(g) : expire(g, part, vm)), timed * 1000);
+    }
   };
   const tick = async () => {
     if (busy) return; busy = true;
     try {
       const r = await pub('rev?pg=' + pg); if (r.rev === undefined || r.rev === last) return;
-      const vm = await pub('display?pg=' + pg); last = r.rev;
-      const part = partOf(vm), timed = vm.card ? vm.t.intro : vm.bar && vm.bar.R ? vm.t.hold : 0;
-      if (part !== expired) expired = '';
-      const isExp = !!timed && part === expired, sh = isExp ? {...vm, bar: null, card: null} : vm;
-      const html = innerVM(sh), k = varsOf(vm) + html, shownPart = isExp ? '' : part;
-      if (k !== lastKey) {
-        // แอนิเมชันออก (ย้อนกลับของตอนเข้า) เมื่อแถบคะแนน/การ์ดชื่อ/ตารางอันดับเปลี่ยนหรือถูกซ่อน
-        const bid = !isExp && vm.bar ? vm.bar.c.no + '|' + vm.bar.c.name : '';
-        clearTimeout(timer);
-        if (shownPart !== lastPart) await fadeOut(cv, bid && bid === lastBid);
-        lastBid = bid; lastKey = k; lastPart = shownPart; const g = ++gen;
-        cv.setAttribute('style', cv.getAttribute('style').replace(/--c\d:[^;]*;?/g, '') + ';' + varsOf(vm)); cv.innerHTML = html;
-        if (timed > 0 && !isExp) timer = setTimeout(() => expire(g, part, vm), timed * 1000);
-      }
+      const vm = await pub('display?pg=' + pg); last = r.rev; latest = vm;
+      await apply(vm);
     } catch (e) {} finally { busy = false; }
   };
   tick(); setInterval(tick, 2000);
@@ -361,7 +393,7 @@ const onClick = async e => {
   if (a === 'hide') return st('hide', p.hide ? '0' : '1');
   if (a === 'max') return st('max', $('#max').value);
   if (a === 'jw') return st('jw', $('#jw').value);
-  if (['introSec', 'holdSec', 'barScale', 'cardScale'].includes(a)) return st(a, $('#' + a).value);
+  if (['introSec', 'holdSec', 'sumPer', 'sumSec', 'barScale', 'cardScale'].includes(a)) return st(a, $('#' + a).value);
   if (a === 'preset') { const x = PRE[id]; return st('colors', [x[1], x[2], x[3]].join(',')); }
   if (a === 'logoup') return pick(true, async d => { try { await api('admin/img', {kind: 'logo', data: d}); await api('admin/settings', {k: 'showLogo', v: '1'}); } catch (er) { alert(er.message); } await load(); render(); });
   if (a === 'logoclr') return act('img', {kind: 'logo', data: ''});
@@ -448,6 +480,7 @@ const onChange = e => {
   if (t.id === 'selall') { ST.p.C.forEach(c => { if (t.checked) SEL.add(c.id); else SEL.delete(c.id); }); document.querySelectorAll('input[data-s]').forEach(x => { x.checked = t.checked; }); return selUpd(); }
   if (['c1', 'c2', 'c3'].includes(t.id)) return act('settings', {k: 'colors', v: ['c1', 'c2', 'c3'].map(i => $('#' + i).value).join(',')});
   if (t.id === 'showlogo') return act('settings', {k: 'showLogo', v: t.checked ? '1' : '0'});
+  if (t.id === 'showpv') return act('settings', {k: 'showPV', v: t.checked ? '1' : '0'});
   if (t.id === 'showround') return act('settings', {k: 'showRound', v: t.checked ? '1' : '0'});
   if (t.id === 'auto') return act('settings', {k: 'auto', v: t.checked ? '1' : '0'});
   if (t.dataset && t.dataset.t) return act('intotal', {id: +t.dataset.t, on: t.checked});
@@ -456,9 +489,15 @@ const onChange = e => {
 /* ---------- กรรมการ (ปุ่มกดแบบเครื่องคิดเลข) ---------- */
 let JD = null, kv = '', jmsg = '', jkey = '', jbusy = false;
 async function judgeLoad() { JD = await api('judge'); }
+// ตารางคะแนนรวมบนจอกรรมการ (ชุดเดียวกับที่จอไลฟ์กำลังโชว์ อ่านง่ายบนมือถือ เลื่อนดูได้ทุกอันดับ)
+function rankV(s, d) {
+  const cols = s.single ? [] : s.show, cell = v => v == null ? '–' : fmtn(v);
+  return `<div class="box"><div class="mu" style="text-align:center">${esc(d.pgName)}</div><h2 style="text-align:center">${esc(s.title)}</h2><div style="overflow-x:auto"><table><thead><tr><th class="n">#</th><th>ผู้เข้าประกวด</th>${cols.map(r => `<th class="n">${esc(r.name)}</th>`).join('')}<th class="n">รวม</th></tr></thead><tbody>${s.rows.map(r => `<tr><td class="n"><b>${r.rank}</b></td><td>${esc(r.c.country ? r.c.country + ' · ' + r.c.name : r.c.name)}</td>${cols.map((x, i) => `<td class="n">${cell(r.per[i] && r.per[i].avg)}</td>`).join('')}<td class="n"><b>${cell(r.tot)}</b></td></tr>`).join('')}</tbody></table></div></div>`;
+}
 function judgeRender() {
   const d = JD, c = d.current, mine = d.mine, k2 = d.round + ':' + (c ? c.id : 0);
   if (jkey !== k2) { jkey = k2; kv = mine == null ? '' : String(mine); jmsg = ''; }
+  if (d.ranking) { app.innerHTML = topbar('กรรมการ: ' + esc(d.name)) + rankV(d.ranking, d); return; }
   app.innerHTML = topbar('กรรมการ: ' + esc(d.name)) + `<div class="box" style="text-align:center"><div class="mu">${esc(d.pgName)} · ${esc(d.round)}</div>` + (!c ? '<p class="mu">รอผู้ดูแลเลือกผู้เข้าประกวด…</p>' : `${c.img ? `<div class="jph" style="margin-top:8px">${ph(c.img)}</div>` : ''}<div style="font-size:1.4rem;font-weight:600;text-transform:uppercase;margin-top:${c.img ? 0 : 14}px">${esc(c.country || c.name)}</div>${c.country ? `<div class="mu" style="text-transform:uppercase">${esc(c.name)}</div>` : ''}`
     + (c.revealed ? `<p class="mu">เปิดคะแนนแล้ว แก้ไขไม่ได้ คะแนนที่คุณให้: ${mine ?? '-'}</p>` : mine != null ? `<div class="val">${fmtn(mine)}</div><p class="ok" style="margin:6px 0">ส่งคะแนนแล้ว ล็อกเรียบร้อย แก้ไขไม่ได้</p><p class="mu">ถ้าต้องแก้ไข ให้แจ้งผู้ดูแล</p>` : `<div class="val">${kv === '' ? '<span class="mu">–</span>' : esc(kv)}</div><div class="mu">คะแนนเต็ม ${d.max}</div><div class="kp">${'123456789'.split('').map(k => `<button data-k="${k}">${k}</button>`).join('')}<button data-k="max">${d.max}</button><button data-k=".">.</button><button data-k="0">0</button><button data-k="del">⌫</button><button class="cf" data-k="ok">ยืนยัน</button></div><p class="bad" style="margin:8px 0 0">${esc(jmsg)}</p>`)) + '</div>';
 }
