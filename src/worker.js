@@ -71,8 +71,19 @@ const codeTaken = async (env, pg, code, exceptId) => {
   const j = await env.DB.prepare('SELECT id FROM judges WHERE pg=? AND upper(code)=upper(?) AND id<>?').bind(pg, code, exceptId || 0).first();
   return !!j;
 };
+// ตกรอบในรอบก่อนหน้า (รอบเรียงตาม id) = ไม่อยู่ในรอบนี้
+const NOT_ELIM = 'NOT EXISTS (SELECT 1 FROM results e JOIN rounds er ON er.id=e.round_id WHERE e.contestant_id=c.id AND e.is_out=1 AND er.pg=c.pg AND er.id<?)';
+const elimBefore = async (env, pg, rid, cid) => !!(await env.DB.prepare('SELECT 1 x FROM results e JOIN rounds er ON er.id=e.round_id WHERE e.contestant_id=? AND e.is_out=1 AND er.pg=? AND er.id<? LIMIT 1').bind(cid, pg, rid).first());
+const ownIds = async (env, pg, raw) => {
+  const ids = [...new Set((Array.isArray(raw) ? raw : []).map(Number).filter(n => Number.isInteger(n) && n > 0))].slice(0, 500), ok = [];
+  for (let i = 0; i < ids.length; i += 50) {
+    const ch = ids.slice(i, i + 50);
+    (await env.DB.prepare(`SELECT id FROM contestants WHERE pg=? AND id IN (${ch.map(() => '?').join(',')})`).bind(pg, ...ch).all()).results.forEach(r => ok.push(r.id));
+  }
+  return ok;
+};
 const firstContestant = async (env, pg, roundId) => {
-  const r = await env.DB.prepare('SELECT c.id FROM contestants c LEFT JOIN results x ON x.contestant_id=c.id AND x.round_id=? WHERE c.pg=? AND COALESCE(x.is_out,0)=0 ORDER BY c.no,c.id LIMIT 1').bind(roundId, pg).first();
+  const r = await env.DB.prepare('SELECT c.id FROM contestants c WHERE c.pg=? AND ' + NOT_ELIM + ' ORDER BY c.no,c.id LIMIT 1').bind(pg, roundId).first();
   return r ? r.id : 0;
 };
 const curRound = async (env, pg, s) => {
@@ -86,7 +97,7 @@ async function judgeSubmit(env, me, b) {
   const c = +s.cur ? await own(env, 'contestants', +s.cur, pg) : null;
   if (!rd || !c) return J({ error: 'ยังไม่มีผู้เข้าประกวดที่เปิดให้ให้คะแนน' }, 409);
   const rs = await env.DB.prepare('SELECT revealed,is_out FROM results WHERE round_id=? AND contestant_id=?').bind(rd.id, c.id).first();
-  if (rs && rs.is_out) return J({ error: 'ผู้เข้าประกวดคนนี้ไม่ได้อยู่ในรอบนี้' }, 409);
+  if (await elimBefore(env, pg, rd.id, c.id)) return J({ error: 'ผู้เข้าประกวดคนนี้ไม่ได้อยู่ในรอบนี้' }, 409);
   if (rs && rs.revealed) return J({ error: 'เปิดคะแนนแล้ว แก้ไขไม่ได้' }, 409);
   const max = +s.max, v = r2(Number(b.score));
   if (b.score === '' || b.score == null || !Number.isFinite(v) || v < 0 || v > max) return J({ error: `คะแนนต้องอยู่ระหว่าง 0 ถึง ${max}` }, 400);
@@ -200,7 +211,7 @@ async function adminAction(env, a, b, pg, role) {
       await setS(env, pg, 'cur', id); break;
     }
     case 'step': {
-      const l = (await db.prepare('SELECT c.id FROM contestants c LEFT JOIN results x ON x.contestant_id=c.id AND x.round_id=? WHERE c.pg=? AND COALESCE(x.is_out,0)=0 ORDER BY c.no,c.id').bind(rd.id, pg).all()).results.map(x => x.id);
+      const l = (await db.prepare('SELECT c.id FROM contestants c WHERE c.pg=? AND ' + NOT_ELIM + ' ORDER BY c.no,c.id').bind(pg, rd.id).all()).results.map(x => x.id);
       if (!l.length) break;
       const i = l.indexOf(+s.cur);
       await setS(env, pg, 'cur', b.dir === 'prev' ? l[Math.max(0, i < 0 ? 0 : i - 1)] : l[Math.min(l.length - 1, i + 1)]); break;
@@ -211,8 +222,30 @@ async function adminAction(env, a, b, pg, role) {
     }
     case 'out': {
       if (!(await own(env, 'contestants', id, pg))) return bad('ไม่พบผู้เข้าประกวด');
-      const x = await db.prepare('SELECT is_out FROM results WHERE round_id=? AND contestant_id=?').bind(rd.id, id).first();
-      await db.prepare('INSERT INTO results(round_id,contestant_id,revealed,is_out) VALUES(?,?,0,?) ON CONFLICT(round_id,contestant_id) DO UPDATE SET is_out=excluded.is_out, revealed=0').bind(rd.id, id, x && x.is_out ? 0 : 1).run(); break;
+      const tr = +b.round ? await ownRound(env, +b.round, pg) : rd; if (!tr) return bad('ไม่พบรอบ');
+      const x = await db.prepare('SELECT is_out FROM results WHERE round_id=? AND contestant_id=?').bind(tr.id, id).first();
+      await db.prepare('INSERT INTO results(round_id,contestant_id,revealed,is_out) VALUES(?,?,0,?) ON CONFLICT(round_id,contestant_id) DO UPDATE SET is_out=excluded.is_out').bind(tr.id, id, x && x.is_out ? 0 : 1).run(); break;
+    }
+    case 'outmany': {
+      const ids = await ownIds(env, pg, b.ids); if (!rd || !ids.length) break;
+      await db.batch(ids.map(cid => db.prepare('INSERT INTO results(round_id,contestant_id,revealed,is_out) VALUES(?,?,0,?) ON CONFLICT(round_id,contestant_id) DO UPDATE SET is_out=excluded.is_out').bind(rd.id, cid, b.on ? 1 : 0))); break;
+    }
+    case 'revmany': {
+      const ids = await ownIds(env, pg, b.ids); if (!rd || !ids.length) break;
+      await db.batch(ids.map(cid => db.prepare('INSERT INTO results(round_id,contestant_id,revealed) VALUES(?,?,?) ON CONFLICT(round_id,contestant_id) DO UPDATE SET revealed=excluded.revealed').bind(rd.id, cid, b.on ? 1 : 0))); break;
+    }
+    case 'delmany': {
+      const ids = await ownIds(env, pg, b.ids); if (!ids.length) break;
+      for (let i = 0; i < ids.length; i += 40) {
+        const ch = ids.slice(i, i + 40), q = ch.map(() => '?').join(',');
+        await db.batch([
+          db.prepare(`DELETE FROM scores WHERE contestant_id IN (${q})`).bind(...ch),
+          db.prepare(`DELETE FROM results WHERE contestant_id IN (${q})`).bind(...ch),
+          db.prepare(`DELETE FROM images WHERE kind='contestant' AND id IN (${q})`).bind(...ch),
+          db.prepare(`DELETE FROM contestants WHERE id IN (${q})`).bind(...ch)
+        ]);
+      }
+      if (ids.includes(+s.cur)) await setS(env, pg, 'cur', 0); break;
     }
     case 'setscores': {
       const c = await own(env, 'contestants', id, pg); if (!c) return bad('ไม่พบผู้เข้าประกวด');
@@ -347,7 +380,7 @@ export default {
           const rs = c && rd ? await env.DB.prepare('SELECT revealed,is_out FROM results WHERE round_id=? AND contestant_id=?').bind(rd.id, c.id).first() : null;
           const mine = c && rd ? await env.DB.prepare('SELECT score FROM scores WHERE round_id=? AND contestant_id=? AND judge_id=?').bind(rd.id, c.id, me.jid).first() : null;
           const hasImg = c ? await env.DB.prepare("SELECT updated FROM images WHERE kind='contestant' AND id=?").bind(c.id).first() : null;
-          const ok = c && !(rs && rs.is_out);
+          const ok = c && rd && !(await elimBefore(env, me.pg, rd.id, c.id));
           return J({ name: me.name, pgName: me.pgName, max: +s.max, round: rd ? rd.name : '', rev: (await env.DB.prepare('SELECT rev FROM pageants WHERE id=?').bind(me.pg).first()).rev,
             current: ok ? { id: c.id, no: c.no, name: c.name, country: c.country || '', img: hasImg ? `/api/img/contestant/${c.id}?v=${hasImg.updated}` : null, revealed: !!(rs && rs.revealed) } : null, mine: mine ? mine.score : null });
         }
