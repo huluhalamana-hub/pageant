@@ -524,6 +524,7 @@ async function press(k) {
 
 /* ---------- เริ่มต้น ---------- */
 function render() {
+  document.body.classList.toggle('jd', ST.role === 'judge');
   if (!ST.role) return loginV();
   if (ST.role === 'super') return superV();
   if (ST.role === 'admin') { const r = adminV(); pvArm(); return r; }
