@@ -3,7 +3,8 @@ export const fmtn = n => String(+Number(n).toFixed(2));
 export const key = (r, c, j) => r + ':' + c + ':' + j;
 export const gs = (p, r, c, j) => p.sc[key(r, c, j)];
 export const gr = (p, r, c) => p.res[r + ':' + c] || {rev: false, votes: null, out: false};
-export const inR = (p, r, c) => !gr(p, r, c.id).out;
+// ตกรอบ: ถ้าถูกกด "ตกรอบ" ในรอบใด จะยังอยู่ในรอบนั้น แต่ไม่อยู่ในทุกรอบถัดไป (เรียงตามลำดับรอบ บนลงล่าง)
+export const inR = (p, r, c) => { for (const x of p.rounds) { if (x.id === r) return true; if (gr(p, x.id, c.id).out) return false; } return true; };
 
 export const LBL = {
   th: {avg: 'เฉลี่ย', rank: 'อันดับ ', sum: 'สรุปคะแนน', total: 'คะแนนรวม', tot: 'รวม', jtot: 'คะแนนกรรมการ', votes: 'โหวต', vsc: 'คะแนนโหวต', rv: 'โหวต'},
