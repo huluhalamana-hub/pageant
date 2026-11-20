@@ -4,7 +4,7 @@ const J = (d, s = 200) => new Response(JSON.stringify(d), { status: s, headers: 
 const eq = (a, b) => { if (!a || !b || a.length !== b.length) return false; let r = 0; for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i); return r === 0; };
 const txt = (s, n = 100) => String(s ?? '').trim().slice(0, n);
 const r2 = n => Math.round(n * 100) / 100;
-const DEF = { max: '10', jw: '100', vm: 'share', agg: 'avg', vmode: 'all', rank: '0', mode: 'current', hide: '0', pre: 'dash', introSec: '4', holdSec: '0', sumPer: '10', sumSec: '8', showPV: '1', sumScale: '100', barScale: '100', cardScale: '100', lang: 'th', showLogo: '0', showRound: '1', auto: '0', c1: '#e3b95a', c2: '#1c1006', c3: '#f4e9d3', round: '0', cur: '0' };
+const DEF = { max: '10', jw: '100', vm: 'share', agg: 'avg', vmode: 'all', rank: '0', mode: 'current', hide: '0', pre: 'dash', introSec: '4', holdSec: '0', sumPer: '10', sumSec: '8', showPV: '1', sumScale: '100', barScale: '100', cardScale: '100', lang: 'th', showLogo: '0', showRound: '1', auto: '0', c1: '#e3b95a', c2: '#1c1006', c3: '#f4e9d3', round: '0', cur: '0', ann: '[]', annAt: '0', annI: '-1' };
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
 async function getS(env, pg) {
@@ -33,6 +33,8 @@ async function snapshot(env, pgId, opt = {}) {
   const p = {
     id: P.id, name: P.name, rev: P.rev, max: +s.max, jw: +s.jw, vm: s.vm, agg: s.agg, vmode: s.vmode, rank: +s.rank, mode: s.mode, hide: s.hide === '1', pre: s.pre, introSec: +s.introSec, holdSec: +s.holdSec, sumPer: +s.sumPer, sumSec: +s.sumSec, showPV: s.showPV === '1', sumScale: +s.sumScale, barScale: +s.barScale, cardScale: +s.cardScale, lang: s.lang,
     showLogo: s.showLogo === '1', showRound: s.showRound === '1', auto: s.auto === '1', col: { c1: s.c1, c2: s.c2, c3: s.c3 }, logo: iu('logo', pgId), round, cur: +s.cur,
+    annOn: +s.annAt > 0, annIds: +s.annAt > 0 ? (() => { try { return JSON.parse(s.ann); } catch (e) { return []; } })() : [], annN: (() => { try { return JSON.parse(s.ann).length; } catch (e) { return 0; } })(), annI: +s.annI,
+    annId: +s.annAt > 0 ? ((() => { try { return JSON.parse(s.ann); } catch (e) { return []; } })()[+s.annI] || 0) : 0,
     rounds: rounds.map(r => ({ id: r.id, name: r.name, inTotal: !!r.in_total })),
     C: cs.map(c => ({ id: c.id, no: c.no, name: c.name, country: c.country || '', votes: c.votes, img: iu('contestant', c.id) })),
     J: js.map(j => ({ id: j.id, name: j.name, img: iu('judge', j.id), ...(opt.codes ? { code: j.code } : {}) })),
@@ -135,6 +137,7 @@ async function adminAction(env, a, b, pg, role) {
   const db = env.DB, who = role === 'super' ? 'ผู้ดูแลหลัก' : 'แอดมินเวที', id = +b.id || 0;
   const s = await getS(env, pg), rd = await curRound(env, pg, s);
   const bad = m => J({ error: m }, 400);
+  if (['rd', 'cur'].includes(a) && +s.annAt > 0) await setS(env, pg, 'annAt', 0);
   switch (a) {
     case 'addc': {
       const name = txt(b.name); if (!name) return bad('กรุณากรอกชื่อ');
@@ -231,6 +234,12 @@ async function adminAction(env, a, b, pg, role) {
       await setS(env, pg, 'cur', id); break;
     }
     case 'step': {
+      if (+s.annAt > 0) { // กำลังประกาศเข้ารอบ: ถัดไป/ก่อนหน้า = เลื่อนการ์ดชื่อ (ถัดไปหลังคนสุดท้าย = จบการประกาศ)
+        let ids = []; try { ids = JSON.parse(s.ann); } catch (e) {}
+        const i = +s.annI, ni = b.dir === 'prev' ? Math.max(-1, i - 1) : i + 1;
+        if (ni >= ids.length) { await setS(env, pg, 'annAt', 0); await setS(env, pg, 'hide', '1'); } else await setS(env, pg, 'annI', ni);
+        break;
+      }
       const l = (await db.prepare('SELECT c.id FROM contestants c WHERE c.pg=? AND ' + NOT_ELIM + ' ORDER BY c.no,c.id').bind(pg, rd.id).all()).results.map(x => x.id);
       if (!l.length) break;
       const i = l.indexOf(+s.cur);
@@ -250,6 +259,23 @@ async function adminAction(env, a, b, pg, role) {
       const ids = await ownIds(env, pg, b.ids); if (!rd || !ids.length) break;
       await db.batch(ids.map(cid => db.prepare('INSERT INTO results(round_id,contestant_id,revealed,is_out) VALUES(?,?,0,?) ON CONFLICT(round_id,contestant_id) DO UPDATE SET is_out=excluded.is_out').bind(rd.id, cid, b.on ? 1 : 0))); break;
     }
+    case 'qualify': { // ติ๊กผู้เข้ารอบ: คนในรอบนี้ที่ไม่ได้ติ๊กจะตกรอบ (ไม่ไปทุกรอบถัดไป)
+      const ids = await ownIds(env, pg, b.ids); if (!rd) break;
+      if (!ids.length) return bad('ยังไม่ได้ติ๊กผู้เข้ารอบ');
+      const yes = new Set(ids), act = await activeIds(env, pg, rd.id);
+      if (act.length) await db.batch(act.map(cid => db.prepare('INSERT INTO results(round_id,contestant_id,revealed,is_out) VALUES(?,?,0,?) ON CONFLICT(round_id,contestant_id) DO UPDATE SET is_out=excluded.is_out').bind(rd.id, cid, yes.has(cid) ? 0 : 1)));
+      break;
+    }
+    case 'annstart': { // ประกาศผู้เข้ารอบ: สุ่มลำดับคนที่เข้ารอบ แล้วขึ้นการ์ดชื่อทีละคนอัตโนมัติ (ลำดับในรอบถัดไปยังเรียงตามเลขที่เหมือนเดิม)
+      if (!rd) break;
+      const outs = new Set((await db.prepare('SELECT contestant_id FROM results WHERE round_id=? AND is_out=1').bind(rd.id).all()).results.map(x => x.contestant_id));
+      const ids = (await activeIds(env, pg, rd.id)).filter(x => !outs.has(x));
+      if (!ids.length) return bad('ยังไม่มีผู้เข้ารอบให้ประกาศ');
+      for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
+      await setS(env, pg, 'ann', JSON.stringify(ids)); await setS(env, pg, 'annI', -1); await setS(env, pg, 'annAt', Date.now());
+      await setS(env, pg, 'hide', '0'); await setS(env, pg, 'mode', 'current'); break;
+    }
+    case 'annstop': { await setS(env, pg, 'annAt', 0); await setS(env, pg, 'hide', '1'); break; }
     case 'revmany': {
       const ids = await ownIds(env, pg, b.ids); if (!rd || !ids.length) break;
       await db.batch(ids.map(cid => db.prepare('INSERT INTO results(round_id,contestant_id,revealed) VALUES(?,?,?) ON CONFLICT(round_id,contestant_id) DO UPDATE SET revealed=excluded.revealed').bind(rd.id, cid, b.on ? 1 : 0))); break;
