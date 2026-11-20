@@ -52,10 +52,11 @@ function summaryVM(p) {
   const rows = d.ranked.slice(0, 10).map(r => ({rank: r.rank, c: {no: r.c.no, name: r.c.name, country: r.c.country, img: r.c.img}, per: r.per, jt: r.jt, votes: r.votes, vsc: r.vsc, tot: r.tot}));
   return {title, show: show.map(x => ({id: x.id, name: x.name})), single, rows, C: colsCfg(p, single, n), n, J: p.J.map(j => ({name: j.name, img: j.img})), agg: p.agg, jw: p.jw};
 }
+const tn = (v, d) => (v === '' || v == null || !Number.isFinite(+v) ? d : +v);
 export function buildDisplay(p, opts) {
   const force = !!(opts && opts.force);
   const rd = p.rounds.find(x => x.id === p.round) || {name: ''};
-  const vm = {col: p.col, L: LB(p), chip: p.showRound !== false && p.mode !== 'ranking' && rd.name ? rd.name : null, logo: null, bar: null, sum: null, rev: p.rev};
+  const vm = {col: p.col, L: LB(p), chip: p.showRound !== false && p.mode !== 'ranking' && rd.name ? rd.name : null, logo: null, bar: null, card: null, sum: null, rev: p.rev, t: {intro: tn(p.introSec, 4), hold: tn(p.holdSec, 0)}};
   if (p.showLogo) vm.logo = p.logo || (force ? '' : null);
   if (p.hide && !force) return vm;
   if (p.mode === 'ranking') { vm.sum = summaryVM(p); return vm; }
@@ -66,6 +67,7 @@ export function buildDisplay(p, opts) {
   if (!R && force) { const sc = p.J.map((_, i) => [8, 7.5, 9, 8.5, 7][i % 5]); R = {scores: sc, avg: sc.reduce((a, b) => a + b, 0) / (sc.length || 1)}; }
   const pre = p.pre || 'dash';
   if (!R && !force && pre === 'none') return vm;
+  if (!R && !force && pre === 'card') { vm.card = {c: {no: c.no, name: c.name, country: c.country, img: c.img}}; return vm; }
   vm.bar = {c: {no: c.no, name: c.name, country: c.country, img: c.img}, judges: p.J.map(j => ({name: j.name, img: j.img})), R, cols: !(!R && !force && pre === 'name')};
   return vm;
 }

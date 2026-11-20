@@ -10,7 +10,7 @@ function fit() { document.querySelectorAll('.sw').forEach(w => { const c = w.que
 const topbar = (t, back) => `<div class="top noprint"><div><b>${t}</b></div><div class="row">${back ? '<button data-a="back">← ผู้ดูแลหลัก</button>' : ''}<button data-a="logout">ออกจากระบบ</button></div></div>`;
 function liveV(p) {
   const c = p.C.find(x => x.id === p.cur), rs = c ? gr(p, p.round, c.id) : null;
-  const st = p.hide ? 'ซ่อนแถบคะแนนอยู่ (ชื่อรอบและโลโก้ที่เปิดไว้ยังแสดง)' : !c || rs.out ? 'แสดงเฉพาะชื่อรอบ (ยังไม่ได้เลือกผู้เข้าประกวด)' : rs.rev ? 'กำลังแสดงคะแนนของ ' + c.name : ({name: 'แสดงเฉพาะชื่อ รอเปิดคะแนน', dash: 'แสดงช่องคะแนนเป็นขีด รอเปิดคะแนน', none: 'จอว่างเปล่า รอเปิดคะแนน'})[p.pre || 'dash'];
+  const st = p.hide ? 'ซ่อนแถบคะแนนอยู่ (ชื่อรอบและโลโก้ที่เปิดไว้ยังแสดง)' : !c || rs.out ? 'แสดงเฉพาะชื่อรอบ (ยังไม่ได้เลือกผู้เข้าประกวด)' : rs.rev ? 'กำลังแสดงคะแนนของ ' + c.name : ({name: 'แสดงเฉพาะชื่อ รอเปิดคะแนน', dash: 'แสดงช่องคะแนนเป็นขีด รอเปิดคะแนน', none: 'จอว่างเปล่า รอเปิดคะแนน', card: 'การ์ดชื่อ (เฟดหายเองแล้วจอว่าง) รอเปิดคะแนน'})[p.pre || 'dash'];
   return `<p class="mu" style="margin:8px 0">สถานะจอตอนนี้: <b>${esc(st)}</b><br>ชื่อรอบที่มุมซ้ายบนและโลโก้ (ถ้าเปิดไว้) แสดงตลอด ตอนยังไม่เลือกผู้เข้าประกวดหรือกดซ่อน จะไม่มีแถบหรือข้อความอื่นใดบนจอ ถ้าไม่ต้องการชื่อรอบ ปิดได้ที่แท็บจัดการ</p>
   <div class="row"><button data-a="hide" class="${p.hide ? 'p' : ''}">${p.hide ? 'แสดงจอ' : 'ซ่อนจอทั้งหมด'}</button><button data-a="revcur" ${c ? '' : 'disabled'}>${rs && rs.rev ? 'ซ่อนคะแนนคนนี้' : 'เปิดคะแนนคนนี้'}</button><button data-a="prev">← คนก่อนหน้า</button><button data-a="next">คนถัดไป →</button></div>`;
 }
@@ -52,7 +52,9 @@ function manageV(p) {
     <label>ภาษาป้ายบนจอ</label><div class="row">${B('lang', 'th', 'ไทย', (p.lang || 'th') === 'th')}${B('lang', 'en', 'English', p.lang === 'en')}</div><label><input type="checkbox" id="showlogo" style="width:auto" ${p.showLogo ? 'checked' : ''}> แสดงโลโก้บนจอ</label><label><input type="checkbox" id="showround" style="width:auto" ${p.showRound !== false ? 'checked' : ''}> แสดงชื่อรอบที่มุมซ้ายบนจอตลอด (กด "ใช้รอบนี้" แล้วขึ้นทันที)</label><div class="row"><button data-a="logoup">อัปโหลดโลโก้</button>${p.logo ? '<button class="d" data-a="logoclr">ลบโลโก้</button>' : ''}</div></div>
   <div class="box"><h2>การแสดงผลและคะแนน</h2><div class="row">${B('mode', 'current', 'แสดงผู้เข้าประกวดปัจจุบัน', p.mode === 'current')}${B('mode', 'ranking', 'แสดงอันดับ', p.mode === 'ranking')}</div>
     ${p.mode === 'ranking' ? `<label>อันดับที่จะแสดง</label><div class="row">${B('rank', 0, 'สรุปคะแนน (รอบที่ติ๊ก)', p.rank === 0)}${p.rounds.map(x => B('rank', x.id, esc(x.name), p.rank === x.id)).join('')}</div>` : ''}
-    <label>ก่อนเปิดคะแนน จอแสดง</label><div class="row">${B('pre', 'name', 'เฉพาะรูปและชื่อ', p.pre === 'name')}${B('pre', 'dash', 'ช่องคะแนนเป็นขีด', (p.pre || 'dash') === 'dash')}${B('pre', 'none', 'ว่างจนกว่าจะเปิดคะแนน', p.pre === 'none')}</div>
+    <label>ก่อนเปิดคะแนน จอแสดง</label><div class="row">${B('pre', 'name', 'เฉพาะรูปและชื่อ', p.pre === 'name')}${B('pre', 'dash', 'ช่องคะแนนเป็นขีด', (p.pre || 'dash') === 'dash')}${B('pre', 'none', 'ว่างจนกว่าจะเปิดคะแนน', p.pre === 'none')}${B('pre', 'card', 'การ์ดชื่อโปร่งใส (เฟดหายเอง)', p.pre === 'card')}</div>
+    <label>การ์ดชื่อค้างไว้ก่อนเฟดหาย (วินาที)</label><div class="row"><input id="introSec" type="number" min="0" max="600" step="0.5" value="${p.introSec}" style="max-width:120px;flex:none"><button data-a="introSec">บันทึก</button></div>
+    <label>คะแนนค้างไว้ก่อนเฟดออก (วินาที · 0 = ค้างไว้ไม่เฟดเอง)</label><div class="row"><input id="holdSec" type="number" min="0" max="600" step="0.5" value="${p.holdSec}" style="max-width:120px;flex:none"><button data-a="holdSec">บันทึก</button></div><p class="mu">เวลาทั้งสองค่าทำงานบนจอไลฟ์จริง (ตัวอย่างในหน้าแอดมินแสดงค้างไว้ไม่เฟดเอง) การ์ดชื่อใช้เฉพาะเมื่อเลือกโหมด "การ์ดชื่อ" ด้านบน</p>
     <label>คะแนนรวม คิดแบบ</label><div class="row">${B('agg', 'avg', 'เฉลี่ยทุกรอบ', p.agg === 'avg')}${B('agg', 'sum', 'บวกรวมทุกรอบ', p.agg === 'sum')}</div>
     <label><input type="checkbox" id="auto" style="width:auto" ${p.auto ? 'checked' : ''}> เปิดคะแนนอัตโนมัติเมื่อกรรมการส่งครบ</label>
     <label>คะแนนเต็ม</label><div class="row"><input id="max" type="number" value="${p.max}" style="max-width:120px;flex:none"><button data-a="max">บันทึก</button></div>
@@ -137,11 +139,16 @@ function sumVMHTML(s, L) {
   const body = rows.map((r, i) => `<div class="rrow" style="grid-template-columns:${tpl};--fs:${fs}px;animation-delay:${i * .1}s"><span class="rn">${r.rank}</span>${pc ? `<span class="rp">${ph(r.c.img, r.c.name)}</span>` : ''}<span class="rtn">${r.c.country ? esc(r.c.country) + `<small>${esc(r.c.name)}</small>` : esc(r.c.name)}</span>${r.per.map(x => J.map((j, k2) => `<span class="sc ${k2 === 0 ? 'bd' : ''}">${x && x.scores[k2] != null ? fmtn(x.scores[k2]) : '–'}</span>`).join('') + `<span class="sc av">${x ? fmtn(x.avg) : '–'}</span>` + (C.gv ? `<span class="sc">${x && x.vote != null ? fmtn(x.vote) : '–'}</span>` : '')).join('')}${C.tail > 1 ? `<span class="sc bd av">${fmtn(r.jt)}</span><span class="sc">${r.votes == null ? '–' : r.votes.toLocaleString('en-US')}</span><span class="sc">${r.vsc == null ? '–' : fmtn(r.vsc)}</span><span class="sc av">${fmtn(r.tot)}</span>` : C.tail === 1 ? `<span class="sc bd av">${fmtn(r.tot)}</span>` : ''}</div>`).join('');
   return `<div class="rkw" style="left:${k < 1 ? 40 : (1920 - W) / 2}px;width:${W}px;transform:scale(${k})"><div class="rkp" style="width:${W}px;--hs:${hs}px;--pw:${pw}px">${h1}${h2}${body}</div></div>`;
 }
+function cardHTML(d) {
+  const c = d.c, big = c.country || c.name, len = [...big].length, fs = len > 22 ? 64 : len > 16 ? 84 : len > 11 ? 100 : 120;
+  return `<div class="ncard"><div class="n1" style="font-size:${fs}px">${esc(big)}</div>${c.country ? `<i></i><div class="n2">${esc(c.name)}</div>` : ''}</div>`;
+}
+const partOf = vm => vm.bar ? barHTML(vm.bar, vm.L) : vm.card ? cardHTML(vm.card) : vm.sum ? sumVMHTML(vm.sum, vm.L) : '';
 function innerVM(vm) {
   let h = '';
   if (vm.chip) h += `<div class="stg">${esc(vm.chip)}</div>`;
   if (vm.logo !== null && vm.logo !== undefined) h += `<div class="lg${vm.logo ? '' : ' ph'}">${vm.logo ? `<img src="${vm.logo}" alt="">` : 'LOGO'}</div>`;
-  if (vm.bar) h += barHTML(vm.bar, vm.L); else if (vm.sum) h += sumVMHTML(vm.sum, vm.L);
+  h += partOf(vm);
   return h;
 }
 const varsOf = vm => `--c1:${vm.col.c1};--c2:${vm.col.c2};--c3:${vm.col.c3}`;
@@ -149,11 +156,13 @@ const dHTMLp = (p, force) => { const vm = buildDisplay(p, {force}); return `<div
 
 /* เฟดออก 1 วินาที (ใช้ทั้งจอไลฟ์จริงและตัวอย่างในหน้าแอดมิน) */
 async function fadeOut(cv, scoresOnly) {
-  const bar = cv && cv.querySelector('.bar'), pan = cv && cv.querySelector('.rkp');
-  if (!bar && !pan) return false;
+  const bar = cv && cv.querySelector('.bar'), pan = cv && cv.querySelector('.rkp'), card = cv && cv.querySelector('.ncard');
+  if (!bar && !pan && !card) return false;
   if (bar) {
     bar.querySelectorAll(scoresOnly ? '.js:not(.dim)' : '.js').forEach(e => { e.style.animationDelay = '0s'; e.classList.add('fo'); });
     if (!scoresOnly) { bar.style.animationDelay = '0s'; bar.classList.add('fo'); }
+  } else if (card) {
+    card.style.animationDelay = '0s'; card.classList.add('fo');
   } else {
     const rows = [...pan.querySelectorAll('.rrow:not(.hd)')], n = rows.length, st = n > 1 ? .4 / (n - 1) : 0;
     rows.forEach((e, i) => { e.style.animationDelay = ((n - 1 - i) * st) + 's'; e.classList.add('fo'); });
@@ -169,19 +178,31 @@ function displayMode() {
   const cv = $('#cv'), pg = +Q.get('pg') || 0; let last = -1, lastKey = '';
   const fitD = () => { cv.style.transform = `scale(${Math.min(innerWidth / 1920, innerHeight / 1080)})`; };
   fitD(); addEventListener('resize', fitD);
-  let lastPart = '', lastBid = '', busy = false;
+  let lastPart = '', lastBid = '', busy = false, gen = 0, timer = 0, expired = '';
+  // หมดเวลาค้าง: เฟดออกแล้วจอว่าง (ไม่แสดงซ้ำจนกว่าเนื้อหาจะเปลี่ยน)
+  const expire = async (g, part, vm) => {
+    if (g !== gen) return;
+    await fadeOut(cv, false); if (g !== gen) return;
+    expired = part; const sh = {...vm, bar: null, card: null}, h = innerVM(sh);
+    lastKey = varsOf(vm) + h; lastPart = ''; lastBid = ''; cv.innerHTML = h;
+  };
   const tick = async () => {
     if (busy) return; busy = true;
     try {
       const r = await pub('rev?pg=' + pg); if (r.rev === undefined || r.rev === last) return;
       const vm = await pub('display?pg=' + pg); last = r.rev;
-      const html = innerVM(vm), k = varsOf(vm) + html, part = vm.bar ? barHTML(vm.bar, vm.L) : vm.sum ? sumVMHTML(vm.sum, vm.L) : '';
+      const part = partOf(vm), timed = vm.card ? vm.t.intro : vm.bar && vm.bar.R ? vm.t.hold : 0;
+      if (part !== expired) expired = '';
+      const isExp = !!timed && part === expired, sh = isExp ? {...vm, bar: null, card: null} : vm;
+      const html = innerVM(sh), k = varsOf(vm) + html, shownPart = isExp ? '' : part;
       if (k !== lastKey) {
-        // แอนิเมชันออก (ย้อนกลับของตอนเข้า) เมื่อแถบคะแนน/ตารางอันดับเปลี่ยนหรือถูกซ่อน
-        const bid = vm.bar ? vm.bar.c.no + '|' + vm.bar.c.name : '';
-        if (part !== lastPart) await fadeOut(cv, bid && bid === lastBid);
-        lastBid = bid;
-        lastKey = k; lastPart = part; cv.setAttribute('style', cv.getAttribute('style').replace(/--c\d:[^;]*;?/g, '') + ';' + varsOf(vm)); cv.innerHTML = html;
+        // แอนิเมชันออก (ย้อนกลับของตอนเข้า) เมื่อแถบคะแนน/การ์ดชื่อ/ตารางอันดับเปลี่ยนหรือถูกซ่อน
+        const bid = !isExp && vm.bar ? vm.bar.c.no + '|' + vm.bar.c.name : '';
+        clearTimeout(timer);
+        if (shownPart !== lastPart) await fadeOut(cv, bid && bid === lastBid);
+        lastBid = bid; lastKey = k; lastPart = shownPart; const g = ++gen;
+        cv.setAttribute('style', cv.getAttribute('style').replace(/--c\d:[^;]*;?/g, '') + ';' + varsOf(vm)); cv.innerHTML = html;
+        if (timed > 0 && !isExp) timer = setTimeout(() => expire(g, part, vm), timed * 1000);
       }
     } catch (e) {} finally { busy = false; }
   };
@@ -285,6 +306,7 @@ const onClick = async e => {
   if (a === 'hide') return st('hide', p.hide ? '0' : '1');
   if (a === 'max') return st('max', $('#max').value);
   if (a === 'jw') return st('jw', $('#jw').value);
+  if (a === 'introSec' || a === 'holdSec') return st(a, $('#' + a).value);
   if (a === 'preset') { const x = PRE[id]; return st('colors', [x[1], x[2], x[3]].join(',')); }
   if (a === 'logoup') return pick(true, async d => { try { await api('admin/img', {kind: 'logo', data: d}); await api('admin/settings', {k: 'showLogo', v: '1'}); } catch (er) { alert(er.message); } await load(); render(); });
   if (a === 'logoclr') return act('img', {kind: 'logo', data: ''});
@@ -367,7 +389,7 @@ async function judgeLoad() { JD = await api('judge'); }
 function judgeRender() {
   const d = JD, c = d.current, mine = d.mine, k2 = d.round + ':' + (c ? c.id : 0);
   if (jkey !== k2) { jkey = k2; kv = mine == null ? '' : String(mine); jmsg = ''; }
-  app.innerHTML = topbar('กรรมการ: ' + esc(d.name)) + `<div class="box" style="text-align:center"><div class="mu">${esc(d.pgName)} · ${esc(d.round)}</div>` + (!c ? '<p class="mu">รอผู้ดูแลเลือกผู้เข้าประกวด…</p>' : `<div class="jph" style="margin-top:8px">${c.img ? ph(c.img) : esc(c.no)}</div><div style="font-size:1.4rem;font-weight:600">${esc(c.name)}</div><div class="mu">หมายเลข ${esc(c.no)}${c.country ? ' · ' + esc(c.country) : ''}</div>`
+  app.innerHTML = topbar('กรรมการ: ' + esc(d.name)) + `<div class="box" style="text-align:center"><div class="mu">${esc(d.pgName)} · ${esc(d.round)}</div>` + (!c ? '<p class="mu">รอผู้ดูแลเลือกผู้เข้าประกวด…</p>' : `${c.img ? `<div class="jph" style="margin-top:8px">${ph(c.img)}</div>` : ''}<div style="font-size:1.4rem;font-weight:600;text-transform:uppercase;margin-top:${c.img ? 0 : 14}px">${esc(c.name)}</div>${c.country ? `<div class="mu" style="text-transform:uppercase">${esc(c.country)}</div>` : ''}`
     + (c.revealed ? `<p class="mu">เปิดคะแนนแล้ว แก้ไขไม่ได้ คะแนนที่คุณให้: ${mine ?? '-'}</p>` : mine != null ? `<div class="val">${fmtn(mine)}</div><p class="ok" style="margin:6px 0">ส่งคะแนนแล้ว ล็อกเรียบร้อย แก้ไขไม่ได้</p><p class="mu">ถ้าต้องแก้ไข ให้แจ้งผู้ดูแล</p>` : `<div class="val">${kv === '' ? '<span class="mu">–</span>' : esc(kv)}</div><div class="mu">คะแนนเต็ม ${d.max}</div><div class="kp">${'123456789'.split('').map(k => `<button data-k="${k}">${k}</button>`).join('')}<button data-k="max">${d.max}</button><button data-k=".">.</button><button data-k="0">0</button><button data-k="del">⌫</button><button class="cf" data-k="ok">ยืนยัน</button></div><p class="bad" style="margin:8px 0 0">${esc(jmsg)}</p>`)) + '</div>';
 }
 async function press(k) {
