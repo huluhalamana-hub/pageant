@@ -56,7 +56,7 @@ const tn = (v, d) => (v === '' || v == null || !Number.isFinite(+v) ? d : +v);
 export function buildDisplay(p, opts) {
   const force = !!(opts && opts.force);
   const rd = p.rounds.find(x => x.id === p.round) || {name: ''};
-  const vm = {col: p.col, L: LB(p), chip: p.showRound !== false && p.mode !== 'ranking' && rd.name ? rd.name : null, logo: null, bar: null, card: null, sum: null, rev: p.rev, t: {intro: tn(p.introSec, 4), hold: tn(p.holdSec, 0)}};
+  const vm = {col: p.col, L: LB(p), chip: p.showRound !== false && p.mode !== 'ranking' && rd.name ? rd.name : null, logo: null, bar: null, card: null, sum: null, rev: p.rev, t: {intro: tn(p.introSec, 4), hold: tn(p.holdSec, 0)}, z: {bar: tn(p.barScale, 100), card: tn(p.cardScale, 100)}};
   if (p.showLogo) vm.logo = p.logo || (force ? '' : null);
   if (p.hide && !force) return vm;
   if (p.mode === 'ranking') { vm.sum = summaryVM(p); return vm; }

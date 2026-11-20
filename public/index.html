@@ -6,6 +6,7 @@
 <title>ระบบลงคะแนนประกวด</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wdth,wght@75..125,200..1000&display=swap" rel="stylesheet">
 <style>
 
 
@@ -91,11 +92,15 @@ table{border-collapse:collapse;width:100%;font-size:.9rem}th,td{border-bottom:1p
 @keyframes upout{from{opacity:1;transform:none}to{opacity:0;transform:translateY(16px)}}
 .bar.fo,.rkp.fo{animation:slideout 1s both}
 .js.fo{animation:popout 1s both}
-.ncard{position:absolute;left:0;right:0;bottom:90px;text-align:center;color:var(--c3);text-shadow:0 3px 18px rgba(0,0,0,.6);animation:slide .8s both}
+.scl{position:absolute;left:0;top:0;width:1920px;height:1080px;pointer-events:none}
+.ncard{position:absolute;left:0;right:0;bottom:90px;text-align:center;color:var(--c3);font-family:"Nunito Sans","Prompt",system-ui,sans-serif;font-stretch:125%;font-variation-settings:"wdth" 125;font-weight:400;text-shadow:0 2px 3px rgba(0,0,0,.7),0 0 14px rgba(0,0,0,.65);animation:slide .8s both}
 .ncard.fo{animation:slideout 1s both}
-.ncard .n1{font-weight:600;letter-spacing:.06em;text-transform:uppercase;line-height:1.1;padding:0 60px}
-.ncard .n2{font-size:52px;font-weight:400;letter-spacing:.14em;text-transform:uppercase;margin-top:4px}
-.ncard i{display:block;margin:6px auto 0;width:1300px;max-width:90%;height:10px;background:radial-gradient(closest-side,#fff,rgba(255,255,255,0));filter:blur(2px)}
+.ncard .n1{font-weight:400;letter-spacing:.04em;text-transform:uppercase;line-height:1.1;padding:0 60px}
+.ncard .n2{font-size:32px;font-weight:400;letter-spacing:.12em;text-transform:uppercase;margin-top:4px}
+.ncard i{display:block;margin:8px auto 0;width:1100px;max-width:90%;height:8px;background:radial-gradient(closest-side,#fff,rgba(255,255,255,0));filter:blur(1.5px)}
+/* เพิ่มความคมชัดบนไลฟ์ */
+.cv{-webkit-font-smoothing:antialiased;text-rendering:geometricPrecision}
+.cn2,.cc,.jn,.js,.rt,.rtn{text-shadow:0 1px 3px rgba(0,0,0,.55)}.jn{font-weight:600}.cc{font-weight:500}
 .rrow:not(.hd).fo{animation:upout .6s both}
 @keyframes slide{from{opacity:0;transform:translateY(50px)}to{opacity:1;transform:none}}
 

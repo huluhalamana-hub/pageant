@@ -18,7 +18,7 @@ function controlV(p) {
   const c = p.C.find(x => x.id === p.cur), rs = c ? gr(p, p.round, c.id) : null, rd = p.rounds.find(x => x.id === p.round) || {name: ''};
   const sub = c ? p.J.filter(j => gs(p, p.round, c.id, j.id) != null).length : 0;
   const B = (a, v, t, on) => `<button data-a="${a}" data-v="${v}" class="${on ? 'p' : ''}">${t}</button>`;
-  return dHTMLp(p) + `<div class="box" style="margin-top:10px;text-align:center">${c ? `<div class="jph">${ph(c.img, c.no)}</div><div style="font-size:1.5rem;font-weight:700">${esc(c.name)}</div><div class="mu">หมายเลข ${esc(c.no)} · ${esc(rd.name)} · กรรมการส่งแล้ว ${sub}/${p.J.length}</div><div class="mu">${p.J.map(j => (gs(p, p.round, c.id, j.id) != null ? '✓' : '✗') + esc(j.name)).join(' ')}</div>` : '<div class="mu">ยังไม่ได้เลือกผู้เข้าประกวด</div>'}</div>
+  return dHTMLp(p) + `<div class="box" style="margin-top:10px;text-align:center">${c ? `<div class="jph">${ph(c.img, c.no)}</div><div style="font-size:1.5rem;font-weight:700">${esc(c.country || c.name)}</div>${c.country ? `<div>${esc(c.name)}</div>` : ''}<div class="mu">หมายเลข ${esc(c.no)} · ${esc(rd.name)} · กรรมการส่งแล้ว ${sub}/${p.J.length}</div><div class="mu">${p.J.map(j => (gs(p, p.round, c.id, j.id) != null ? '✓' : '✗') + esc(j.name)).join(' ')}</div>` : '<div class="mu">ยังไม่ได้เลือกผู้เข้าประกวด</div>'}</div>
   <div class="ctl"><button class="big ${rs && !rs.rev ? 'p' : ''}" data-a="revcur" ${c ? '' : 'disabled'}>${rs && rs.rev ? 'ซ่อนคะแนน' : 'เปิดคะแนน'}</button><button class="big ${p.hide ? 'p' : ''}" data-a="hide">${p.hide ? 'แสดงจอ' : 'ซ่อนจอทั้งหมด'}</button><button class="big" data-a="prev">← ก่อนหน้า</button><button class="big" data-a="next">ถัดไป →</button></div>
   <div class="row" style="margin-top:10px">${B('mode', 'current', 'แสดงผู้เข้าประกวด', p.mode === 'current')}${B('mode', 'ranking', 'แสดงอันดับ', p.mode === 'ranking')}</div>
   ${p.mode === 'ranking' ? `<div class="row" style="margin-top:8px">${B('rank', 0, 'สรุปคะแนน', p.rank === 0)}${p.rounds.map(x => B('rank', x.id, esc(x.name), p.rank === x.id)).join('')}</div>` : ''}
@@ -54,7 +54,9 @@ function manageV(p) {
     ${p.mode === 'ranking' ? `<label>อันดับที่จะแสดง</label><div class="row">${B('rank', 0, 'สรุปคะแนน (รอบที่ติ๊ก)', p.rank === 0)}${p.rounds.map(x => B('rank', x.id, esc(x.name), p.rank === x.id)).join('')}</div>` : ''}
     <label>ก่อนเปิดคะแนน จอแสดง</label><div class="row">${B('pre', 'name', 'เฉพาะรูปและชื่อ', p.pre === 'name')}${B('pre', 'dash', 'ช่องคะแนนเป็นขีด', (p.pre || 'dash') === 'dash')}${B('pre', 'none', 'ว่างจนกว่าจะเปิดคะแนน', p.pre === 'none')}${B('pre', 'card', 'การ์ดชื่อโปร่งใส (เฟดหายเอง)', p.pre === 'card')}</div>
     <label>การ์ดชื่อค้างไว้ก่อนเฟดหาย (วินาที)</label><div class="row"><input id="introSec" type="number" min="0" max="600" step="0.5" value="${p.introSec}" style="max-width:120px;flex:none"><button data-a="introSec">บันทึก</button></div>
-    <label>คะแนนค้างไว้ก่อนเฟดออก (วินาที · 0 = ค้างไว้ไม่เฟดเอง)</label><div class="row"><input id="holdSec" type="number" min="0" max="600" step="0.5" value="${p.holdSec}" style="max-width:120px;flex:none"><button data-a="holdSec">บันทึก</button></div><p class="mu">เวลาทั้งสองค่าทำงานบนจอไลฟ์จริง (ตัวอย่างในหน้าแอดมินแสดงค้างไว้ไม่เฟดเอง) การ์ดชื่อใช้เฉพาะเมื่อเลือกโหมด "การ์ดชื่อ" ด้านบน</p>
+    <label>คะแนนค้างไว้ก่อนเฟดออก (วินาที · 0 = ค้างไว้ไม่เฟดเอง)</label><div class="row"><input id="holdSec" type="number" min="0" max="600" step="0.5" value="${p.holdSec}" style="max-width:120px;flex:none"><button data-a="holdSec">บันทึก</button></div><label>ขนาดการ์ดชื่อบนจอ (% · 100 = ปกติ)</label><div class="row"><input id="cardScale" type="number" min="30" max="150" value="${p.cardScale}" style="max-width:120px;flex:none"><button data-a="cardScale">บันทึก</button></div>
+    <label>ขนาดแถบคะแนนบนจอ (% · 100 = ปกติ)</label><div class="row"><input id="barScale" type="number" min="30" max="150" value="${p.barScale}" style="max-width:120px;flex:none"><button data-a="barScale">บันทึก</button></div>
+    <p class="mu">เวลาทั้งสองค่าทำงานบนจอไลฟ์จริง (ตัวอย่างในหน้าแอดมินแสดงค้างไว้ไม่เฟดเอง) การ์ดชื่อใช้เฉพาะเมื่อเลือกโหมด "การ์ดชื่อ" ด้านบน</p>
     <label>คะแนนรวม คิดแบบ</label><div class="row">${B('agg', 'avg', 'เฉลี่ยทุกรอบ', p.agg === 'avg')}${B('agg', 'sum', 'บวกรวมทุกรอบ', p.agg === 'sum')}</div>
     <label><input type="checkbox" id="auto" style="width:auto" ${p.auto ? 'checked' : ''}> เปิดคะแนนอัตโนมัติเมื่อกรรมการส่งครบ</label>
     <label>คะแนนเต็ม</label><div class="row"><input id="max" type="number" value="${p.max}" style="max-width:120px;flex:none"><button data-a="max">บันทึก</button></div>
@@ -114,14 +116,18 @@ async function api(path, body) {
 const pub = async path => (await fetch('/api/' + path)).json();
 
 /* ---------- วาดจอไลฟ์จากข้อมูลที่เซิร์ฟเวอร์ส่งมา ---------- */
-function barHTML(b, L) {
+function barCore(b, L) {
   const n = b.judges.length, R = b.R, col = Math.min(190, Math.floor(920 / (n + 1)));
-  const jp = Math.max(40, Math.min(92, col - 14)), jn = Math.max(11, Math.min(19, Math.round(col * .13))), jsz = Math.max(22, Math.min(48, Math.round(col * .36))), t0 = n * .3 + .2;
+  const jp = Math.max(40, Math.min(92, col - 14)), jn = Math.max(13, Math.min(22, Math.round(col * .15))), jsz = Math.max(22, Math.min(48, Math.round(col * .36))), t0 = n * .3 + .2;
   const jc = b.judges.map((j, i) => { const v = R ? R.scores[i] : null; return `<div class="jc" style="width:${col}px"><div class="jp">${ph(j.img, j.name)}</div><div class="jn">${esc(j.name)}</div><div class="js ${v == null ? 'dim' : ''}" ${v != null ? `style="animation-delay:${i * .3}s"` : ''}>${v == null ? '–' : fmtn(v)}</div></div>`; }).join('');
   const av = `<div class="jc av" style="width:${col}px"><div class="jp ic bars"><b style="height:30%"></b><b style="height:60%"></b><b style="height:90%"></b></div><div class="jn">${esc(L.avg)}</div><div class="js ${R ? '' : 'dim'}" ${R ? `style="animation-delay:${t0}s"` : ''}>${R ? fmtn(R.avg) : '–'}</div></div>`;
   // ไม่มีรูป: ไม่วาดวงกลมรูป ย่อแถบลง แล้วจัดทั้งแถบให้อยู่กึ่งกลางจอ (มีรูป: ตำแหน่งเดิม ซึ่งรวมวงกลมรูปแล้วก็อยู่กึ่งกลางพอดี)
   const ni = !b.c.img, W = (b.cols ? 1680 : 760) - (ni ? 120 : 0), left = ni ? (1920 - W) / 2 : 150;
-  return `<div class="bar${ni ? ' ni' : ''}${b.cols ? '' : ' nc'}" style="left:${left}px;width:${W}px;--jp:${jp}px;--jn:${jn}px;--js:${jsz}px">${ni ? '' : `<div class="cph"><img src="${b.c.img}" alt=""></div>`}<div class="info"><div class="cn2">${esc(b.c.name)}</div>${b.c.country ? `<div class="cc">${esc(b.c.country)}</div>` : ''}</div>${b.cols ? `<div class="jrow">${jc}${av}</div>` : ''}</div>`;
+  return `<div class="bar${ni ? ' ni' : ''}${b.cols ? '' : ' nc'}" style="left:${left}px;width:${W}px;--jp:${jp}px;--jn:${jn}px;--js:${jsz}px">${ni ? '' : `<div class="cph"><img src="${b.c.img}" alt=""></div>`}<div class="info"><div class="cn2">${esc(b.c.country || b.c.name)}</div>${b.c.country ? `<div class="cc">${esc(b.c.name)}</div>` : ''}</div>${b.cols ? `<div class="jrow">${jc}${av}</div>` : ''}</div>`;
+}
+function barHTML(b, L, z) {
+  const ni = !b.c.img, W = (b.cols ? 1680 : 760) - (ni ? 120 : 0), s = Math.min((z || 100) / 100, 1880 / W);
+  return `<div class="scl" style="transform:scale(${+s.toFixed(3)});transform-origin:50% 1000px">${barCore(b, L)}</div>`;
 }
 function sumVMHTML(s, L) {
   const {n, single, show, C, J, rows} = s, nc = show.length * C.g + C.tail;
@@ -139,11 +145,11 @@ function sumVMHTML(s, L) {
   const body = rows.map((r, i) => `<div class="rrow" style="grid-template-columns:${tpl};--fs:${fs}px;animation-delay:${i * .1}s"><span class="rn">${r.rank}</span>${pc ? `<span class="rp">${ph(r.c.img, r.c.name)}</span>` : ''}<span class="rtn">${r.c.country ? esc(r.c.country) + `<small>${esc(r.c.name)}</small>` : esc(r.c.name)}</span>${r.per.map(x => J.map((j, k2) => `<span class="sc ${k2 === 0 ? 'bd' : ''}">${x && x.scores[k2] != null ? fmtn(x.scores[k2]) : '–'}</span>`).join('') + `<span class="sc av">${x ? fmtn(x.avg) : '–'}</span>` + (C.gv ? `<span class="sc">${x && x.vote != null ? fmtn(x.vote) : '–'}</span>` : '')).join('')}${C.tail > 1 ? `<span class="sc bd av">${fmtn(r.jt)}</span><span class="sc">${r.votes == null ? '–' : r.votes.toLocaleString('en-US')}</span><span class="sc">${r.vsc == null ? '–' : fmtn(r.vsc)}</span><span class="sc av">${fmtn(r.tot)}</span>` : C.tail === 1 ? `<span class="sc bd av">${fmtn(r.tot)}</span>` : ''}</div>`).join('');
   return `<div class="rkw" style="left:${k < 1 ? 40 : (1920 - W) / 2}px;width:${W}px;transform:scale(${k})"><div class="rkp" style="width:${W}px;--hs:${hs}px;--pw:${pw}px">${h1}${h2}${body}</div></div>`;
 }
-function cardHTML(d) {
-  const c = d.c, big = c.country || c.name, len = [...big].length, fs = len > 22 ? 64 : len > 16 ? 84 : len > 11 ? 100 : 120;
-  return `<div class="ncard"><div class="n1" style="font-size:${fs}px">${esc(big)}</div>${c.country ? `<i></i><div class="n2">${esc(c.name)}</div>` : ''}</div>`;
+function cardHTML(d, z) {
+  const c = d.c, big = c.country || c.name, len = [...big].length, fs = len > 22 ? 46 : len > 16 ? 58 : len > 11 ? 70 : 86, s = (z || 100) / 100;
+  return `<div class="scl" style="transform:scale(${s});transform-origin:50% 990px"><div class="ncard"><div class="n1" style="font-size:${fs}px">${esc(big)}</div>${c.country ? `<i></i><div class="n2">${esc(c.name)}</div>` : ''}</div></div>`;
 }
-const partOf = vm => vm.bar ? barHTML(vm.bar, vm.L) : vm.card ? cardHTML(vm.card) : vm.sum ? sumVMHTML(vm.sum, vm.L) : '';
+const partOf = vm => vm.bar ? barHTML(vm.bar, vm.L, (vm.z || {}).bar) : vm.card ? cardHTML(vm.card, (vm.z || {}).card) : vm.sum ? sumVMHTML(vm.sum, vm.L) : '';
 function innerVM(vm) {
   let h = '';
   if (vm.chip) h += `<div class="stg">${esc(vm.chip)}</div>`;
@@ -325,7 +331,7 @@ const onClick = async e => {
   if (a === 'hide') return st('hide', p.hide ? '0' : '1');
   if (a === 'max') return st('max', $('#max').value);
   if (a === 'jw') return st('jw', $('#jw').value);
-  if (a === 'introSec' || a === 'holdSec') return st(a, $('#' + a).value);
+  if (['introSec', 'holdSec', 'barScale', 'cardScale'].includes(a)) return st(a, $('#' + a).value);
   if (a === 'preset') { const x = PRE[id]; return st('colors', [x[1], x[2], x[3]].join(',')); }
   if (a === 'logoup') return pick(true, async d => { try { await api('admin/img', {kind: 'logo', data: d}); await api('admin/settings', {k: 'showLogo', v: '1'}); } catch (er) { alert(er.message); } await load(); render(); });
   if (a === 'logoclr') return act('img', {kind: 'logo', data: ''});
@@ -408,7 +414,7 @@ async function judgeLoad() { JD = await api('judge'); }
 function judgeRender() {
   const d = JD, c = d.current, mine = d.mine, k2 = d.round + ':' + (c ? c.id : 0);
   if (jkey !== k2) { jkey = k2; kv = mine == null ? '' : String(mine); jmsg = ''; }
-  app.innerHTML = topbar('กรรมการ: ' + esc(d.name)) + `<div class="box" style="text-align:center"><div class="mu">${esc(d.pgName)} · ${esc(d.round)}</div>` + (!c ? '<p class="mu">รอผู้ดูแลเลือกผู้เข้าประกวด…</p>' : `${c.img ? `<div class="jph" style="margin-top:8px">${ph(c.img)}</div>` : ''}<div style="font-size:1.4rem;font-weight:600;text-transform:uppercase;margin-top:${c.img ? 0 : 14}px">${esc(c.name)}</div>${c.country ? `<div class="mu" style="text-transform:uppercase">${esc(c.country)}</div>` : ''}`
+  app.innerHTML = topbar('กรรมการ: ' + esc(d.name)) + `<div class="box" style="text-align:center"><div class="mu">${esc(d.pgName)} · ${esc(d.round)}</div>` + (!c ? '<p class="mu">รอผู้ดูแลเลือกผู้เข้าประกวด…</p>' : `${c.img ? `<div class="jph" style="margin-top:8px">${ph(c.img)}</div>` : ''}<div style="font-size:1.4rem;font-weight:600;text-transform:uppercase;margin-top:${c.img ? 0 : 14}px">${esc(c.country || c.name)}</div>${c.country ? `<div class="mu" style="text-transform:uppercase">${esc(c.name)}</div>` : ''}`
     + (c.revealed ? `<p class="mu">เปิดคะแนนแล้ว แก้ไขไม่ได้ คะแนนที่คุณให้: ${mine ?? '-'}</p>` : mine != null ? `<div class="val">${fmtn(mine)}</div><p class="ok" style="margin:6px 0">ส่งคะแนนแล้ว ล็อกเรียบร้อย แก้ไขไม่ได้</p><p class="mu">ถ้าต้องแก้ไข ให้แจ้งผู้ดูแล</p>` : `<div class="val">${kv === '' ? '<span class="mu">–</span>' : esc(kv)}</div><div class="mu">คะแนนเต็ม ${d.max}</div><div class="kp">${'123456789'.split('').map(k => `<button data-k="${k}">${k}</button>`).join('')}<button data-k="max">${d.max}</button><button data-k=".">.</button><button data-k="0">0</button><button data-k="del">⌫</button><button class="cf" data-k="ok">ยืนยัน</button></div><p class="bad" style="margin:8px 0 0">${esc(jmsg)}</p>`)) + '</div>';
 }
 async function press(k) {
