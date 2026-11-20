@@ -84,6 +84,7 @@ function manageV(p) {
     <label>ก่อนเปิดคะแนน จอแสดง</label><div class="row">${B('pre', 'name', 'เฉพาะรูปและชื่อ', p.pre === 'name')}${B('pre', 'dash', 'ช่องคะแนนเป็นขีด', (p.pre || 'dash') === 'dash')}${B('pre', 'none', 'ว่างจนกว่าจะเปิดคะแนน', p.pre === 'none')}${B('pre', 'card', 'การ์ดชื่อโปร่งใส (เฟดหายเอง)', p.pre === 'card')}</div>
     <label>การ์ดชื่อค้างไว้ก่อนเฟดหาย (วินาที)</label><div class="row"><input id="introSec" type="number" min="0" max="600" step="0.5" value="${p.introSec}" style="max-width:120px;flex:none"><button data-a="introSec">บันทึก</button></div>
     <label>คะแนนค้างไว้ก่อนเฟดออก (วินาที · 0 = ค้างไว้ไม่เฟดเอง)</label><div class="row"><input id="holdSec" type="number" min="0" max="600" step="0.5" value="${p.holdSec}" style="max-width:120px;flex:none"><button data-a="holdSec">บันทึก</button></div><label>ขนาดการ์ดชื่อบนจอ (% · 100 = ปกติ)</label><div class="row"><input id="cardScale" type="number" min="30" max="150" value="${p.cardScale}" style="max-width:120px;flex:none"><button data-a="cardScale">บันทึก</button></div>
+    <label>ขนาดตารางคะแนนรวมบนจอ (% · 100 = ปกติ · ตารางอยู่กึ่งกลางจอเสมอ)</label><div class="row"><input id="sumScale" type="number" min="30" max="150" value="${p.sumScale}" style="max-width:120px;flex:none"><button data-a="sumScale">บันทึก</button></div>
     <label>ขนาดแถบคะแนนบนจอ (% · 100 = ปกติ)</label><div class="row"><input id="barScale" type="number" min="30" max="150" value="${p.barScale}" style="max-width:120px;flex:none"><button data-a="barScale">บันทึก</button></div>
     <label>ตารางคะแนนรวม: แสดงทีละกี่คน (ต่อ 1 หน้าต่าง)</label><div class="row"><input id="sumPer" type="number" min="1" max="20" value="${p.sumPer}" style="max-width:120px;flex:none"><button data-a="sumPer">บันทึก</button></div>
     <label>ตารางคะแนนรวม: แต่ละหน้าต่างแสดงกี่วินาที (0 = ค้างหน้าแรกไว้ ไม่เปลี่ยนหน้า ไม่เฟดเอง)</label><div class="row"><input id="sumSec" type="number" min="0" max="600" step="0.5" value="${p.sumSec}" style="max-width:120px;flex:none"><button data-a="sumSec">บันทึก</button></div>
@@ -165,13 +166,13 @@ function barHTML(b, L, z) {
 /* แบ่งตารางคะแนนรวมเป็นหน้าต่างละ per คน (หน้าละกี่คนตั้งได้ที่แท็บจัดการ) */
 const sumPages = s => Math.max(1, Math.ceil(s.rows.length / (s.per || 10)));
 const sumPage = (s, i) => { const per = s.per || 10, n = s.rows.length, np = sumPages(s); i = Math.min(Math.max(0, i | 0), np - 1); return {...s, rows: s.rows.slice(i * per, (i + 1) * per), cap: Math.min(per, n)}; };
-function sumVMHTML(s, L) {
+function sumVMHTML(s, L, z) {
   const {n, single, show, C, J, rows} = s, nc = show.length * C.g + C.tail, pv = s.pv ? 1 : 0, pvW = 110;
   // ไม่มีใครมีรูปเลย → ตัดคอลัมน์รูปออก (pc=0) ตารางจะแคบลงและยังอยู่กึ่งกลางจอ
   const pc = rows.some(r => r.c.img) ? 1 : 0, lead = 2 + pc, fx = 56 + 56 * pc, gaps = (nc + lead - 1 + pv) * 6, avail = 1760 - fx - gaps - pv * pvW; let nameW = 300, cw = Math.floor((avail - nameW) / nc);
   if (cw < 56) { nameW = 150; cw = Math.floor((avail - nameW) / nc); }
   cw = Math.max(30, Math.min(118, cw));
-  const W = 80 + fx + nameW + nc * cw + gaps + pv * pvW, H = 178 + 72 * (s.cap || rows.length), k = Math.min(W > 1840 ? 1840 / W : 1, H > 1000 ? 1000 / H : 1), fs = Math.max(16, Math.min(32, Math.round(cw * .36))), hs = Math.max(10, Math.min(20, Math.round(cw * .17))), pw = Math.max(18, Math.min(40, cw - 6));
+  const W = 80 + fx + nameW + nc * cw + gaps + pv * pvW, H = 178 + (pc ? 72 : 59) * (s.cap || rows.length), k = Math.min((z || 100) / 100, 1880 / W, 1040 / H), fs = Math.max(16, Math.min(32, Math.round(cw * .36))), hs = Math.max(10, Math.min(20, Math.round(cw * .17))), pw = Math.max(18, Math.min(40, cw - 6));
   const tpl = `56px ${pc ? '56px ' : ''}${nameW}px repeat(${nc}, ${cw}px)${pv ? ` ${pvW}px` : ''}`;
   // หัวตาราง 2 แถวอยู่ใน grid เดียว ช่องที่ผสาน 2 แถว (ชื่อตาราง, TOTAL, POPULAR VOTE) วางกึ่งกลางช่อง เส้นนอนใต้แถวบนจึงไม่ลากผ่านช่องที่ผสาน
   const leadW = fx + nameW + (lead - 1) * 6, tl = [...String(s.title)].length, tfs = Math.max(24, Math.min(54, Math.floor((leadW - 20) / (tl * .66))));
@@ -190,13 +191,13 @@ function sumVMHTML(s, L) {
   if (pv) h += `<span class="rh g bd" style="grid-column:${ps};grid-row:1 / span 2">${esc(L.votes)}</span>`;
   const head = `<div class="rrow hd h2 hg" style="grid-template-columns:${tpl}">${h}</div>`;
   const body = rows.map((r, i) => `<div class="rrow" style="grid-template-columns:${tpl};--fs:${fs}px;animation-delay:${i * .1}s"><span class="rn">${r.rank}</span>${pc ? `<span class="rp">${ph(r.c.img, r.c.name)}</span>` : ''}<span class="rtn">${r.c.country ? esc(r.c.country) + `<small>${esc(r.c.name)}</small>` : esc(r.c.name)}</span>${r.per.map(x => J.map((j, k2) => `<span class="sc ${k2 === 0 ? 'bd' : ''}">${x && x.scores[k2] != null ? fmtn(x.scores[k2]) : '–'}</span>`).join('') + `<span class="sc av">${x ? fmtn(x.avg) : '–'}</span>` + (C.gv ? `<span class="sc">${x && x.vote != null ? fmtn(x.vote) : '–'}</span>` : '')).join('')}${C.tail > 1 ? `<span class="sc bd av">${fmtn(r.jt)}</span><span class="sc">${r.votes == null ? '–' : r.votes.toLocaleString('en-US')}</span><span class="sc">${r.vsc == null ? '–' : fmtn(r.vsc)}</span><span class="sc av">${fmtn(r.tot)}</span>` : C.tail === 1 ? `<span class="sc bd av">${fmtn(r.tot)}</span>` : ''}${pv ? `<span class="sc bd" style="font-size:${Math.min(fs, 26)}px">${r.pvv == null ? '–' : r.pvv.toLocaleString('en-US')}</span>` : ''}</div>`).join('');
-  return `<div class="rkw" style="left:${(1920 - W * k) / 2}px;width:${W}px;transform:scale(${k})"><div class="rkp" style="width:${W}px;--hs:${hs}px;--pw:${pw}px">${head}${body}</div></div>`;
+  return `<div class="rkw" style="left:${(1920 - W) / 2}px;width:${W}px;transform:translateY(-50%) scale(${+k.toFixed(4)})"><div class="rkp" style="width:${W}px;--hs:${hs}px;--pw:${pw}px">${head}${body}</div></div>`;
 }
 function cardHTML(d, z) {
   const c = d.c, big = c.country || c.name, len = [...big].length, fs = len > 22 ? 46 : len > 16 ? 58 : len > 11 ? 70 : 86, s = (z || 100) / 100;
   return `<div class="scl" style="transform:scale(${s});transform-origin:50% 990px"><div class="ncard"><div class="n1" style="font-size:${fs}px">${esc(big)}</div>${c.country ? `<i></i><div class="n2">${esc(c.name)}</div>` : ''}</div></div>`;
 }
-const partOf = vm => vm.bar ? barHTML(vm.bar, vm.L, (vm.z || {}).bar) : vm.card ? cardHTML(vm.card, (vm.z || {}).card) : vm.sum ? sumVMHTML(sumPage(vm.sum, vm.pg || 0), vm.L) : '';
+const partOf = vm => vm.bar ? barHTML(vm.bar, vm.L, (vm.z || {}).bar) : vm.card ? cardHTML(vm.card, (vm.z || {}).card) : vm.sum ? sumVMHTML(sumPage(vm.sum, vm.pg || 0), vm.L, (vm.z || {}).sum) : '';
 function innerVM(vm) {
   let h = '';
   if (vm.chip) h += `<div class="stg">${esc(vm.chip)}</div>`;
@@ -393,7 +394,7 @@ const onClick = async e => {
   if (a === 'hide') return st('hide', p.hide ? '0' : '1');
   if (a === 'max') return st('max', $('#max').value);
   if (a === 'jw') return st('jw', $('#jw').value);
-  if (['introSec', 'holdSec', 'sumPer', 'sumSec', 'barScale', 'cardScale'].includes(a)) return st(a, $('#' + a).value);
+  if (['introSec', 'holdSec', 'sumPer', 'sumSec', 'barScale', 'cardScale', 'sumScale'].includes(a)) return st(a, $('#' + a).value);
   if (a === 'preset') { const x = PRE[id]; return st('colors', [x[1], x[2], x[3]].join(',')); }
   if (a === 'logoup') return pick(true, async d => { try { await api('admin/img', {kind: 'logo', data: d}); await api('admin/settings', {k: 'showLogo', v: '1'}); } catch (er) { alert(er.message); } await load(); render(); });
   if (a === 'logoclr') return act('img', {kind: 'logo', data: ''});
