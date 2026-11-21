@@ -25,10 +25,10 @@ function controlV(p) {
   <p class="mu">ปุ่มลัดคีย์บอร์ด (ใช้ได้ในแท็บจอไลฟ์และควบคุมสด): เว้นวรรค = เปิด/ซ่อนคะแนน · H = ซ่อน/แสดงจอ · ลูกศรซ้าย/ขวา = คนก่อนหน้า/ถัดไป · R = สลับผู้เข้าประกวด/อันดับ</p>`;
 }
 function resultsV(p) {
-  const n = p.J.length, d = sumData(p, p.rounds), list = d.ranked.concat(d.rows.filter(r => r.tot == null)), C = colsCfg(p, false, n), cell = v => v == null ? '–' : fmtn(v);
+  const n = p.J.length, d = sumData(p, p.rounds), list = d.ranked.concat(d.rows.filter(r => r.tot == null)), C = colsCfg(p, false, n), cell0 = v => v == null ? '–' : fmtn(v); const cell = cell0;
   const inc = p.rounds.filter(x => x.inTotal !== false);
   return `<div class="box"><h2>สรุปผลทุกรอบ</h2><p class="mu">คะแนนแต่ละรอบเฉลี่ยกรรมการก่อน แล้วรวมรอบที่ติ๊ก "นับในคะแนนรวม" (${inc.map(x => esc(x.name)).join(', ') || 'ยังไม่ได้เลือกรอบ'}) แบบ${p.agg === 'sum' ? 'บวกรวม' : 'เฉลี่ย'} ${p.jw < 100 ? `ถ้ามีโหวต จะนำมารวมตามสัดส่วนกรรมการ ${p.jw}% / โหวต ${100 - p.jw}%` : 'ตอนนี้ใช้คะแนนกรรมการ 100% (ไม่คิดโหวต)'} เครื่องหมาย * คือรอบที่ไม่ถูกนับ</p>
-  <div style="overflow-x:auto"><table><thead><tr><th class="n" rowspan="2">อันดับ</th><th class="n" rowspan="2">เลขที่</th><th rowspan="2">ผู้เข้าประกวด</th>${p.rounds.map(r => `<th class="n" colspan="${C.g}">${esc(r.name)}${r.inTotal === false ? ' *' : ''}</th>`).join('')}<th class="n" colspan="${C.tail}">${C.tail > 1 ? 'คะแนนรวม' : 'รวม'}</th></tr><tr>${p.rounds.map(() => p.J.map(j => `<th class="n">${esc(j.name)}</th>`).join('') + '<th class="n">เฉลี่ย</th>' + (C.gv ? '<th class="n">โหวต</th>' : '')).join('')}${C.tail > 1 ? '<th class="n">คะแนนกรรมการ</th><th class="n">โหวต</th><th class="n">คะแนนโหวต</th><th class="n">รวม</th>' : ''}</tr></thead><tbody>${list.map(r => `<tr><td class="n">${r.rank || '–'}</td><td class="n">${esc(r.c.no)}</td><td>${esc(r.c.country ? r.c.country + ' · ' + r.c.name : r.c.name)}</td>${r.per.map(x => p.J.map((j, k) => `<td class="n">${cell(x && x.scores[k])}</td>`).join('') + `<td class="n"><b>${cell(x && x.avg)}</b></td>` + (C.gv ? `<td class="n">${cell(x && x.vote)}</td>` : '')).join('')}${C.tail > 1 ? `<td class="n">${cell(r.jt)}</td><td class="n">${r.votes == null ? '–' : r.votes}</td><td class="n">${cell(r.vsc)}</td><td class="n"><b>${cell(r.tot)}</b></td>` : `<td class="n"><b>${cell(r.tot)}</b></td>`}</tr>`).join('')}</tbody></table></div>
+  <div style="overflow-x:auto"><table><thead><tr><th class="n" rowspan="2">อันดับ</th><th class="n" rowspan="2">เลขที่</th><th rowspan="2">ผู้เข้าประกวด</th>${p.rounds.map(r => `<th class="n" colspan="${C.g}">${esc(r.name)}${r.inTotal === false ? ' *' : ''}</th>`).join('')}<th class="n" colspan="${C.tail}">${C.tail > 1 ? 'คะแนนรวม' : 'รวม'}</th></tr><tr>${p.rounds.map(() => p.J.map(j => `<th class="n">${esc(j.name)}</th>`).join('') + '<th class="n">เฉลี่ย</th>' + (C.gv ? '<th class="n">โหวต</th>' : '')).join('')}${C.tail > 1 ? '<th class="n">คะแนนกรรมการ</th><th class="n">โหวต</th><th class="n">คะแนนโหวต</th><th class="n">รวม</th>' : ''}</tr></thead><tbody>${list.map(r => `<tr><td class="n">${r.rank || '–'}</td><td class="n">${esc(r.c.no)}</td><td>${esc(r.c.country ? r.c.country + ' · ' + r.c.name : r.c.name)}</td>${r.per.map((x, xi) => { const cell = r.gone[xi] ? () => '' : cell0; return p.J.map((j, k) => `<td class="n">${cell(x && x.scores[k])}</td>`).join('') + `<td class="n"><b>${cell(x && x.avg)}</b></td>` + (C.gv ? `<td class="n">${cell(x && x.vote)}</td>` : ''); }).join('')}${C.tail > 1 ? `<td class="n">${cell(r.jt)}</td><td class="n">${r.votes == null ? '–' : r.votes}</td><td class="n">${cell(r.vsc)}</td><td class="n"><b>${cell(r.tot)}</b></td>` : `<td class="n"><b>${cell(r.tot)}</b></td>`}</tr>`).join('')}</tbody></table></div>
   <div class="row noprint" style="margin-top:10px"><button data-a="print">พิมพ์</button><button data-a="copy">คัดลอกตาราง</button><button data-a="csv">ดาวน์โหลด CSV</button></div>
   <p class="mu noprint">ไฟล์ CSV เปิดใน Excel หรือ Google Sheets ได้ (ภาษาไทยแสดงถูกต้อง)</p></div>`;
 }
@@ -47,12 +47,12 @@ function votesV(p) {
 const COP = [
   ['edit', 'แก้ไขข้อมูลและตั้งค่า (ผู้เข้าประกวด กรรมการ รอบ สี โลโก้ การตั้งค่าจอ)'],
   ['scores', 'แก้ไขคะแนนกรรมการ / คะแนนโหวต'],
-  ['advance', 'จัดการผู้เข้ารอบ (กดตกรอบ / ยกเลิกตกรอบ และเปลี่ยนรอบที่ใช้)'],
-  ['screen', 'สั่งขึ้นจอ (เลือกคน ถัดไป แสดง/ซ่อนจอ เปิด/ซ่อนคะแนน โหมดตารางอันดับ)']
+  ['advance', 'จัดการผู้เข้ารอบ (ติ๊กเข้ารอบ / ยกเลิกตกรอบ และเปลี่ยนรอบที่ใช้)'],
+  ['screen', 'สั่งขึ้นจอ (เลือกคน ถัดไป แสดง/ซ่อนจอ เปิด/ซ่อนคะแนน โหมดตารางอันดับ ประกาศเข้ารอบ)']
 ];
 const NEED = {
   edit: 'addcs addj editc editj jcode jdel del rdadd rdren rddel logoup logoclr preset aadd adel aph img max jw sumPer sumSec sumScale introSec holdSec barScale cardScale agg vm vmode pre lang',
-  screen: 'hide toggle mode rank cur next prev rev revcur',
+  screen: 'hide toggle mode rank cur next prev rev revcur ann',
   advance: 'out rd',
   scores: 'edsc savesc savevotes'
 };
@@ -63,7 +63,7 @@ function applyMe(me) { ST.role = me.role === 'co' ? 'admin' : me.role; ST.co = m
 // ซ่อนปุ่ม/กล่องที่ CO-ADMIN คนนี้ไม่มีสิทธิ์ (เซิร์ฟเวอร์ตรวจสิทธิ์จริงอีกชั้นเสมอ)
 function coFilter() {
   const hide = el => { el.style.display = 'none'; };
-  const needOf = el => { const a = el.dataset.a, v = el.dataset.v; if (a === 'bulk') return ({hide: 'screen', show: 'screen', hideall: 'screen', out: 'advance', 'in': 'advance', del: 'edit'})[v]; return a === 'tab' ? null : NEEDOF[a]; };
+  const needOf = el => { const a = el.dataset.a, v = el.dataset.v; if (a === 'bulk') return ({hide: 'screen', show: 'screen', hideall: 'screen', out: 'advance', qual: 'advance', 'in': 'advance', del: 'edit'})[v]; return a === 'tab' ? null : NEEDOF[a]; };
   app.querySelectorAll('[data-a]').forEach(el => { const n = needOf(el); if (n && !can(n)) hide(el); });
   app.querySelectorAll('[data-need]').forEach(el => { if (!can(el.dataset.need)) hide(el); });
   app.querySelectorAll('[data-need-any]').forEach(el => { if (!canAny(...el.dataset.needAny.split(','))) hide(el); });
@@ -95,7 +95,8 @@ function bulkBar(p) {
   if (!p.C.length) return '';
   const n = [...SEL].filter(i => p.C.some(c => c.id === i)).length;
   return `<div class="row noprint" style="margin:4px 0 8px;padding:8px;border:1px dashed var(--bd);border-radius:10px"><label style="margin:0;display:flex;gap:6px;align-items:center;color:var(--ink)"><input type="checkbox" id="selall" style="width:auto" ${n && n === p.C.length ? 'checked' : ''}> เลือกทั้งหมด</label><span class="mu" id="seln">เลือก ${n} คน</span>
-    <div class="btns"><button data-a="bulk" data-v="hide">ซ่อนคะแนน</button><button data-a="bulk" data-v="show">เปิดคะแนน</button><button data-a="bulk" data-v="out">ตกรอบ</button><button data-a="bulk" data-v="in">ยกเลิกตกรอบ</button><button class="d" data-a="bulk" data-v="del">ลบ</button><button data-a="bulk" data-v="hideall">ซ่อนคะแนนทุกคน</button></div></div>`;
+    <div class="btns"><button data-a="bulk" data-v="hide">ซ่อนคะแนน</button><button data-a="bulk" data-v="show">เปิดคะแนน</button><button class="p" data-a="bulk" data-v="qual">เข้ารอบ (ที่ไม่ติ๊กจะตกรอบ)</button><button data-a="bulk" data-v="in">ยกเลิกตกรอบ</button><button class="d" data-a="bulk" data-v="del">ลบ</button><button data-a="bulk" data-v="hideall">ซ่อนคะแนนทุกคน</button></div>
+    <div class="btns" style="margin-top:6px"><button class="p" data-a="ann" data-v="start">▶ เริ่มประกาศเข้ารอบ (สุ่มลำดับ)</button><button data-a="ann" data-v="stop">หยุดประกาศ</button>${p.annOn ? `<button data-a="prev">◀ ก่อนหน้า</button><button class="p" data-a="next">ถัดไป ▶</button>` : ''}</div>${p.annOn ? `<div style="margin-top:8px"><b>ลำดับประกาศ (สุ่มแล้ว)</b><ol style="margin:4px 0 0;padding-left:22px">${(p.annIds || []).map((id, i) => { const c = p.C.find(x => x.id === id); return c ? `<li style="${i === p.annI ? 'color:var(--gold);font-weight:700' : i < p.annI ? 'opacity:.5' : ''}">${esc(c.country ? c.country + ' · ' + c.name : c.name)}${i === p.annI ? ' ◀ กำลังขึ้นจอ' : i === p.annI + 1 ? ' (คนถัดไป)' : ''}</li>` : ''; }).join('')}</ol></div><div class="mu" style="margin-top:6px">กำลังประกาศเข้ารอบ: ขึ้นการ์ดแล้ว ${Math.max(0, p.annI + 1)}/${p.annN} คน · กด "ถัดไป" เพื่อขึ้นการ์ดคนต่อไป (การ์ดค้างตามเวลา "การ์ดชื่อ" ที่ตั้งไว้ แล้วเฟดหายเอง) · พอการ์ดคนสุดท้ายเฟดหาย ระบบจะซ่อนจอแล้วไปรอบถัดไปให้เอง (หรือกดถัดไปหลังคนสุดท้ายเพื่อจบทันที)</div>` : ''}</div>`;
 }
 function foldInit() {
   app.querySelectorAll(':scope > .box > h2:first-child').forEach((h, i) => {
@@ -144,7 +145,7 @@ function manageV(p) {
     const rs = gr(p, p.round, c.id), k = calc(p, p.round, c), got = p.J.filter(j => gs(p, p.round, c.id, j.id) != null).length, cu = c.id === p.cur, gone = !inR(p, p.round, c), er = gone ? elimRound(p, c) : null;
     const ed = editing === c.id ? `<div class="box" style="margin:8px 0"><div class="mu">แก้คะแนนรอบ ${esc(rd.name)} ของ ${esc(c.name)} (เต็ม ${p.max}) เว้นว่าง = ยังไม่ให้</div><div class="row" style="margin-top:6px">${p.J.map(j => `<label style="flex:1;min-width:100px">${esc(j.name)}<input id="se-${j.id}" type="number" step="0.01" value="${gs(p, p.round, c.id, j.id) ?? ''}"></label>`).join('')}</div><div class="row" style="margin-top:8px"><button class="p" data-a="savesc" data-id="${c.id}">บันทึกคะแนน</button><button data-a="edsc" data-id="0">ปิด</button></div></div>` : '';
     return `<div class="ci ${gone ? 'out' : ''}"><div class="l"><input type="checkbox" data-s="${c.id}" ${SEL.has(c.id) ? 'checked' : ''} style="width:auto;flex:none">${th(c.img, c.name)}<div style="min-width:0"><b style="color:var(--gold)">${esc(c.no)}</b> ${esc(c.country || c.name)}${c.country ? ` <span class="mu">· ${esc(c.name)}</span>` : ''}${rs.rev ? ' <span class="ok">· เปิดแล้ว</span>' : ''}${gone ? ` <span class="chip">ตกรอบแล้ว (${esc(er.name)})</span>` : rs.out ? ' <span class="chip" style="color:var(--bad)">ตกรอบ · ไม่ไปรอบถัดไป</span>' : ''}<div class="mu">กรรมการให้แล้ว ${got}/${n}${got ? ' · เฉลี่ยรอบนี้ ' + fmtn(k.avg) : ''}${cu && !gone ? ' · กำลังให้คะแนน' : ''}</div></div></div>
-    <div class="btns">${cu || gone ? '' : `<button data-a="cur" data-id="${c.id}">ให้คะแนนคนนี้</button>`}${gone ? '' : `<button data-a="rev" data-id="${c.id}" class="${cu && !rs.rev ? 'p' : ''}">${rs.rev ? 'ซ่อนคะแนน' : 'เปิดคะแนน'}</button><button data-a="edsc" data-id="${c.id}">ใส่/แก้คะแนน</button>`}${gone ? `<button data-a="out" data-id="${c.id}" data-r="${er.id}">ยกเลิกตกรอบ</button>` : `<button data-a="out" data-id="${c.id}">${rs.out ? 'ยกเลิกตกรอบ' : 'ตกรอบ'}</button>`}<button data-a="img" data-k="C" data-id="${c.id}">รูป</button><button data-a="editc" data-id="${c.id}">แก้ไข</button><button class="d" data-a="del" data-id="${c.id}">ลบ</button></div></div>${ed}`;
+    <div class="btns">${cu || gone ? '' : `<button data-a="cur" data-id="${c.id}">ให้คะแนนคนนี้</button>`}${gone ? '' : `<button data-a="rev" data-id="${c.id}" class="${cu && !rs.rev ? 'p' : ''}">${rs.rev ? 'ซ่อนคะแนน' : 'เปิดคะแนน'}</button><button data-a="edsc" data-id="${c.id}">ใส่/แก้คะแนน</button>`}${gone ? `<button data-a="out" data-id="${c.id}" data-r="${er.id}">ยกเลิกตกรอบ</button>` : `${rs.out ? `<button data-a="out" data-id="${c.id}">ยกเลิกตกรอบ</button>` : ''}`}<button data-a="img" data-k="C" data-id="${c.id}">รูป</button><button data-a="editc" data-id="${c.id}">แก้ไข</button><button class="d" data-a="del" data-id="${c.id}">ลบ</button></div></div>${ed}`;
   }).join('') || '<p class="mu">ยังไม่มีผู้เข้าประกวด</p>'}
     <h2 data-need-after="edit" style="margin:16px 0 2px">เพิ่มผู้เข้าประกวด</h2><p class="mu" style="margin:0 0 8px">กรอกแค่ชื่อก็เพิ่มได้ ส่วนรูป ประเทศ เลขที่ ใส่หรือไม่ใส่ก็ได้ (เว้นเลขที่ไว้ ระบบรันเลขต่อให้เอง) วางข้อมูลจาก Excel / Google Sheets ลงช่องไหนก็ได้ แล้วค่อยกลับมาแก้ทีหลังได้</p>
     <div id="addt">${addRowsV()}</div>
@@ -232,7 +233,7 @@ function sumVMHTML(s, L, z) {
   else if (C.tail === 1) h += `<span class="rh g bd" style="grid-column:${ts};grid-row:1 / span 2">${esc(L.tot)}</span>`;
   if (pv) h += `<span class="rh g bd" style="grid-column:${ps};grid-row:1 / span 2">${esc(L.votes)}</span>`;
   const head = `<div class="rrow hd h2 hg" style="grid-template-columns:${tpl}">${h}</div>`;
-  const body = rows.map((r, i) => `<div class="rrow" style="grid-template-columns:${tpl};--fs:${fs}px;animation-delay:${i * .1}s"><span class="rn">${r.rank}</span>${pc ? `<span class="rp">${ph(r.c.img, r.c.name)}</span>` : ''}<span class="rtn">${r.c.country ? esc(r.c.country) + `<small>${esc(r.c.name)}</small>` : esc(r.c.name)}</span>${r.per.map(x => J.map((j, k2) => `<span class="sc ${k2 === 0 ? 'bd' : ''}">${x && x.scores[k2] != null ? fmtn(x.scores[k2]) : '–'}</span>`).join('') + `<span class="sc av">${x ? fmtn(x.avg) : '–'}</span>` + (C.gv ? `<span class="sc">${x && x.vote != null ? fmtn(x.vote) : '–'}</span>` : '')).join('')}${C.tail > 1 ? `<span class="sc bd av">${fmtn(r.jt)}</span><span class="sc">${r.votes == null ? '–' : r.votes.toLocaleString('en-US')}</span><span class="sc">${r.vsc == null ? '–' : fmtn(r.vsc)}</span><span class="sc av">${fmtn(r.tot)}</span>` : C.tail === 1 ? `<span class="sc bd av">${fmtn(r.tot)}</span>` : ''}${pv ? `<span class="sc bd" style="font-size:${Math.min(fs, 26)}px">${r.pvv == null ? '–' : r.pvv.toLocaleString('en-US')}</span>` : ''}</div>`).join('');
+  const body = rows.map((r, i) => `<div class="rrow" style="grid-template-columns:${tpl};--fs:${fs}px;animation-delay:${i * .1}s"><span class="rn">${r.rank}</span>${pc ? `<span class="rp">${ph(r.c.img, r.c.name)}</span>` : ''}<span class="rtn">${r.c.country ? esc(r.c.country) + `<small>${esc(r.c.name)}</small>` : esc(r.c.name)}</span>${r.per.map((x, xi) => r.gone && r.gone[xi] ? J.map((j, k2) => `<span class="sc ${k2 === 0 && !(xi > 0 && r.gone[xi - 1]) ? 'bd' : ''}"></span>`).join('') + '<span class="sc av"></span>' + (C.gv ? '<span class="sc"></span>' : '') : J.map((j, k2) => `<span class="sc ${k2 === 0 ? 'bd' : ''}">${x && x.scores[k2] != null ? fmtn(x.scores[k2]) : '–'}</span>`).join('') + `<span class="sc av">${x ? fmtn(x.avg) : '–'}</span>` + (C.gv ? `<span class="sc">${x && x.vote != null ? fmtn(x.vote) : '–'}</span>` : '')).join('')}${C.tail > 1 ? `<span class="sc bd av">${fmtn(r.jt)}</span><span class="sc">${r.votes == null ? '–' : r.votes.toLocaleString('en-US')}</span><span class="sc">${r.vsc == null ? '–' : fmtn(r.vsc)}</span><span class="sc av">${fmtn(r.tot)}</span>` : C.tail === 1 ? `<span class="sc bd av">${fmtn(r.tot)}</span>` : ''}${pv ? `<span class="sc bd" style="font-size:${Math.min(fs, 26)}px">${r.pvv == null ? '–' : r.pvv.toLocaleString('en-US')}</span>` : ''}</div>`).join('');
   return `<div class="rkw" style="left:${(1920 - W) / 2}px;width:${W}px;transform:translateY(-50%) scale(${+k.toFixed(4)})"><div class="rkp" style="width:${W}px;--hs:${hs}px;--pw:${pw}px">${head}${body}</div></div>`;
 }
 function cardHTML(d, z) {
@@ -371,7 +372,7 @@ async function sact(a, body) { try { await api('super/' + a, body); await superL
 /* ---------- แอดมินเวที ---------- */
 async function load() { ST.p = await api('admin'); }
 function fadeKind(a, b) {
-  if (a === 'step' || a === 'cur' || a === 'rd') return 'all';
+  if (a === 'step' || a === 'cur' || a === 'rd' || a === 'annstart' || a === 'annstop') return 'all';
   if (a === 'settings' && b && b.k === 'hide' && b.v === '1') return 'all';
   if ((a === 'reveal' || a === 'revmany') && b && b.on === false) return 'scores';
   return null;
@@ -466,11 +467,12 @@ const onClick = async e => {
     const inr = sel.filter(i => inR(p, p.round, p.C.find(c => c.id === i)));
     if (v === 'hide') return act('revmany', {ids: inr, on: false});
     if (v === 'show') return act('revmany', {ids: inr, on: true});
-    if (v === 'out') return act('outmany', {ids: inr, on: true});
+    if (v === 'qual') { if (!inr.length) return alert('ไม่มีคนที่ติ๊กอยู่ในรอบนี้'); const m = p.C.filter(c => inR(p, p.round, c)).length - inr.length; if (!confirm(`ผู้เข้ารอบ ${inr.length} คน อีก ${m} คนที่ไม่ได้ติ๊กจะตกรอบ ตกลงไหม?`)) return; return act('qualify', {ids: inr}); }
     if (v === 'in') return act('outmany', {ids: inr, on: false});
     if (v === 'del') { if (!confirm(`ลบผู้เข้าประกวด ${sel.length} คน และคะแนนทุกรอบ? (กู้คืนไม่ได้)`)) return; SEL.clear(); return act('delmany', {ids: sel}); }
     return;
   }
+  if (a === 'ann') return act(v === 'start' ? 'annstart' : 'annstop', {});
   if (a === 'next' || a === 'prev') return act('step', {dir: a});
   if (a === 'savesc') { const scores = {}; p.J.forEach(j => { scores[j.id] = $('#se-' + j.id).value; }); editing = 0; return act('setscores', {id, scores}); }
   if (a === 'img') return pick(false, async d => { try { await api('admin/img', {kind: b.dataset.k === 'C' ? 'contestant' : 'judge', id, data: d}); } catch (er) { alert(er.message); } await load(); render(); });
@@ -574,6 +576,7 @@ async function press(k) {
 
 /* ---------- เริ่มต้น ---------- */
 function render() {
+  document.body.classList.toggle('jd', ST.role === 'judge');
   if (!ST.role) return loginV();
   if (ST.role === 'super') return superV();
   if (ST.role === 'admin') { const r = adminV(); pvArm(); return r; }

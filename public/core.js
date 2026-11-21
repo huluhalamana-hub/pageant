@@ -38,9 +38,11 @@ export function sumData(p, show, opts) {
     let tot = null, vsc = null;
     if (hv && mr) tot = agg(cn.map(x => x.f));
     else if (jt != null) { const vs = hv && !single ? vscoreG(p, c) : null; vsc = vs == null ? null : vs * (p.agg === 'sum' ? nr : 1); tot = vsc != null ? jt * p.jw / 100 + vsc * (100 - p.jw) / 100 : jt; }
-    return {c, per, jt, votes: c.votes ?? null, vsc, tot};
+    // gone[i] = ตกรอบไปก่อนถึงรอบนี้แล้ว (ให้ช่องว่าง) / lv = จำนวนรอบที่ "ผ่าน" (อยู่ในรอบและไม่ได้ถูกกดตกรอบ) ใช้จัดอันดับ: ผ่านรอบมากกว่าอยู่เหนือเสมอ ไม่ว่าคะแนนเฉลี่ยจะต่างกันแค่ไหน
+    const gone = show.map(r => !inR(p, r.id, c)), lv = show.filter(r => inR(p, r.id, c) && !gr(p, r.id, c.id).out).length;
+    return {c, per, gone, lv, jt, votes: c.votes ?? null, vsc, tot};
   });
-  const ranked = rows.filter(r => r.tot != null).sort((a, b) => b.tot - a.tot || a.c.no - b.c.no); ranked.forEach((r, i) => { r.rank = i + 1; });
+  const ranked = rows.filter(r => r.tot != null).sort((a, b) => b.lv - a.lv || b.tot - a.tot || a.c.no - b.c.no); ranked.forEach((r, i) => { r.rank = i + 1; });
   return {rows, ranked};
 }
 
@@ -56,7 +58,7 @@ function summaryVM(p) {
   // POPULAR VOTE = จำนวนโหวตดิบ แสดงเฉยๆ ไม่นำไปคิดคะแนน (โหวตแยกรอบ = รวมโหวตของรอบที่แสดง)
   const pvOf = r => { if (p.vmode !== 'round') return r.c.votes ?? null; const v = show.map(x => gr(p, x.id, r.c.id).votes).filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) : null; };
   const CC = colsCfg(p, single, n);
-  const rows = d.ranked.map(r => ({rank: r.rank, c: {no: r.c.no, name: r.c.name, country: r.c.country, img: r.c.img}, per: r.per, jt: r.jt, votes: r.votes, vsc: r.vsc, tot: r.tot, pvv: pvOf(r)}));
+  const rows = d.ranked.map(r => ({rank: r.rank, gone: r.gone, c: {no: r.c.no, name: r.c.name, country: r.c.country, img: r.c.img}, per: r.per, jt: r.jt, votes: r.votes, vsc: r.vsc, tot: r.tot, pvv: pvOf(r)}));
   return {title, show: show.map(x => ({id: x.id, name: x.name})), single, rows, C: CC, pv: p.showPV !== false && CC.tail <= 1, jn: p.showJN !== false, n, J: p.J.map(j => ({name: j.name, img: j.img})), agg: p.agg, jw: p.jw, per, sec};
 }
 export function buildDisplay(p, opts) {
@@ -65,6 +67,7 @@ export function buildDisplay(p, opts) {
   const vm = {col: p.col, L: LB(p), chip: p.showRound !== false && p.mode !== 'ranking' && rd.name ? rd.name : null, logo: null, bar: null, card: null, sum: null, rev: p.rev, t: {intro: tn(p.introSec, 4), hold: tn(p.holdSec, 0)}, z: {bar: tn(p.barScale, 100), card: tn(p.cardScale, 100), sum: tn(p.sumScale, 100)}};
   if (p.showLogo) vm.logo = p.logo || (force ? '' : null);
   if (p.hide && !force) return vm;
+  if (p.annOn && !force) { const ac = p.annId ? p.C.find(x => x.id === p.annId) : null; vm.chip = null; if (ac) vm.card = {c: {no: ac.no, name: ac.name, country: ac.country, img: ac.img}}; return vm; } // โหมดประกาศผู้เข้ารอบ: ขึ้นการ์ดชื่อของคนที่ประกาศอยู่ (ยังไม่กดถัดไป = จอว่าง)
   if (p.mode === 'ranking') { vm.sum = summaryVM(p); return vm; }
   let c = p.C.find(x => x.id === p.cur);
   if (force && (!c || !inR(p, p.round, c))) c = {id: -1, no: 1, name: 'ชื่อผู้เข้าประกวด', country: '', img: null};
