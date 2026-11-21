@@ -4,7 +4,7 @@ const J = (d, s = 200) => new Response(JSON.stringify(d), { status: s, headers: 
 const eq = (a, b) => { if (!a || !b || a.length !== b.length) return false; let r = 0; for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i); return r === 0; };
 const txt = (s, n = 100) => String(s ?? '').trim().slice(0, n);
 const r2 = n => Math.round(n * 100) / 100;
-const DEF = { max: '10', jw: '100', vm: 'share', agg: 'avg', vmode: 'all', rank: '0', mode: 'current', hide: '0', pre: 'dash', introSec: '4', holdSec: '0', sumPer: '10', sumSec: '8', showPV: '1', sumScale: '100', barScale: '100', cardScale: '100', lang: 'th', showLogo: '0', showRound: '1', auto: '0', c1: '#e3b95a', c2: '#1c1006', c3: '#f4e9d3', round: '0', cur: '0', ann: '[]', annAt: '0', annI: '-1' };
+const DEF = { max: '10', jw: '100', vm: 'share', agg: 'avg', vmode: 'all', rank: '0', mode: 'current', hide: '0', pre: 'dash', introSec: '4', holdSec: '0', sumPer: '10', sumSec: '8', showPV: '1', sumScale: '100', barScale: '100', cardScale: '100', lang: 'th', showLogo: '0', showRound: '1', auto: '0', c1: '#e3b95a', c2: '#1c1006', c3: '#f4e9d3', round: '0', cur: '0', ann: '[]', annAt: '0', annI: '-1', annEnd: '0' };
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
 async function getS(env, pg) {
@@ -111,6 +111,20 @@ async function autoHide(env, pg, at) {
   await ahSet(env, pg, 0); await setS(env, pg, 'hide', '1'); await bump(env, pg);
   return true;
 }
+// จบการประกาศเข้ารอบ: ซ่อนจอ แล้วไปรอบถัดไป (คนแรกของรอบนั้น) เหมือนกดเริ่มรอบใหม่ จอยังซ่อนอยู่จนกว่าจะกด "แสดงจอ"
+async function finishAnn(env, pg) {
+  const s = await getS(env, pg), rd = await curRound(env, pg, s);
+  await setS(env, pg, 'annAt', 0); await setS(env, pg, 'annEnd', 0); await setS(env, pg, 'hide', '1');
+  const nx = rd ? await env.DB.prepare('SELECT id FROM rounds WHERE pg=? AND id>? ORDER BY id LIMIT 1').bind(pg, rd.id).first() : null;
+  if (nx) { await setS(env, pg, 'round', nx.id); await setS(env, pg, 'cur', await firstContestant(env, pg, nx.id)); }
+}
+// การ์ดคนสุดท้ายขึ้นจอแล้ว (annEnd = เวลาที่เริ่มขึ้น) พอการ์ดเฟดหายแล้วให้จบการประกาศเอง เซิร์ฟเวอร์เช็กตอนมีคนโพลล์ /api/rev
+async function annAutoEnd(env, pg, at) {
+  const s = await getS(env, pg);
+  if (!(+s.annAt > 0)) { await setS(env, pg, 'annEnd', 0); return false; }
+  if (!(+s.introSec > 0) || Date.now() < at + +s.introSec * 1000 + 3500) return false;
+  await finishAnn(env, pg); await bump(env, pg); return true;
+}
 const setReveal = (env, rid, cid, on) => env.DB.prepare('INSERT INTO results(round_id,contestant_id,revealed) VALUES(?,?,?) ON CONFLICT(round_id,contestant_id) DO UPDATE SET revealed=excluded.revealed').bind(rid, cid, on ? 1 : 0).run();
 
 async function judgeSubmit(env, me, b) {
@@ -137,7 +151,7 @@ async function adminAction(env, a, b, pg, role) {
   const db = env.DB, who = role === 'super' ? 'ผู้ดูแลหลัก' : 'แอดมินเวที', id = +b.id || 0;
   const s = await getS(env, pg), rd = await curRound(env, pg, s);
   const bad = m => J({ error: m }, 400);
-  if (['rd', 'cur'].includes(a) && +s.annAt > 0) await setS(env, pg, 'annAt', 0);
+  if (['rd', 'cur'].includes(a) && +s.annAt > 0) { await setS(env, pg, 'annAt', 0); await setS(env, pg, 'annEnd', 0); }
   switch (a) {
     case 'addc': {
       const name = txt(b.name); if (!name) return bad('กรุณากรอกชื่อ');
@@ -237,7 +251,7 @@ async function adminAction(env, a, b, pg, role) {
       if (+s.annAt > 0) { // กำลังประกาศเข้ารอบ: ถัดไป/ก่อนหน้า = เลื่อนการ์ดชื่อ (ถัดไปหลังคนสุดท้าย = จบการประกาศ)
         let ids = []; try { ids = JSON.parse(s.ann); } catch (e) {}
         const i = +s.annI, ni = b.dir === 'prev' ? Math.max(-1, i - 1) : i + 1;
-        if (ni >= ids.length) { await setS(env, pg, 'annAt', 0); await setS(env, pg, 'hide', '1'); } else await setS(env, pg, 'annI', ni);
+        if (ni >= ids.length) await finishAnn(env, pg); else { await setS(env, pg, 'annI', ni); await setS(env, pg, 'annEnd', ni === ids.length - 1 ? Date.now() : 0); }
         break;
       }
       const l = (await db.prepare('SELECT c.id FROM contestants c WHERE c.pg=? AND ' + NOT_ELIM + ' ORDER BY c.no,c.id').bind(pg, rd.id).all()).results.map(x => x.id);
@@ -275,7 +289,7 @@ async function adminAction(env, a, b, pg, role) {
       await setS(env, pg, 'ann', JSON.stringify(ids)); await setS(env, pg, 'annI', -1); await setS(env, pg, 'annAt', Date.now());
       await setS(env, pg, 'hide', '0'); await setS(env, pg, 'mode', 'current'); break;
     }
-    case 'annstop': { await setS(env, pg, 'annAt', 0); await setS(env, pg, 'hide', '1'); break; }
+    case 'annstop': { await setS(env, pg, 'annAt', 0); await setS(env, pg, 'annEnd', 0); await setS(env, pg, 'hide', '1'); break; }
     case 'revmany': {
       const ids = await ownIds(env, pg, b.ids); if (!rd || !ids.length) break;
       await db.batch(ids.map(cid => db.prepare('INSERT INTO results(round_id,contestant_id,revealed) VALUES(?,?,?) ON CONFLICT(round_id,contestant_id) DO UPDATE SET revealed=excluded.revealed').bind(rd.id, cid, b.on ? 1 : 0))); break;
@@ -408,9 +422,12 @@ export default {
       if (p === 'pageants' && m === 'GET') return J((await env.DB.prepare('SELECT id,name FROM pageants ORDER BY id').all()).results);
       if (p === 'rev' && m === 'GET') {
         const pgId = +url.searchParams.get('pg') || 0;
-        const r = await env.DB.prepare("SELECT rev,(SELECT value FROM settings WHERE pg=pageants.id AND key='ahAt') ah FROM pageants WHERE id=?").bind(pgId).first();
+        const r = await env.DB.prepare("SELECT rev,(SELECT value FROM settings WHERE pg=pageants.id AND key='ahAt') ah,(SELECT value FROM settings WHERE pg=pageants.id AND key='annEnd') ae FROM pageants WHERE id=?").bind(pgId).first();
         if (!r) return J({ error: 'ไม่พบเวที' }, 404);
-        if (+r.ah > 0 && (await autoHide(env, pgId, +r.ah))) return J({ rev: (await env.DB.prepare('SELECT rev FROM pageants WHERE id=?').bind(pgId).first()).rev });
+        let chg = false;
+        if (+r.ah > 0 && (await autoHide(env, pgId, +r.ah))) chg = true;
+        if (+r.ae > 0 && (await annAutoEnd(env, pgId, +r.ae))) chg = true;
+        if (chg) return J({ rev: (await env.DB.prepare('SELECT rev FROM pageants WHERE id=?').bind(pgId).first()).rev });
         return J({ rev: r.rev });
       }
       if (p === 'display' && m === 'GET') {
