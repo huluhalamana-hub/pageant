@@ -7,7 +7,7 @@ const txt = (s, n = 100) => String(s ?? '').trim().slice(0, n);
 const nm = (s, n = 100) => txt(s, n).toUpperCase();
 const UP = s => String(s ?? '').toUpperCase();
 const r2 = n => Math.round(n * 100) / 100;
-const DEF = { max: '10', jw: '100', vm: 'share', agg: 'avg', vmode: 'all', rank: '0', mode: 'current', hide: '0', pre: 'dash', introSec: '4', holdSec: '0', sumPer: '10', sumSec: '8', showPV: '1', showJN: '1', sumScale: '100', barScale: '100', cardScale: '100', lang: 'th', showLogo: '0', showRound: '1', auto: '0', c1: '#e3b95a', c2: '#1c1006', c3: '#f4e9d3', round: '0', cur: '0', ann: '[]', annAt: '0', annI: '-1', annEnd: '0' };
+const DEF = { max: '10', jw: '100', vm: 'share', agg: 'avg', vmode: 'all', rank: '0', mode: 'current', hide: '0', pre: 'dash', introSec: '4', holdSec: '0', sumPer: '10', sumSec: '8', showPV: '1', showJN: '1', sumScale: '100', barScale: '100', cardScale: '100', lang: 'th', showLogo: '0', showRound: '1', auto: '0', c1: '#e3b95a', c2: '#1c1006', c3: '#f4e9d3', round: '0', cur: '0', ann: '[]', annAt: '0', annI: '-1', annEnd: '0', qcfg: '{}' };
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
 // ---------- CO-ADMIN: รหัสผู้ช่วยแอดมินของแต่ละเวที ติ๊กสิทธิ์ได้ (edit=แก้ไขข้อมูล/ตั้งค่า, scores=แก้คะแนน, advance=จัดการผู้เข้ารอบ, screen=สั่งขึ้นจอ) ----------
@@ -20,7 +20,7 @@ const cleanPerms = o => { const r = {}; PKEYS.forEach(k => (r[k] = !!(o && o[k])
 const PERM = {
   addc: 'edit', addcs: 'edit', editc: 'edit', delc: 'edit', delmany: 'edit', addj: 'edit', editj: 'edit', jcode: 'edit', delj: 'edit', rdadd: 'edit', rdren: 'edit', rddel: 'edit', intotal: 'edit', img: 'edit',
   setscores: 'scores', savevotes: 'scores',
-  out: 'advance', outmany: 'advance', rd: 'advance', qualify: 'advance',
+  out: 'advance', outmany: 'advance', rd: 'advance', qualify: 'advance', qset: 'advance',
   cur: 'screen', step: 'screen', reveal: 'screen', revmany: 'screen', annstart: 'screen', annstop: 'screen',
   coadd: 'admin', coedit: 'admin', cocode: 'admin', codel: 'admin',
 };
@@ -54,6 +54,7 @@ async function snapshot(env, pgId, opt = {}) {
     showLogo: s.showLogo === '1', showRound: s.showRound === '1', auto: s.auto === '1', col: { c1: s.c1, c2: s.c2, c3: s.c3 }, logo: iu('logo', pgId), round, cur: +s.cur,
     annOn: +s.annAt > 0, annIds: +s.annAt > 0 ? (() => { try { return JSON.parse(s.ann); } catch (e) { return []; } })() : [], annN: (() => { try { return JSON.parse(s.ann).length; } catch (e) { return 0; } })(), annI: +s.annI,
     annId: +s.annAt > 0 ? ((() => { try { return JSON.parse(s.ann); } catch (e) { return []; } })()[+s.annI] || 0) : 0,
+    qcfg: (() => { try { const o = JSON.parse(s.qcfg); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; } })(),
     rounds: rounds.map(r => ({ id: r.id, name: UP(r.name), inTotal: !!r.in_total })),
     C: cs.map(c => ({ id: c.id, no: c.no, name: UP(c.name), country: UP(c.country), votes: c.votes, img: iu('contestant', c.id) })),
     J: js.map(j => ({ id: j.id, name: UP(j.name), img: iu('judge', j.id), ...(opt.codes ? { code: j.code } : {}) })),
@@ -330,6 +331,16 @@ async function adminAction(env, a, b, pg, role, me) {
       if (act.length) await db.batch(act.map(cid => db.prepare('INSERT INTO results(round_id,contestant_id,revealed,is_out) VALUES(?,?,0,?) ON CONFLICT(round_id,contestant_id) DO UPDATE SET is_out=excluded.is_out').bind(rd.id, cid, yes.has(cid) ? 0 : 1)));
       break;
     }
+    case 'qset': { // ตั้งจำนวนผู้เข้ารอบ (รวมที่นั่ง Popular Vote) และเปิด/ปิดที่นั่งโหวตของแต่ละรอบ เก็บเป็น JSON ใน settings ไม่ต้องแก้ตารางฐานข้อมูล
+      if (!(await ownRound(env, id, pg))) return bad('ไม่พบรอบ');
+      const n = b.n === '' || b.n == null ? 0 : Number(b.n);
+      if (!Number.isInteger(n) || n < 0 || n > 1000) return bad('จำนวนผู้เข้ารอบต้องเป็นจำนวนเต็ม 0 ขึ้นไป (0 = ยังไม่ตั้ง)');
+      let q = {}; try { q = JSON.parse(s.qcfg) || {}; } catch (e) {}
+      const live = new Set((await db.prepare('SELECT id FROM rounds WHERE pg=?').bind(pg).all()).results.map(x => String(x.id))), o = {};
+      for (const k of Object.keys(q)) if (live.has(k)) o[k] = q[k];
+      o[id] = { n, pv: !!b.pv };
+      await setS(env, pg, 'qcfg', JSON.stringify(o)); break;
+    }
     case 'annstart': { // ประกาศผู้เข้ารอบ: สุ่มลำดับคนที่เข้ารอบ แล้วขึ้นการ์ดชื่อทีละคนอัตโนมัติ (ลำดับในรอบถัดไปยังเรียงตามเลขที่เหมือนเดิม)
       if (!rd) break;
       const outs = new Set((await db.prepare('SELECT contestant_id FROM results WHERE round_id=? AND is_out=1').bind(rd.id).all()).results.map(x => x.contestant_id));
@@ -465,9 +476,18 @@ async function deletePageant(env, id) {
 // คัดลอกข้อมูลจากเวทีเดิมไปเวทีใหม่ตามที่ติ๊ก: settings=การตั้งค่าไลฟ์/คะแนน colors=สี logo=โลโก้ contestants=ผู้เข้าประกวด(+รูป) judges=กรรมการ(+รหัส+รูป) rounds=ทำที่ผู้เรียกแล้ว
 // ไม่คัดลอก: คะแนน ผลการเปิดคะแนน/ตกรอบ ประวัติ CO-ADMIN และสถานะหน้าจอขณะนั้น (รอบที่ใช้ คนปัจจุบัน ซ่อนจอ โหมด)
 async function copyParts(env, from, to, parts) {
-  const db = env.DB, now = Date.now(), RUNTIME = new Set(['round', 'cur', 'hide', 'mode', 'rank', 'ahAt']), COL = new Set(['c1', 'c2', 'c3']);
+  const db = env.DB, now = Date.now(), RUNTIME = new Set(['round', 'cur', 'hide', 'mode', 'rank', 'ahAt', 'qcfg']), COL = new Set(['c1', 'c2', 'c3']);
   const st = (await db.prepare('SELECT key,value FROM settings WHERE pg=?').bind(from).all()).results.filter(x => !RUNTIME.has(x.key) && (COL.has(x.key) ? parts.colors : x.key === 'showLogo' ? parts.logo : parts.settings));
   for (let i = 0; i < st.length; i += 40) await db.batch(st.slice(i, i + 40).map(x => db.prepare('INSERT INTO settings(pg,key,value) VALUES(?,?,?) ON CONFLICT(pg,key) DO UPDATE SET value=excluded.value').bind(to, x.key, x.value)));
+  if (parts.settings && parts.rounds) { // ค่าคัดผู้เข้ารอบผูกกับรหัสรอบ: รอบใหม่ได้รหัสใหม่ จึงจับคู่ตามลำดับรอบแล้วแปลงรหัสให้
+    const q = await db.prepare("SELECT value FROM settings WHERE pg=? AND key='qcfg'").bind(from).first();
+    if (q) {
+      let o = {}; try { o = JSON.parse(q.value) || {}; } catch (e) {}
+      const fr = (await db.prepare('SELECT id FROM rounds WHERE pg=? ORDER BY id').bind(from).all()).results, tr = (await db.prepare('SELECT id FROM rounds WHERE pg=? ORDER BY id').bind(to).all()).results, m = {};
+      fr.forEach((x, i) => { if (tr[i] && o[x.id]) m[tr[i].id] = o[x.id]; });
+      if (Object.keys(m).length) await setS(env, to, 'qcfg', JSON.stringify(m));
+    }
+  }
   if (parts.logo) await db.prepare("INSERT INTO images(kind,id,data,updated) SELECT 'logo', ?, data, ? FROM images WHERE kind='logo' AND id=?").bind(to, now, from).run();
   const jobs = [];
   if (parts.contestants) jobs.push({ kind: 'contestant', rows: (await db.prepare('SELECT id,no,name,country FROM contestants WHERE pg=? ORDER BY no,id').bind(from).all()).results, ins: x => db.prepare('INSERT INTO contestants(pg,no,name,country) VALUES(?,?,?,?)').bind(to, x.no, x.name, x.country) });
