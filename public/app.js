@@ -10,7 +10,7 @@ function fit() { document.querySelectorAll('.sw').forEach(w => { const c = w.que
 const topbar = (t, back) => `<div class="top noprint"><div><b>${t}</b></div><div class="row">${back ? '<button data-a="back">← ผู้ดูแลหลัก</button>' : ''}<button data-a="logout">ออกจากระบบ</button></div></div>`;
 function liveV(p) {
   const c = p.C.find(x => x.id === p.cur), rs = c ? gr(p, p.round, c.id) : null;
-  const st = p.hide ? 'ซ่อนแถบคะแนนอยู่ (ชื่อรอบและโลโก้ที่เปิดไว้ยังแสดง)' : !c || !inR(p, p.round, c) ? 'แสดงเฉพาะชื่อรอบ (ยังไม่ได้เลือกผู้เข้าประกวด)' : qcfgOf(p, p.round).nm ? (qcfgOf(p, p.round).nst === 'name' ? 'แถบรูปและชื่อของ ' + c.name + ' (รอบนี้ไม่แสดงคะแนนบนจอ)' : 'การ์ดชื่อของ ' + c.name + ' (เฟดหายเองตามเวลา · รอบนี้ไม่แสดงคะแนนบนจอ)') : rs.rev ? 'กำลังแสดงคะแนนของ ' + c.name : ({name: 'แสดงเฉพาะชื่อ รอเปิดคะแนน', dash: 'แสดงช่องคะแนนเป็นขีด รอเปิดคะแนน', none: 'จอว่างเปล่า รอเปิดคะแนน', card: 'การ์ดชื่อ (เฟดหายเองแล้วจอว่าง) รอเปิดคะแนน'})[p.pre || 'dash'];
+  const st = p.hide ? 'ซ่อนแถบคะแนนอยู่ (ชื่อรอบและโลโก้ที่เปิดไว้ยังแสดง)' : !c || !inR(p, p.round, c) ? 'แสดงเฉพาะชื่อรอบ (ยังไม่ได้เลือกผู้เข้าประกวด)' : qcfgOf(p, p.round).nm ? ({name: 'แถบรูปและชื่อของ ' + c.name, card: 'การ์ดชื่อของ ' + c.name + ' (เฟดหายเองตามเวลา)'}[p.pre] || 'จอว่างเปล่า') + ' (รอบนี้ไม่แสดงคะแนนบนจอ)' : rs.rev ? 'กำลังแสดงคะแนนของ ' + c.name : ({name: 'แสดงเฉพาะชื่อ รอเปิดคะแนน', dash: 'แสดงช่องคะแนนเป็นขีด รอเปิดคะแนน', none: 'จอว่างเปล่า รอเปิดคะแนน', card: 'การ์ดชื่อ (เฟดหายเองแล้วจอว่าง) รอเปิดคะแนน'})[p.pre || 'dash'];
   return `<p class="mu" style="margin:8px 0">สถานะจอตอนนี้: <b>${esc(st)}</b><br>ชื่อรอบที่มุมซ้ายบนและโลโก้ (ถ้าเปิดไว้) แสดงตลอด ตอนยังไม่เลือกผู้เข้าประกวดหรือกดซ่อน จะไม่มีแถบหรือข้อความอื่นใดบนจอ ถ้าไม่ต้องการชื่อรอบ ปิดได้ที่แท็บจัดการ</p>
   <div class="row"><button data-a="hide" class="${p.hide ? 'p' : ''}">${p.hide ? 'แสดงจอ' : 'ซ่อนจอทั้งหมด'}</button><button data-a="revcur" ${c ? '' : 'disabled'}>${rs && rs.rev ? 'ซ่อนคะแนนคนนี้' : 'เปิดคะแนนคนนี้'}</button><button data-a="prev">← คนก่อนหน้า</button><button data-a="next">คนถัดไป →</button></div>`;
 }
@@ -112,7 +112,7 @@ const qualSel = (p, pl) => QS.round === p.round && QS.ids ? QS.ids : pl.sel;
 const qualCnt = (p, pl, sel) => { const ed = sel !== pl.sel && (sel.size !== pl.sel.size || [...sel].some(i => !pl.sel.has(i))); return `ติ๊กเข้ารอบ <b>${sel.size}</b> คน · ตกรอบ <b>${pl.pool.length - sel.size}</b> คน${ed ? ' · <span class="bad">แก้เองจากที่ระบบคำนวณ</span>' : ''}`; };
 function qRoundCfg(p, x) {
   const c = qcfgOf(p, x.id);
-  return `<div data-need="advance" style="margin-top:6px"><div class="row" style="align-items:center"><span class="mu">ผู้เข้ารอบ</span><input data-qn="${x.id}" type="number" min="0" max="1000" step="1" value="${c.n || ''}" placeholder="ว่าง = ไม่คัด" style="max-width:110px;flex:none"><span class="mu">คน</span><label style="margin:0;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" data-qp="${x.id}" ${c.pv ? 'checked' : ''} style="width:auto"> ที่นั่ง Popular Vote</label><button data-a="qset" data-id="${x.id}">บันทึก</button></div><label style="margin:6px 0 0;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" data-qm="${x.id}" ${c.nm ? 'checked' : ''} style="width:auto"> รอบนี้แสดงแค่การ์ดชื่อบนจอ (ไม่มีแถบคะแนน)</label>${c.nm ? `<div class="row" style="margin:4px 0 0;gap:14px"><label style="margin:0;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="radio" name="qs${x.id}" data-qs="${x.id}" value="card" ${c.nst !== 'name' ? 'checked' : ''} style="width:auto"> การ์ดชื่อโปร่งใส (นับถอยหลังแล้วเฟดหาย)</label><label style="margin:0;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="radio" name="qs${x.id}" data-qs="${x.id}" value="name" ${c.nst === 'name' ? 'checked' : ''} style="width:auto"> แถบรูปและชื่อ (ค้างไว้)</label></div>` : ''}${c.nm ? '<p class="mu" style="margin:2px 0 0">กรรมการให้คะแนนปกติและเข้าตารางสรุปปกติ · คนสุดท้ายเฟดแล้ว ถ้ากรรมการส่งครบ จะซ่อนจอแล้วไปรอบถัดไปเอง (ถ้าตั้งจำนวนผู้เข้ารอบไว้ จะรอประกาศเข้ารอบก่อน) · ต้องตั้ง "การ์ดชื่อ" (วินาที) มากกว่า 0</p>' : ''}</div>`;
+  return `<div data-need="advance" style="margin-top:6px"><div class="row" style="align-items:center"><span class="mu">ผู้เข้ารอบ</span><input data-qn="${x.id}" type="number" min="0" max="1000" step="1" value="${c.n || ''}" placeholder="ว่าง = ไม่คัด" style="max-width:110px;flex:none"><span class="mu">คน</span><label style="margin:0;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" data-qp="${x.id}" ${c.pv ? 'checked' : ''} style="width:auto"> ที่นั่ง Popular Vote</label><button data-a="qset" data-id="${x.id}">บันทึก</button></div><label style="margin:6px 0 0;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" data-qm="${x.id}" ${c.nm ? 'checked' : ''} style="width:auto"> ไม่แสดงคะแนน</label>${c.nm ? '<p class="mu" style="margin:2px 0 0">กรรมการให้คะแนนปกติและเข้าตารางสรุปปกติ · คนสุดท้ายเฟดแล้ว ถ้ากรรมการส่งครบ จะซ่อนจอแล้วไปรอบถัดไปเอง (ถ้าตั้งจำนวนผู้เข้ารอบไว้ จะรอประกาศเข้ารอบก่อน) · ต้องตั้ง "การ์ดชื่อ" (วินาที) มากกว่า 0</p>' : ''}</div>`;
 }
 function qualV(p) {
   const rd = p.rounds.find(x => x.id === p.round); if (!rd) return '';
@@ -189,7 +189,7 @@ function manageV(p) {
   <div class="box" data-need="edit"><h2>การแสดงผลและคะแนน</h2><div class="row">${B('mode', 'current', 'แสดงผู้เข้าประกวดปัจจุบัน', p.mode === 'current')}${B('mode', 'ranking', 'แสดงอันดับ', p.mode === 'ranking')}</div>
     ${p.mode === 'ranking' ? `<label>อันดับที่จะแสดง</label><div class="row">${B('rank', 0, 'สรุปคะแนน (รอบที่ติ๊ก)', p.rank === 0)}${p.rounds.map(x => B('rank', x.id, esc(x.name), p.rank === x.id)).join('')}</div>` : ''}
     <label>ก่อนเปิดคะแนน จอแสดง</label><div class="row">${B('pre', 'name', 'เฉพาะรูปและชื่อ', p.pre === 'name')}${B('pre', 'dash', 'ช่องคะแนนเป็นขีด', (p.pre || 'dash') === 'dash')}${B('pre', 'none', 'ว่างจนกว่าจะเปิดคะแนน', p.pre === 'none')}${B('pre', 'card', 'การ์ดชื่อโปร่งใส (เฟดหายเอง)', p.pre === 'card')}</div>
-    <label>การ์ดชื่อค้างไว้ก่อนเฟดหาย (วินาที)</label><div class="row"><input id="introSec" type="number" min="0" max="600" step="0.5" value="${p.introSec}" style="max-width:120px;flex:none"><button data-a="introSec">บันทึก</button></div>
+    <label>การ์ดชื่อค้างไว้ก่อนเฟดหาย (วินาที · 0 = ค้างไว้ไม่เฟดเอง)</label><div class="row"><input id="introSec" type="number" min="0" max="600" step="0.5" value="${p.introSec}" style="max-width:120px;flex:none"><button data-a="introSec">บันทึก</button></div>
     <label>คะแนนค้างไว้ก่อนเฟดออก (วินาที · 0 = ค้างไว้ไม่เฟดเอง)</label><div class="row"><input id="holdSec" type="number" min="0" max="600" step="0.5" value="${p.holdSec}" style="max-width:120px;flex:none"><button data-a="holdSec">บันทึก</button></div><label>ขนาดการ์ดชื่อบนจอ (% · 100 = ปกติ)</label><div class="row"><input id="cardScale" type="number" min="30" max="150" value="${p.cardScale}" style="max-width:120px;flex:none"><button data-a="cardScale">บันทึก</button></div>
     <label>ขนาดตารางคะแนนรวมบนจอ (% · 100 = ปกติ · ตารางอยู่กึ่งกลางจอเสมอ)</label><div class="row"><input id="sumScale" type="number" min="30" max="150" value="${p.sumScale}" style="max-width:120px;flex:none"><button data-a="sumScale">บันทึก</button></div>
     <label>ขนาดแถบคะแนนบนจอ (% · 100 = ปกติ)</label><div class="row"><input id="barScale" type="number" min="30" max="150" value="${p.barScale}" style="max-width:120px;flex:none"><button data-a="barScale">บันทึก</button></div>
@@ -318,7 +318,7 @@ const varsOf = vm => `--c1:${vm.col.c1};--c2:${vm.col.c2};--c3:${vm.col.c3}`;
 /* ตัวอย่างจอในหน้าแอดมิน: ทำตามเวลาค้างของการ์ดชื่อ/คะแนนเหมือนจอไลฟ์จริง */
 const pv = {part: '', t0: 0, exp: false, tm: 0, timed: 0, vm: null};
 function pvVM(p) {
-  const vm = buildDisplay(p), part = partOf(vm), timed = vm.card ? vm.t.intro : vm.bar && vm.bar.R ? vm.t.hold : 0;
+  const vm = buildDisplay(p), part = partOf(vm), timed = vm.card ? vm.t.intro : vm.bar ? (vm.bar.R ? vm.t.hold : vm.t.intro) : 0;
   if (part !== pv.part) { pv.part = part; pv.t0 = Date.now(); pv.exp = false; }
   if (timed > 0 && !pv.exp && Date.now() - pv.t0 >= timed * 1000) pv.exp = true;
   pv.timed = timed; pv.vm = vm;
@@ -380,7 +380,7 @@ function displayMode() {
     if (sk !== skey) { skey = sk; pidx = 0; }
     const np = vm0.sum ? sumPages(vm0.sum) : 1; if (pidx >= np) pidx = np - 1;
     const vm = {...vm0, pg: pidx};
-    const part = partOf(vm), timed = vm.card ? vm.t.intro : vm.bar && vm.bar.R ? vm.t.hold : vm.sum ? vm.sum.sec : 0;
+    const part = partOf(vm), timed = vm.card ? vm.t.intro : vm.bar ? (vm.bar.R ? vm.t.hold : vm.t.intro) : vm.sum ? vm.sum.sec : 0;
     if (part !== expired) expired = '';
     const isExp = !!timed && part === expired, sh = isExp ? {...vm, bar: null, card: null, sum: null} : vm;
     const html = innerVM(sh), k = varsOf(vm) + html, shownPart = isExp ? '' : part;
@@ -446,8 +446,8 @@ function fadeKind(a, b) {
 }
 // รวมค่าตั้งคัดผู้เข้ารอบ/แสดงแค่ชื่อของรอบหนึ่งจากหน้าจอ (over = ค่าที่เพิ่งเปลี่ยน)
 function qArgs(id, over) {
-  const q = s => document.querySelector(`[data-${s}="${id}"]`), r = document.querySelector(`[data-qs="${id}"]:checked`);
-  return {id, n: q('qn').value, pv: q('qp').checked, nm: q('qm').checked, nst: r ? r.value : 'card', ...(over || {})};
+  const q = s => document.querySelector(`[data-${s}="${id}"]`);
+  return {id, n: q('qn').value, pv: q('qp').checked, nm: q('qm').checked, ...(over || {})};
 }
 async function act(a, body) {
   const fk = fadeKind(a, body), pv = fk ? document.querySelector('.sw .cv') : null;
@@ -631,7 +631,6 @@ const onChange = e => {
   if (['c1', 'c2', 'c3'].includes(t.id)) return act('settings', {k: 'colors', v: ['c1', 'c2', 'c3'].map(i => $('#' + i).value).join(',')});
   if (t.dataset && t.dataset.qp) { QS = {round: 0, ids: null}; const rid = +t.dataset.qp; return act('qset', qArgs(rid, {pv: t.checked})); }
   if (t.dataset && t.dataset.qm) { QS = {round: 0, ids: null}; const rid = +t.dataset.qm; return act('qset', qArgs(rid, {nm: t.checked})); }
-  if (t.dataset && t.dataset.qs) { QS = {round: 0, ids: null}; const rid = +t.dataset.qs; return act('qset', qArgs(rid, {nst: t.value})); }
   if (t.dataset && t.dataset.q) { const p = ST.p, pl = qualPlan(p, p.round); if (!(QS.round === p.round && QS.ids)) QS = {round: p.round, ids: new Set(pl.sel)}; const i = +t.dataset.q; if (t.checked) QS.ids.add(i); else QS.ids.delete(i); const row = t.closest('.ci'); if (row) row.classList.toggle('out', !t.checked); const q = $('#qcnt'); if (q) q.innerHTML = qualCnt(p, pl, QS.ids); return; }
   if (t.id === 'showlogo') return act('settings', {k: 'showLogo', v: t.checked ? '1' : '0'});
   if (t.id === 'showjn') return act('settings', {k: 'showJN', v: t.checked ? '1' : '0'});

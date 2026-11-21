@@ -48,7 +48,7 @@ export function sumData(p, show, opts) {
 
 // ---------- คัดผู้เข้ารอบ + ที่นั่ง Popular Vote (wildcard) ----------
 // ค่าตั้งต่อรอบเก็บที่ p.qcfg = {รหัสรอบ: {n: จำนวนผู้เข้ารอบ "รวมที่นั่งโหวต" แล้ว, pv: ใช้ที่นั่งโหวตในรอบนี้ไหม (ไม่ตั้ง = เปิด)}}
-export const qcfgOf = (p, rid) => { const x = (p.qcfg || {})[rid] || {}; return {n: Math.max(0, Math.floor(+x.n || 0)), pv: x.pv !== false, nm: !!x.nm, nst: x.nst === 'name' ? 'name' : 'card'}; };
+export const qcfgOf = (p, rid) => { const x = (p.qcfg || {})[rid] || {}; return {n: Math.max(0, Math.floor(+x.n || 0)), pv: x.pv !== false, nm: !!x.nm}; };
 const rv4 = v => v == null ? null : Math.round(v * 1e4), nv = v => v == null ? -Infinity : v, cmpDesc = (x, y) => nv(y) > nv(x) ? 1 : nv(y) < nv(x) ? -1 : 0;
 // คำนวณว่าใครควรเข้ารอบ (ใช้แสดงในหน้าแอดมินเท่านั้น ไม่ขึ้นจอจนกว่าแอดมินจะกดประกาศ)
 // 1) เรียงตามคะแนนกรรมการเฉลี่ยของรอบนี้ (เสมอ → ดูโหวต → เลขที่) แล้วตัดที่ n คน
@@ -108,11 +108,12 @@ export function buildDisplay(p, opts) {
   if (force && (!c || !inR(p, p.round, c))) c = {id: -1, no: 1, name: 'ชื่อผู้เข้าประกวด', country: '', img: null};
   if (!c || (c.id !== -1 && !inR(p, p.round, c))) return vm;
   const qn = qcfgOf(p, p.round);
-  if (!force && qn.nm) { // รอบที่ตั้งให้แสดงแค่ชื่อ: ไม่มีคะแนนบนจอ เลือกได้ 2 แบบ — การ์ดชื่อโปร่งใส (นับถอยหลังแล้วเฟด) หรือแถบรูปและชื่อ (ค้างไว้)
-    const cc = {no: c.no, name: c.name, country: c.country, img: c.img};
-    if (qn.nst === 'name') vm.bar = {c: cc, judges: p.J.map(j => ({name: j.name, img: j.img})), R: null, cols: false}; else vm.card = {c: cc};
+  if (!force && qn.nm) { // รอบ "ไม่แสดงคะแนน": ไม่มีแถบคะแนนบนจอ หน้าตาตามตัวเลือก "ก่อนเปิดคะแนน จอแสดง" (ขีด = ว่าง เพราะรอบนี้ไม่มีช่องคะแนนให้ขีด)
+    const pre = p.pre || 'dash', cc = {no: c.no, name: c.name, country: c.country, img: c.img};
+    if (pre === 'card') vm.card = {c: cc};
+    else if (pre === 'name') vm.bar = {c: cc, judges: p.J.map(j => ({name: j.name, img: j.img})), R: null, cols: false};
     return vm;
-  } // รอบที่ตั้งให้แสดงแค่การ์ดชื่อ: ไม่มีแถบคะแนนบนจอ (กรรมการให้คะแนน/ตารางสรุปปกติ)
+  } // กรรมการให้คะแนน/ตารางสรุปปกติ
   const k = calc(p, p.round, c); let R = k.rev ? {scores: k.scores, avg: k.avg} : null;
   if (!R && force) { const sc = p.J.map((_, i) => [8, 7.5, 9, 8.5, 7][i % 5]); R = {scores: sc, avg: sc.reduce((a, b) => a + b, 0) / (sc.length || 1)}; }
   const pre = p.pre || 'dash';
