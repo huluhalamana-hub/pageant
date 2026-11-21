@@ -18,8 +18,8 @@ const parsePerms = s => { let o = {}; try { o = JSON.parse(s || '{}') || {}; } c
 const cleanPerms = o => { const r = {}; PKEYS.forEach(k => (r[k] = !!(o && o[k]))); return JSON.stringify(r); };
 // สิทธิ์ที่แต่ละคำสั่งต้องใช้ (admin = เฉพาะแอดมินเวที/ผู้ดูแลหลัก CO-ADMIN ทำไม่ได้) คำสั่งที่ไม่อยู่ในรายการ CO-ADMIN จะทำไม่ได้
 const PERM = {
-  addc: 'edit', addcs: 'edit', editc: 'edit', delc: 'edit', delmany: 'edit', addj: 'edit', editj: 'edit', jcode: 'edit', delj: 'edit', rdadd: 'edit', rdren: 'edit', rddel: 'edit', intotal: 'edit', img: 'edit',
-  setscores: 'scores', savevotes: 'scores',
+  addc: 'edit', addcs: 'edit', editc: 'edit', editcs: 'edit', delc: 'edit', delmany: 'edit', addj: 'edit', editj: 'edit', jcode: 'edit', delj: 'edit', rdadd: 'edit', rdren: 'edit', rddel: 'edit', intotal: 'edit', img: 'edit',
+  setscores: 'scores', clearscores: 'scores', savevotes: 'scores',
   out: 'advance', outmany: 'advance', rd: 'advance', qualify: 'advance', qset: 'advance',
   cur: 'screen', step: 'screen', reveal: 'screen', revmany: 'screen', annstart: 'screen', annstop: 'screen',
   coadd: 'admin', coedit: 'admin', cocode: 'admin', codel: 'admin',
@@ -232,6 +232,20 @@ async function adminAction(env, a, b, pg, role, me) {
       await bump(env, pg);
       return J(warn ? { ok: true, warn } : { ok: true });
     }
+    case 'editcs': { // แก้ไขผู้เข้าประกวดหลายคนในครั้งเดียว (เลขที่ ชื่อ ประเทศ) ส่งมาเฉพาะแถวที่เปลี่ยน
+      const rows = Array.isArray(b.rows) ? b.rows : [];
+      if (!rows.length) return bad('ไม่มีรายการที่แก้');
+      if (rows.length > 100) return bad('แก้ได้ครั้งละไม่เกิน 100 คน');
+      const mine = new Map((await db.prepare('SELECT id,no FROM contestants WHERE pg=?').bind(pg).all()).results.map(x => [x.id, x.no])), ops = [];
+      for (const r of rows) {
+        const cid = Number(r && r.id); if (!mine.has(cid)) return bad('ไม่พบผู้เข้าประกวดบางคน (อาจถูกลบไปแล้ว) รีเฟรชหน้าแล้วลองใหม่');
+        const name = nm(r.name); if (!name) return bad('มีแถวที่ชื่อว่าง กรุณากรอกชื่อ');
+        const no = parseInt(r.no, 10); // เว้นเลขที่ว่าง = คงเลขเดิม
+        ops.push(db.prepare('UPDATE contestants SET no=?,name=?,country=? WHERE id=? AND pg=?').bind(Number.isFinite(no) ? Math.min(Math.max(no, 0), 99999) : mine.get(cid), name, nm(r.country) || null, cid, pg));
+      }
+      for (let i = 0; i < ops.length; i += 40) await db.batch(ops.slice(i, i + 40));
+      break;
+    }
     case 'editc': {
       if (!(await own(env, 'contestants', id, pg))) return bad('ไม่พบผู้เข้าประกวด');
       const name = nm(b.name); if (!name) return bad('กรุณากรอกชื่อ');
@@ -400,6 +414,14 @@ async function adminAction(env, a, b, pg, role, me) {
       }
       break;
     }
+    case 'clearscores': { // ล้างคะแนนกรรมการทั้งหมดของผู้เข้าประกวดคนนี้ในรอบที่ใช้อยู่ (บันทึกลงประวัติทุกคน) และซ่อนคะแนนที่เปิดอยู่ กรรมการส่งใหม่ได้ถ้าเป็นคนที่กำลังให้คะแนน
+      const c = await own(env, 'contestants', id, pg); if (!c) return bad('ไม่พบผู้เข้าประกวด'); if (!rd) return bad('ไม่พบรอบ');
+      const old = (await db.prepare('SELECT s.score,j.name FROM scores s JOIN judges j ON j.id=s.judge_id WHERE s.round_id=? AND s.contestant_id=?').bind(rd.id, id).all()).results;
+      if (!old.length) break;
+      for (const x of old) await logE(env, pg, who, rd.name, c.name, 'คะแนนของ ' + x.name, x.score, null);
+      await db.prepare('DELETE FROM scores WHERE round_id=? AND contestant_id=?').bind(rd.id, id).run();
+      await setReveal(env, rd.id, id, 0); break;
+    }
     case 'savevotes': {
       const mr = s.vmode === 'round', V = b.votes || {};
       const num = v => (v === '' || v == null ? null : (v !== true && Number.isFinite(Number(v)) && Number(v) >= 0 ? Math.round(Number(v)) : undefined));
@@ -456,7 +478,7 @@ async function adminAction(env, a, b, pg, role, me) {
     }
     default: return J({ error: 'not found' }, 404);
   }
-  if (['reveal', 'revmany', 'step', 'cur', 'rd', 'rddel', 'settings', 'out', 'outmany', 'delc', 'delmany'].includes(a)) await armAH(env, pg);
+  if (['reveal', 'revmany', 'clearscores', 'step', 'cur', 'rd', 'rddel', 'settings', 'out', 'outmany', 'delc', 'delmany'].includes(a)) await armAH(env, pg);
   await bump(env, pg);
   return J({ ok: true });
 }
