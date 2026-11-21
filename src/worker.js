@@ -377,7 +377,7 @@ async function adminAction(env, a, b, pg, role, me) {
       let q = {}; try { q = JSON.parse(s.qcfg) || {}; } catch (e) {}
       const live = new Set((await db.prepare('SELECT id FROM rounds WHERE pg=?').bind(pg).all()).results.map(x => String(x.id))), o = {};
       for (const k of Object.keys(q)) if (live.has(k)) o[k] = q[k];
-      o[id] = { n, pv: !!b.pv, nm: !!b.nm };
+      o[id] = { n, pv: !!b.pv, nm: !!b.nm, nst: b.nst === 'name' ? 'name' : 'card' };
       await setS(env, pg, 'qcfg', JSON.stringify(o)); break;
     }
     case 'annstart': { // ประกาศผู้เข้ารอบ: สุ่มลำดับคนที่เข้ารอบ แล้วขึ้นการ์ดชื่อทีละคนอัตโนมัติ (ลำดับในรอบถัดไปยังเรียงตามเลขที่เหมือนเดิม)
