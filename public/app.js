@@ -25,10 +25,10 @@ function controlV(p) {
   <p class="mu">ปุ่มลัดคีย์บอร์ด (ใช้ได้ในแท็บจอไลฟ์และควบคุมสด): เว้นวรรค = เปิด/ซ่อนคะแนน · H = ซ่อน/แสดงจอ · ลูกศรซ้าย/ขวา = คนก่อนหน้า/ถัดไป · R = สลับผู้เข้าประกวด/อันดับ</p>`;
 }
 function resultsV(p) {
-  const n = p.J.length, d = sumData(p, p.rounds), list = d.ranked.concat(d.rows.filter(r => r.tot == null)), C = colsCfg(p, false, n), cell0 = v => v == null ? '–' : fmtn(v); const cell = cell0;
+  const n = p.J.length, d = sumData(p, p.rounds), list = d.ranked.concat(d.rows.filter(r => r.tot == null)), C = colsCfg(p, false, n), cell = v => v == null ? '–' : fmtn(v);
   const inc = p.rounds.filter(x => x.inTotal !== false);
   return `<div class="box"><h2>สรุปผลทุกรอบ</h2><p class="mu">คะแนนแต่ละรอบเฉลี่ยกรรมการก่อน แล้วรวมรอบที่ติ๊ก "นับในคะแนนรวม" (${inc.map(x => esc(x.name)).join(', ') || 'ยังไม่ได้เลือกรอบ'}) แบบ${p.agg === 'sum' ? 'บวกรวม' : 'เฉลี่ย'} ${p.jw < 100 ? `ถ้ามีโหวต จะนำมารวมตามสัดส่วนกรรมการ ${p.jw}% / โหวต ${100 - p.jw}%` : 'ตอนนี้ใช้คะแนนกรรมการ 100% (ไม่คิดโหวต)'} เครื่องหมาย * คือรอบที่ไม่ถูกนับ</p>
-  <div style="overflow-x:auto"><table><thead><tr><th class="n" rowspan="2">อันดับ</th><th class="n" rowspan="2">เลขที่</th><th rowspan="2">ผู้เข้าประกวด</th>${p.rounds.map(r => `<th class="n" colspan="${C.g}">${esc(r.name)}${r.inTotal === false ? ' *' : ''}</th>`).join('')}<th class="n" colspan="${C.tail}">${C.tail > 1 ? 'คะแนนรวม' : 'รวม'}</th></tr><tr>${p.rounds.map(() => p.J.map(j => `<th class="n">${esc(j.name)}</th>`).join('') + '<th class="n">เฉลี่ย</th>' + (C.gv ? '<th class="n">โหวต</th>' : '')).join('')}${C.tail > 1 ? '<th class="n">คะแนนกรรมการ</th><th class="n">โหวต</th><th class="n">คะแนนโหวต</th><th class="n">รวม</th>' : ''}</tr></thead><tbody>${list.map(r => `<tr><td class="n">${r.rank || '–'}</td><td class="n">${esc(r.c.no)}</td><td>${esc(r.c.country ? r.c.country + ' · ' + r.c.name : r.c.name)}</td>${r.per.map((x, xi) => { const cell = r.gone[xi] ? () => '' : cell0; return p.J.map((j, k) => `<td class="n">${cell(x && x.scores[k])}</td>`).join('') + `<td class="n"><b>${cell(x && x.avg)}</b></td>` + (C.gv ? `<td class="n">${cell(x && x.vote)}</td>` : ''); }).join('')}${C.tail > 1 ? `<td class="n">${cell(r.jt)}</td><td class="n">${r.votes == null ? '–' : r.votes}</td><td class="n">${cell(r.vsc)}</td><td class="n"><b>${cell(r.tot)}</b></td>` : `<td class="n"><b>${cell(r.tot)}</b></td>`}</tr>`).join('')}</tbody></table></div>
+  <div style="overflow-x:auto"><table><thead><tr><th class="n" rowspan="2">อันดับ</th><th class="n" rowspan="2">เลขที่</th><th rowspan="2">ผู้เข้าประกวด</th>${p.rounds.map(r => `<th class="n" colspan="${C.g}">${esc(r.name)}${r.inTotal === false ? ' *' : ''}</th>`).join('')}<th class="n" colspan="${C.tail}">${C.tail > 1 ? 'คะแนนรวม' : 'รวม'}</th></tr><tr>${p.rounds.map(() => p.J.map(j => `<th class="n">${esc(j.name)}</th>`).join('') + '<th class="n">เฉลี่ย</th>' + (C.gv ? '<th class="n">โหวต</th>' : '')).join('')}${C.tail > 1 ? '<th class="n">คะแนนกรรมการ</th><th class="n">โหวต</th><th class="n">คะแนนโหวต</th><th class="n">รวม</th>' : ''}</tr></thead><tbody>${list.map(r => `<tr><td class="n">${r.rank || '–'}</td><td class="n">${esc(r.c.no)}</td><td>${esc(r.c.country ? r.c.country + ' · ' + r.c.name : r.c.name)}</td>${r.per.map(x => p.J.map((j, k) => `<td class="n">${cell(x && x.scores[k])}</td>`).join('') + `<td class="n"><b>${cell(x && x.avg)}</b></td>` + (C.gv ? `<td class="n">${cell(x && x.vote)}</td>` : '')).join('')}${C.tail > 1 ? `<td class="n">${cell(r.jt)}</td><td class="n">${r.votes == null ? '–' : r.votes}</td><td class="n">${cell(r.vsc)}</td><td class="n"><b>${cell(r.tot)}</b></td>` : `<td class="n"><b>${cell(r.tot)}</b></td>`}</tr>`).join('')}</tbody></table></div>
   <div class="row noprint" style="margin-top:10px"><button data-a="print">พิมพ์</button><button data-a="copy">คัดลอกตาราง</button><button data-a="csv">ดาวน์โหลด CSV</button></div>
   <p class="mu noprint">ไฟล์ CSV เปิดใน Excel หรือ Google Sheets ได้ (ภาษาไทยแสดงถูกต้อง)</p></div>`;
 }
@@ -43,6 +43,46 @@ function votesV(p) {
   <div style="overflow-x:auto"><table><thead><tr><th>ผู้เข้าประกวด</th>${mr ? p.rounds.map(r => `<th class="n">${esc(r.name)}</th>`).join('') : '<th class="n">โหวตรวม</th>'}<th class="n">คะแนนโหวต${mr ? ' (' + esc((p.rounds.find(x => x.id === p.round) || {}).name || '') + ')' : ''}</th></tr></thead><tbody>${p.C.map(c => { const v = mr ? vsRound(p, p.round, c) : vscoreG(p, c); return `<tr><td>${esc(c.country ? c.country + ' · ' + c.name : c.name)}</td>${mr ? p.rounds.map(r => `<td class="n">${inp('vr-' + r.id + '-' + c.id, gr(p, r.id, c.id).votes, !inR(p, r.id, c))}</td>`).join('') : `<td class="n">${inp('va-' + c.id, c.votes)}</td>`}<td class="n">${v == null ? '–' : fmtn(v)}</td></tr>`; }).join('') || '<tr><td>ยังไม่มีผู้เข้าประกวด</td></tr>'}</tbody></table></div>
   <div class="row" style="margin-top:10px"><button class="p" data-a="savevotes">บันทึกโหวต</button></div></div>`;
 }
+/* ---------- CO-ADMIN: สิทธิ์ที่ติ๊กได้ต่อรหัส ---------- */
+const COP = [
+  ['edit', 'แก้ไขข้อมูลและตั้งค่า (ผู้เข้าประกวด กรรมการ รอบ สี โลโก้ การตั้งค่าจอ)'],
+  ['scores', 'แก้ไขคะแนนกรรมการ / คะแนนโหวต'],
+  ['advance', 'จัดการผู้เข้ารอบ (กดตกรอบ / ยกเลิกตกรอบ และเปลี่ยนรอบที่ใช้)'],
+  ['screen', 'สั่งขึ้นจอ (เลือกคน ถัดไป แสดง/ซ่อนจอ เปิด/ซ่อนคะแนน โหมดตารางอันดับ)']
+];
+const NEED = {
+  edit: 'addcs addj editc editj jcode jdel del rdadd rdren rddel logoup logoclr preset aadd adel aph img max jw sumPer sumSec sumScale introSec holdSec barScale cardScale agg vm vmode pre lang',
+  screen: 'hide toggle mode rank cur next prev rev revcur',
+  advance: 'out rd',
+  scores: 'edsc savesc savevotes'
+};
+const NEEDOF = {}; Object.entries(NEED).forEach(([k, s]) => s.split(' ').forEach(x => { NEEDOF[x] = k; }));
+const can = k => !ST.co || !!(ST.perms && ST.perms[k]);
+const canAny = (...ks) => ks.some(can);
+function applyMe(me) { ST.role = me.role === 'co' ? 'admin' : me.role; ST.co = me.role === 'co'; ST.perms = me.perms || null; }
+// ซ่อนปุ่ม/กล่องที่ CO-ADMIN คนนี้ไม่มีสิทธิ์ (เซิร์ฟเวอร์ตรวจสิทธิ์จริงอีกชั้นเสมอ)
+function coFilter() {
+  const hide = el => { el.style.display = 'none'; };
+  const needOf = el => { const a = el.dataset.a, v = el.dataset.v; if (a === 'bulk') return ({hide: 'screen', show: 'screen', hideall: 'screen', out: 'advance', 'in': 'advance', del: 'edit'})[v]; return a === 'tab' ? null : NEEDOF[a]; };
+  app.querySelectorAll('[data-a]').forEach(el => { const n = needOf(el); if (n && !can(n)) hide(el); });
+  app.querySelectorAll('[data-need]').forEach(el => { if (!can(el.dataset.need)) hide(el); });
+  app.querySelectorAll('[data-need-any]').forEach(el => { if (!canAny(...el.dataset.needAny.split(','))) hide(el); });
+  app.querySelectorAll('[data-need-after]').forEach(el => { if (can(el.dataset.needAfter)) return; for (let x = el; x; x = x.nextElementSibling) hide(x); });
+  const T = {v: ['scores'], m: ['edit', 'advance', 'screen'], c: ['screen', 'scores']};
+  app.querySelectorAll('[data-a="tab"]').forEach(el => { const t = T[el.dataset.v]; if (t && !canAny(...t)) hide(el); });
+}
+const permBoxes = (cls, perms) => COP.map(([k, t]) => `<label style="margin:4px 0 0;color:var(--ink);display:flex;gap:8px;align-items:flex-start"><input type="checkbox" ${cls}="${k}" ${perms && perms[k] ? 'checked' : ''} style="width:auto;flex:none;margin-top:5px"><span>${t}</span></label>`).join('');
+function coBox(p) {
+  const L = p.CO || [];
+  return `<div class="box"><h2>รหัส CO-ADMIN</h2><p class="mu" style="margin:0 0 8px">รหัสผู้ช่วยแอดมินของเวทีนี้ ติ๊กได้ว่าแต่ละรหัสทำอะไรได้บ้าง (ติ๊กแล้วบันทึกทันที) CO-ADMIN จะไม่เห็นรหัสของกรรมการและไม่สามารถสร้าง/ลบ CO-ADMIN คนอื่นได้</p>
+    ${L.map(c => `<div class="ci" data-co="${c.id}" style="align-items:flex-start"><div style="min-width:0;flex:1 1 260px"><b>${esc(c.name)}</b><div class="mu">รหัสเข้าระบบ: <b>${esc(c.code)}</b></div>${permBoxes('data-cop', c.perms)}</div><div class="btns"><button data-a="coren" data-id="${c.id}">แก้ชื่อ</button><button data-a="cocode" data-id="${c.id}">เปลี่ยนรหัส</button><button class="d" data-a="codel" data-id="${c.id}">ลบ</button></div></div>`).join('') || '<p class="mu">ยังไม่มี CO-ADMIN</p>'}
+    <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bd)"><b>เพิ่ม CO-ADMIN</b><div class="row" style="margin-top:6px"><input id="con" placeholder="ชื่อ เช่น STAGE MANAGER"><input id="coc" placeholder="รหัสเข้าระบบ (ตั้งเอง)"></div>${permBoxes('data-newcop', {screen: true})}<button class="p" data-a="coadd" style="margin-top:8px">เพิ่ม CO-ADMIN</button></div></div>`;
+}
+function copyOpts(list) {
+  if (!list.length) return '';
+  return `<label>คัดลอกจากเวทีก่อนหน้า (ไม่บังคับ)</label><select id="npf" style="width:100%;padding:10px;border:1px solid var(--bd);border-radius:10px;font:inherit;background:var(--bg);color:var(--ink)"><option value="0">ไม่คัดลอก (เวทีเปล่า)</option>${list.map(x => `<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select>
+    <div id="npparts" hidden style="margin-top:6px">${[['settings', 'การตั้งค่าจอไลฟ์และการคิดคะแนน (เวลา ขนาด ภาษา วิธีคิดคะแนน ฯลฯ)'], ['colors', 'สี'], ['logo', 'โลโก้'], ['contestants', 'ผู้เข้าประกวด (ชื่อ ประเทศ เลขที่ รูป — ไม่รวมคะแนน)'], ['judges', 'กรรมการ (ชื่อ รหัส รูป)'], ['rounds', 'รอบ (ชื่อรอบ และการนับรวม — ไม่รวมคะแนน)']].map(([k, t]) => `<label style="margin:4px 0 0;color:var(--ink);display:flex;gap:8px;align-items:flex-start"><input type="checkbox" data-npp="${k}" checked style="width:auto;flex:none;margin-top:5px"><span>${t}</span></label>`).join('')}<p class="mu" style="margin:6px 0 0">ไม่คัดลอก: คะแนน ผลเปิดคะแนน/ตกรอบ ประวัติ รหัส CO-ADMIN และสถานะหน้าจอตอนนั้น</p></div>`;
+}
 const SEL = new Set();
 let FOLD = {}; try { FOLD = JSON.parse(localStorage.getItem('pg_fold') || '{}') || {}; } catch (e) {}
 const saveFold = () => { try { localStorage.setItem('pg_fold', JSON.stringify(FOLD)); } catch (e) {} };
@@ -55,8 +95,7 @@ function bulkBar(p) {
   if (!p.C.length) return '';
   const n = [...SEL].filter(i => p.C.some(c => c.id === i)).length;
   return `<div class="row noprint" style="margin:4px 0 8px;padding:8px;border:1px dashed var(--bd);border-radius:10px"><label style="margin:0;display:flex;gap:6px;align-items:center;color:var(--ink)"><input type="checkbox" id="selall" style="width:auto" ${n && n === p.C.length ? 'checked' : ''}> เลือกทั้งหมด</label><span class="mu" id="seln">เลือก ${n} คน</span>
-    <div class="btns"><button data-a="bulk" data-v="hide">ซ่อนคะแนน</button><button data-a="bulk" data-v="show">เปิดคะแนน</button><button class="p" data-a="bulk" data-v="qual">เข้ารอบ (ที่ไม่ติ๊กจะตกรอบ)</button><button data-a="bulk" data-v="in">ยกเลิกตกรอบ</button><button class="d" data-a="bulk" data-v="del">ลบ</button><button data-a="bulk" data-v="hideall">ซ่อนคะแนนทุกคน</button></div>
-    <div class="btns" style="margin-top:6px"><button class="p" data-a="ann" data-v="start">▶ เริ่มประกาศเข้ารอบ (สุ่มลำดับ)</button><button data-a="ann" data-v="stop">หยุดประกาศ</button>${p.annOn ? `<button data-a="prev">◀ ก่อนหน้า</button><button class="p" data-a="next">ถัดไป ▶</button>` : ''}</div>${p.annOn ? `<div style="margin-top:8px"><b>ลำดับประกาศ (สุ่มแล้ว)</b><ol style="margin:4px 0 0;padding-left:22px">${(p.annIds || []).map((id, i) => { const c = p.C.find(x => x.id === id); return c ? `<li style="${i === p.annI ? 'color:var(--gold);font-weight:700' : i < p.annI ? 'opacity:.5' : ''}">${esc(c.country ? c.country + ' · ' + c.name : c.name)}${i === p.annI ? ' ◀ กำลังขึ้นจอ' : i === p.annI + 1 ? ' (คนถัดไป)' : ''}</li>` : ''; }).join('')}</ol></div><div class="mu" style="margin-top:6px">กำลังประกาศเข้ารอบ: ขึ้นการ์ดแล้ว ${Math.max(0, p.annI + 1)}/${p.annN} คน · กด "ถัดไป" เพื่อขึ้นการ์ดคนต่อไป (การ์ดค้างตามเวลา "การ์ดชื่อ" ที่ตั้งไว้ แล้วเฟดหายเอง) · พอการ์ดคนสุดท้ายเฟดหาย ระบบจะซ่อนจอแล้วไปรอบถัดไปให้เอง (หรือกดถัดไปหลังคนสุดท้ายเพื่อจบทันที)</div>` : ''}</div>`;
+    <div class="btns"><button data-a="bulk" data-v="hide">ซ่อนคะแนน</button><button data-a="bulk" data-v="show">เปิดคะแนน</button><button data-a="bulk" data-v="out">ตกรอบ</button><button data-a="bulk" data-v="in">ยกเลิกตกรอบ</button><button class="d" data-a="bulk" data-v="del">ลบ</button><button data-a="bulk" data-v="hideall">ซ่อนคะแนนทุกคน</button></div></div>`;
 }
 function foldInit() {
   app.querySelectorAll(':scope > .box > h2:first-child').forEach((h, i) => {
@@ -76,11 +115,11 @@ function foldAll(on) {
 function manageV(p) {
   const rd = p.rounds.find(x => x.id === p.round) || {name: ''}, n = p.J.length;
   const B = (a, v, t, on) => `<button data-a="${a}" data-v="${v}" class="${on ? 'p' : ''}">${t}</button>`;
-  return `<div class="row noprint" style="margin-bottom:10px"><button data-a="foldall" data-v="1">ยุบหัวข้อทั้งหมด</button><button data-a="foldall" data-v="0">ขยายทั้งหมด</button></div><div class="box"><h2>สีและโลโก้บนจอไลฟ์</h2>${dHTMLp(p, true)}
+  return `<div class="row noprint" style="margin-bottom:10px"><button data-a="foldall" data-v="1">ยุบหัวข้อทั้งหมด</button><button data-a="foldall" data-v="0">ขยายทั้งหมด</button></div><div class="box" data-need="edit"><h2>สีและโลโก้บนจอไลฟ์</h2>${dHTMLp(p, true)}
     <div class="row" style="margin-top:10px">${PRE.map((x, i) => `<button data-a="preset" data-id="${i}"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${x[1]};margin-right:6px;vertical-align:middle"></span>${x[0]}</button>`).join('')}</div>
     <div class="row" style="margin-top:8px"><label style="flex:1">สีหลัก<input id="c1" type="color" value="${p.col.c1}" style="padding:2px;height:42px"></label><label style="flex:1">สีพื้นแถบ<input id="c2" type="color" value="${p.col.c2}" style="padding:2px;height:42px"></label><label style="flex:1">สีตัวหนังสือ<input id="c3" type="color" value="${p.col.c3}" style="padding:2px;height:42px"></label></div>
     <label>ภาษาป้ายบนจอ</label><div class="row">${B('lang', 'th', 'ไทย', (p.lang || 'th') === 'th')}${B('lang', 'en', 'English', p.lang === 'en')}</div><label><input type="checkbox" id="showlogo" style="width:auto" ${p.showLogo ? 'checked' : ''}> แสดงโลโก้บนจอ</label><label><input type="checkbox" id="showround" style="width:auto" ${p.showRound !== false ? 'checked' : ''}> แสดงชื่อรอบที่มุมซ้ายบนจอตลอด (กด "ใช้รอบนี้" แล้วขึ้นทันที)</label><div class="row"><button data-a="logoup">อัปโหลดโลโก้</button>${p.logo ? '<button class="d" data-a="logoclr">ลบโลโก้</button>' : ''}</div></div>
-  <div class="box"><h2>การแสดงผลและคะแนน</h2><div class="row">${B('mode', 'current', 'แสดงผู้เข้าประกวดปัจจุบัน', p.mode === 'current')}${B('mode', 'ranking', 'แสดงอันดับ', p.mode === 'ranking')}</div>
+  <div class="box" data-need="edit"><h2>การแสดงผลและคะแนน</h2><div class="row">${B('mode', 'current', 'แสดงผู้เข้าประกวดปัจจุบัน', p.mode === 'current')}${B('mode', 'ranking', 'แสดงอันดับ', p.mode === 'ranking')}</div>
     ${p.mode === 'ranking' ? `<label>อันดับที่จะแสดง</label><div class="row">${B('rank', 0, 'สรุปคะแนน (รอบที่ติ๊ก)', p.rank === 0)}${p.rounds.map(x => B('rank', x.id, esc(x.name), p.rank === x.id)).join('')}</div>` : ''}
     <label>ก่อนเปิดคะแนน จอแสดง</label><div class="row">${B('pre', 'name', 'เฉพาะรูปและชื่อ', p.pre === 'name')}${B('pre', 'dash', 'ช่องคะแนนเป็นขีด', (p.pre || 'dash') === 'dash')}${B('pre', 'none', 'ว่างจนกว่าจะเปิดคะแนน', p.pre === 'none')}${B('pre', 'card', 'การ์ดชื่อโปร่งใส (เฟดหายเอง)', p.pre === 'card')}</div>
     <label>การ์ดชื่อค้างไว้ก่อนเฟดหาย (วินาที)</label><div class="row"><input id="introSec" type="number" min="0" max="600" step="0.5" value="${p.introSec}" style="max-width:120px;flex:none"><button data-a="introSec">บันทึก</button></div>
@@ -99,34 +138,36 @@ function manageV(p) {
     <label>การนับโหวต</label><div class="row">${B('vmode', 'all', 'โหวตรวมครั้งเดียวทุกรอบ', (p.vmode || 'all') === 'all')}${B('vmode', 'round', 'โหวตแยกแต่ละรอบ', p.vmode === 'round')}</div>
     <label>แปลงจำนวนโหวตเป็นคะแนน</label><div class="row">${B('vm', 'share', 'สัดส่วนจากโหวตรวม', p.vm === 'share')}${B('vm', 'top', 'อิงคนโหวตสูงสุด', p.vm === 'top')}</div>
     <p class="mu">${p.vm === 'share' ? `สัดส่วนจากโหวตรวม: คะแนนโหวต = โหวตของคนนั้น ÷ โหวตรวมของทุกคน x ${p.max} เช่น โหวตรวม 1600 ได้ 1000 → ${fmtn(1000 / 1600 * p.max)}, 500 → ${fmtn(500 / 1600 * p.max)}, 100 → ${fmtn(100 / 1600 * p.max)}` : `อิงคนโหวตสูงสุด: คนโหวตมากสุดได้เต็ม ${p.max} คนอื่นตามสัดส่วน เช่น 1000 → ${p.max}, 500 → ${fmtn(p.max / 2)}, 100 → ${fmtn(p.max / 10)}`}</p></div>
-  <div class="box"><h2>รอบ</h2><p class="mu" style="margin:0 0 8px">กด "ใช้รอบนี้" แล้วจอจะถูกซ่อนไว้ก่อน (เหมือนกด "ซ่อนจอทั้งหมด") กด "แสดงจอ" เมื่อพร้อมให้คนแรกขึ้น</p>${p.rounds.map(x => `<div class="ci"><div>${esc(x.name)} ${x.id === p.round ? '<span class="ok">· กำลังใช้</span>' : ''}<label style="margin:4px 0 0;color:var(--ink)"><input type="checkbox" data-t="${x.id}" ${x.inTotal !== false ? 'checked' : ''} style="width:auto"> นับในคะแนนรวม</label></div><div class="btns">${x.id === p.round ? '' : `<button data-a="rd" data-id="${x.id}">ใช้รอบนี้</button>`}<button data-a="rdren" data-id="${x.id}">เปลี่ยนชื่อ</button><button class="d" data-a="rddel" data-id="${x.id}">ลบ</button></div></div>`).join('')}
-    <div class="row" style="margin-top:10px"><input id="rn" placeholder="ชื่อรอบ เช่น รอบชุดราตรี"><button class="p" data-a="rdadd">เพิ่มรอบ</button></div></div>
+  <div class="box" data-need-any="edit,advance"><h2>รอบ</h2><p class="mu" style="margin:0 0 8px">กด "ใช้รอบนี้" แล้วจอจะถูกซ่อนไว้ก่อน (เหมือนกด "ซ่อนจอทั้งหมด") กด "แสดงจอ" เมื่อพร้อมให้คนแรกขึ้น</p>${p.rounds.map(x => `<div class="ci"><div>${esc(x.name)} ${x.id === p.round ? '<span class="ok">· กำลังใช้</span>' : ''}<label data-need="edit" style="margin:4px 0 0;color:var(--ink)"><input type="checkbox" data-t="${x.id}" ${x.inTotal !== false ? 'checked' : ''} style="width:auto"> นับในคะแนนรวม</label></div><div class="btns">${x.id === p.round ? '' : `<button data-a="rd" data-id="${x.id}">ใช้รอบนี้</button>`}<button data-a="rdren" data-id="${x.id}">เปลี่ยนชื่อ</button><button class="d" data-a="rddel" data-id="${x.id}">ลบ</button></div></div>`).join('')}
+    <div class="row" data-need="edit" style="margin-top:10px"><input id="rn" placeholder="ชื่อรอบ เช่น รอบชุดราตรี"><button class="p" data-a="rdadd">เพิ่มรอบ</button></div></div>
   <div class="box"><h2>ผู้เข้าประกวด · รอบ: ${esc(rd.name)}</h2>${bulkBar(p)}${p.C.map(c => {
     const rs = gr(p, p.round, c.id), k = calc(p, p.round, c), got = p.J.filter(j => gs(p, p.round, c.id, j.id) != null).length, cu = c.id === p.cur, gone = !inR(p, p.round, c), er = gone ? elimRound(p, c) : null;
     const ed = editing === c.id ? `<div class="box" style="margin:8px 0"><div class="mu">แก้คะแนนรอบ ${esc(rd.name)} ของ ${esc(c.name)} (เต็ม ${p.max}) เว้นว่าง = ยังไม่ให้</div><div class="row" style="margin-top:6px">${p.J.map(j => `<label style="flex:1;min-width:100px">${esc(j.name)}<input id="se-${j.id}" type="number" step="0.01" value="${gs(p, p.round, c.id, j.id) ?? ''}"></label>`).join('')}</div><div class="row" style="margin-top:8px"><button class="p" data-a="savesc" data-id="${c.id}">บันทึกคะแนน</button><button data-a="edsc" data-id="0">ปิด</button></div></div>` : '';
     return `<div class="ci ${gone ? 'out' : ''}"><div class="l"><input type="checkbox" data-s="${c.id}" ${SEL.has(c.id) ? 'checked' : ''} style="width:auto;flex:none">${th(c.img, c.name)}<div style="min-width:0"><b style="color:var(--gold)">${esc(c.no)}</b> ${esc(c.country || c.name)}${c.country ? ` <span class="mu">· ${esc(c.name)}</span>` : ''}${rs.rev ? ' <span class="ok">· เปิดแล้ว</span>' : ''}${gone ? ` <span class="chip">ตกรอบแล้ว (${esc(er.name)})</span>` : rs.out ? ' <span class="chip" style="color:var(--bad)">ตกรอบ · ไม่ไปรอบถัดไป</span>' : ''}<div class="mu">กรรมการให้แล้ว ${got}/${n}${got ? ' · เฉลี่ยรอบนี้ ' + fmtn(k.avg) : ''}${cu && !gone ? ' · กำลังให้คะแนน' : ''}</div></div></div>
-    <div class="btns">${cu || gone ? '' : `<button data-a="cur" data-id="${c.id}">ให้คะแนนคนนี้</button>`}${gone ? '' : `<button data-a="rev" data-id="${c.id}" class="${cu && !rs.rev ? 'p' : ''}">${rs.rev ? 'ซ่อนคะแนน' : 'เปิดคะแนน'}</button><button data-a="edsc" data-id="${c.id}">ใส่/แก้คะแนน</button>`}${gone ? `<button data-a="out" data-id="${c.id}" data-r="${er.id}">ยกเลิกตกรอบ</button>` : `${rs.out ? `<button data-a="out" data-id="${c.id}">ยกเลิกตกรอบ</button>` : ''}`}<button data-a="img" data-k="C" data-id="${c.id}">รูป</button><button data-a="editc" data-id="${c.id}">แก้ไข</button><button class="d" data-a="del" data-id="${c.id}">ลบ</button></div></div>${ed}`;
+    <div class="btns">${cu || gone ? '' : `<button data-a="cur" data-id="${c.id}">ให้คะแนนคนนี้</button>`}${gone ? '' : `<button data-a="rev" data-id="${c.id}" class="${cu && !rs.rev ? 'p' : ''}">${rs.rev ? 'ซ่อนคะแนน' : 'เปิดคะแนน'}</button><button data-a="edsc" data-id="${c.id}">ใส่/แก้คะแนน</button>`}${gone ? `<button data-a="out" data-id="${c.id}" data-r="${er.id}">ยกเลิกตกรอบ</button>` : `<button data-a="out" data-id="${c.id}">${rs.out ? 'ยกเลิกตกรอบ' : 'ตกรอบ'}</button>`}<button data-a="img" data-k="C" data-id="${c.id}">รูป</button><button data-a="editc" data-id="${c.id}">แก้ไข</button><button class="d" data-a="del" data-id="${c.id}">ลบ</button></div></div>${ed}`;
   }).join('') || '<p class="mu">ยังไม่มีผู้เข้าประกวด</p>'}
-    <h2 style="margin:16px 0 2px">เพิ่มผู้เข้าประกวด</h2><p class="mu" style="margin:0 0 8px">กรอกแค่ชื่อก็เพิ่มได้ ส่วนรูป ประเทศ เลขที่ ใส่หรือไม่ใส่ก็ได้ (เว้นเลขที่ไว้ ระบบรันเลขต่อให้เอง) วางข้อมูลจาก Excel / Google Sheets ลงช่องไหนก็ได้ แล้วค่อยกลับมาแก้ทีหลังได้</p>
+    <h2 data-need-after="edit" style="margin:16px 0 2px">เพิ่มผู้เข้าประกวด</h2><p class="mu" style="margin:0 0 8px">กรอกแค่ชื่อก็เพิ่มได้ ส่วนรูป ประเทศ เลขที่ ใส่หรือไม่ใส่ก็ได้ (เว้นเลขที่ไว้ ระบบรันเลขต่อให้เอง) วางข้อมูลจาก Excel / Google Sheets ลงช่องไหนก็ได้ แล้วค่อยกลับมาแก้ทีหลังได้</p>
     <div id="addt">${addRowsV()}</div>
     <div class="row" style="margin-top:6px"><button data-a="aadd" data-v="1">+ เพิ่มแถว</button><button data-a="aadd" data-v="5">+ 5 แถว</button><button class="p" data-a="addcs">เพิ่มทั้งหมด (<span id="addn">${addCount()}</span> คน)</button></div>
     <p class="mu">"ตกรอบ" ใช้เมื่อบางคนไม่ได้ไปต่อ เขายังอยู่ในรอบนี้ (ยังเห็นคะแนนของรอบนี้) แต่จะไม่มีชื่ออยู่ในทุกรอบถัดไป (เรียงจากบนลงล่างในรายการรอบ) ผู้เข้าประกวดที่เพิ่มใหม่จะอยู่ในทุกรอบ และรอบที่เพิ่มใหม่จะดึงผู้เข้าประกวดทุกคนที่ยังไม่ตกรอบเข้ามาเอง ถ้ากดผิด กด "ยกเลิกตกรอบ" ได้ที่รอบเดิมหรือรอบถัดไป</p></div>
-  <div class="box"><h2>กรรมการ</h2>${p.J.map(j => `<div class="ci"><div class="l">${th(j.img, j.name)}<div>${esc(j.name)}<div class="mu">รหัสเข้าระบบ: <b>${esc(j.code)}</b></div></div></div><div class="btns"><button data-a="img" data-k="J" data-id="${j.id}">รูป</button><button data-a="jcode" data-id="${j.id}">แก้รหัส</button><button class="d" data-a="jdel" data-id="${j.id}">ลบ</button></div></div>`).join('') || '<p class="mu">ยังไม่มีกรรมการ</p>'}
+  ${ST.co ? '' : coBox(p)}<div class="box" data-need="edit"><h2>กรรมการ</h2>${p.J.map(j => `<div class="ci"><div class="l">${th(j.img, j.name)}<div>${esc(j.name)}<div class="mu">รหัสเข้าระบบ: <b>${j.code == null ? '••••' : esc(j.code)}</b></div></div></div><div class="btns"><button data-a="editj" data-id="${j.id}">แก้ชื่อ</button><button data-a="img" data-k="J" data-id="${j.id}">รูป</button><button data-a="jcode" data-id="${j.id}">แก้รหัส</button><button class="d" data-a="jdel" data-id="${j.id}">ลบ</button></div></div>`).join('') || '<p class="mu">ยังไม่มีกรรมการ</p>'}
     <div class="row" style="margin-top:10px"><input id="jnm" placeholder="ชื่อกรรมการ"><input id="jcd" placeholder="รหัสเข้าระบบ (ตั้งเอง)"><button class="p" data-a="addj">เพิ่ม</button></div>
+    <label><input type="checkbox" id="showjn" style="width:auto" ${p.showJN !== false ? 'checked' : ''}> แสดงชื่อกรรมการใต้รูปในตารางคะแนนรวม (ไม่ติ๊ก = แสดงแต่รูป)</label>
     <p class="mu">รหัสกรรมการตั้งเองได้ ไม่ซ้ำกันในเวทีเดียวกัน กรรมการแต่ละคนเห็นแค่คะแนนที่ตัวเองให้จนกว่าจะเปิดคะแนน และเมื่อกด "ยืนยัน" แล้วคะแนนจะล็อก กรรมการแก้เองไม่ได้ ถ้าต้องแก้ แอดมินแก้ให้ได้ที่ปุ่ม "ใส่/แก้คะแนน"</p></div>`;
 }
 
 /* ---------- กรรมการ (ปุ่มกดแบบเครื่องคิดเลข) ---------- */
 function adminV() {
   const p = ST.p;
-  app.innerHTML = topbar(esc(p.name) + ' · แอดมิน', ST.fromSuper) + `<div class="tabs noprint"><button data-a="tab" data-v="d" class="${view === 'd' ? 'on' : ''}">จอไลฟ์</button><button data-a="tab" data-v="c" class="${view === 'c' ? 'on' : ''}">ควบคุมสด</button><button data-a="tab" data-v="r" class="${view === 'r' ? 'on' : ''}">สรุปผล</button><button data-a="tab" data-v="v" class="${view === 'v' ? 'on' : ''}">โหวต</button><button data-a="tab" data-v="h" class="${view === 'h' ? 'on' : ''}">ประวัติแก้ไข</button><button data-a="tab" data-v="m" class="${view === 'm' ? 'on' : ''}">จัดการ</button></div>` + (view === 'd' ? dHTMLp(p) + liveV(p) + linkBox(p) : view === 'c' ? controlV(p) : view === 'r' ? resultsV(p) : view === 'v' ? votesV(p) : view === 'h' ? historyV(p) : manageV(p));
+  app.innerHTML = topbar(esc(p.name) + ' · ' + (ST.co ? 'CO-ADMIN' : 'แอดมิน'), ST.fromSuper) + `<div class="tabs noprint"><button data-a="tab" data-v="d" class="${view === 'd' ? 'on' : ''}">จอไลฟ์</button><button data-a="tab" data-v="c" class="${view === 'c' ? 'on' : ''}">ควบคุมสด</button><button data-a="tab" data-v="r" class="${view === 'r' ? 'on' : ''}">สรุปผล</button><button data-a="tab" data-v="v" class="${view === 'v' ? 'on' : ''}">โหวต</button><button data-a="tab" data-v="h" class="${view === 'h' ? 'on' : ''}">ประวัติแก้ไข</button><button data-a="tab" data-v="m" class="${view === 'm' ? 'on' : ''}">จัดการ</button></div>` + (view === 'd' ? dHTMLp(p) + liveV(p) + linkBox(p) : view === 'c' ? controlV(p) : view === 'r' ? resultsV(p) : view === 'v' ? votesV(p) : view === 'h' ? historyV(p) : manageV(p));
+  if (ST.co) coFilter();
   foldInit(); fit();
 }
 
 /* ====== ส่วนเชื่อมกับเซิร์ฟเวอร์ (API) ====== */
 const Q = new URLSearchParams(location.search);
 const PRE = [['ทอง', '#e3b95a', '#1c1006', '#f4e9d3'], ['ชมพู', '#ff8fb8', '#2a0f1e', '#fff0f6'], ['ฟ้า', '#6fc3ff', '#0b1b2e', '#eaf6ff'], ['เขียว', '#6fe0a6', '#0b2a1c', '#eafff4'], ['ม่วง', '#c79bff', '#1b1030', '#f5eeff']];
-let ST = {code: '', pg: 0, role: null, fromSuper: false, p: null, list: [], sel: null};
+let ST = {code: '', pg: 0, role: null, fromSuper: false, co: false, perms: null, p: null, list: [], sel: null};
 let view = 'd', editing = 0, timer = null;
 const SK = 'pg_sess2';
 
@@ -183,7 +224,7 @@ function sumVMHTML(s, L, z) {
   show.forEach((r, i) => {
     const c = c0 + i * C.g;
     h += `${cell(c, 1, C.g, 'rh g bd hb')}${esc(r.name)}</span>`;
-    J.forEach((j, k2) => { h += `<div class="jh ${k2 === 0 ? 'bd' : ''}" style="grid-column:${c + k2};grid-row:2"><div class="ph2">${ph(j.img, j.name)}</div><div class="nm">${esc(j.name)}</div></div>`; });
+    J.forEach((j, k2) => { h += `<div class="jh ${k2 === 0 ? 'bd' : ''}" style="grid-column:${c + k2};grid-row:2"><div class="ph2">${ph(j.img, j.name)}</div>${s.jn === false ? '' : `<div class="nm">${esc(j.name)}</div>`}</div>`; });
     h += `${cell(c + n, 2, 0, 'rh g')}${esc(L.avg)}</span>`;
     if (C.gv) h += `${cell(c + n + 1, 2, 0, 'rh')}${esc(L.rv)}</span>`;
   });
@@ -191,7 +232,7 @@ function sumVMHTML(s, L, z) {
   else if (C.tail === 1) h += `<span class="rh g bd" style="grid-column:${ts};grid-row:1 / span 2">${esc(L.tot)}</span>`;
   if (pv) h += `<span class="rh g bd" style="grid-column:${ps};grid-row:1 / span 2">${esc(L.votes)}</span>`;
   const head = `<div class="rrow hd h2 hg" style="grid-template-columns:${tpl}">${h}</div>`;
-  const body = rows.map((r, i) => `<div class="rrow" style="grid-template-columns:${tpl};--fs:${fs}px;animation-delay:${i * .1}s"><span class="rn">${r.rank}</span>${pc ? `<span class="rp">${ph(r.c.img, r.c.name)}</span>` : ''}<span class="rtn">${r.c.country ? esc(r.c.country) + `<small>${esc(r.c.name)}</small>` : esc(r.c.name)}</span>${r.per.map((x, xi) => r.gone && r.gone[xi] ? J.map((j, k2) => `<span class="sc ${k2 === 0 && !(xi > 0 && r.gone[xi - 1]) ? 'bd' : ''}"></span>`).join('') + '<span class="sc av"></span>' + (C.gv ? '<span class="sc"></span>' : '') : J.map((j, k2) => `<span class="sc ${k2 === 0 ? 'bd' : ''}">${x && x.scores[k2] != null ? fmtn(x.scores[k2]) : '–'}</span>`).join('') + `<span class="sc av">${x ? fmtn(x.avg) : '–'}</span>` + (C.gv ? `<span class="sc">${x && x.vote != null ? fmtn(x.vote) : '–'}</span>` : '')).join('')}${C.tail > 1 ? `<span class="sc bd av">${fmtn(r.jt)}</span><span class="sc">${r.votes == null ? '–' : r.votes.toLocaleString('en-US')}</span><span class="sc">${r.vsc == null ? '–' : fmtn(r.vsc)}</span><span class="sc av">${fmtn(r.tot)}</span>` : C.tail === 1 ? `<span class="sc bd av">${fmtn(r.tot)}</span>` : ''}${pv ? `<span class="sc bd" style="font-size:${Math.min(fs, 26)}px">${r.pvv == null ? '–' : r.pvv.toLocaleString('en-US')}</span>` : ''}</div>`).join('');
+  const body = rows.map((r, i) => `<div class="rrow" style="grid-template-columns:${tpl};--fs:${fs}px;animation-delay:${i * .1}s"><span class="rn">${r.rank}</span>${pc ? `<span class="rp">${ph(r.c.img, r.c.name)}</span>` : ''}<span class="rtn">${r.c.country ? esc(r.c.country) + `<small>${esc(r.c.name)}</small>` : esc(r.c.name)}</span>${r.per.map(x => J.map((j, k2) => `<span class="sc ${k2 === 0 ? 'bd' : ''}">${x && x.scores[k2] != null ? fmtn(x.scores[k2]) : '–'}</span>`).join('') + `<span class="sc av">${x ? fmtn(x.avg) : '–'}</span>` + (C.gv ? `<span class="sc">${x && x.vote != null ? fmtn(x.vote) : '–'}</span>` : '')).join('')}${C.tail > 1 ? `<span class="sc bd av">${fmtn(r.jt)}</span><span class="sc">${r.votes == null ? '–' : r.votes.toLocaleString('en-US')}</span><span class="sc">${r.vsc == null ? '–' : fmtn(r.vsc)}</span><span class="sc av">${fmtn(r.tot)}</span>` : C.tail === 1 ? `<span class="sc bd av">${fmtn(r.tot)}</span>` : ''}${pv ? `<span class="sc bd" style="font-size:${Math.min(fs, 26)}px">${r.pvv == null ? '–' : r.pvv.toLocaleString('en-US')}</span>` : ''}</div>`).join('');
   return `<div class="rkw" style="left:${(1920 - W) / 2}px;width:${W}px;transform:translateY(-50%) scale(${+k.toFixed(4)})"><div class="rkp" style="width:${W}px;--hs:${hs}px;--pw:${pw}px">${head}${body}</div></div>`;
 }
 function cardHTML(d, z) {
@@ -302,14 +343,16 @@ async function loginV(msg, cached) {
   const keep = $('#code') ? $('#code').value : '';
   let list = ST.list; if (!cached || !list.length) { try { list = await pub('pageants'); } catch (e) {} ST.list = list; }
   if (ST.sel === null || (ST.sel !== 0 && !list.some(x => x.id === ST.sel))) ST.sel = list[0] ? list[0].id : 0;
-  app.innerHTML = `<h1>ระบบลงคะแนนประกวด</h1><div class="box"><h2>เข้าสู่ระบบ</h2><label>เลือกเวที</label><div class="row">${list.map(p => `<button data-pg="${p.id}" class="${ST.sel === p.id ? 'p' : ''}">${esc(p.name)}</button>`).join('')}<button data-pg="0" class="${ST.sel === 0 ? 'p' : ''}">ผู้ดูแลหลัก</button></div>
-    <label>${ST.sel === 0 ? 'รหัสผู้ดูแลหลัก' : 'รหัส (กรรมการหรือแอดมินเวที)'}</label><input id="code" type="password" autocomplete="off" placeholder="รหัส"><div style="margin-top:10px"><button class="p" id="go" style="width:100%">เข้าสู่ระบบ</button></div><div class="bad" id="lm">${esc(msg || '')}</div></div>`;
+  const sc0 = $('.pgl') ? $('.pgl').scrollTop : -1;
+  app.innerHTML = `<div class="lgn"><h1>ระบบลงคะแนนประกวด</h1><div class="box"><label style="margin-top:0">เลือกเวที (เลื่อนหาแล้วแตะที่ชื่อ)</label><div class="pgl">${list.map(p => `<button data-pg="${p.id}" class="${ST.sel === p.id ? 'p' : ''}">${esc(p.name)}</button>`).join('')}<button data-pg="0" class="${ST.sel === 0 ? 'p' : ''}" style="font-style:italic">ผู้ดูแลหลัก</button></div>
+    <label>${ST.sel === 0 ? 'รหัสผู้ดูแลหลัก' : 'รหัส (กรรมการหรือแอดมินเวที)'}</label><input id="code" type="password" autocomplete="off" placeholder="รหัส"><div style="margin-top:10px"><button class="p" id="go" style="width:100%">เข้าสู่ระบบ</button></div><div class="bad" id="lm" style="text-align:center">${esc(msg || '')}</div></div></div>`;
+  { const l = $('.pgl'), on = l.querySelector('button.p'); if (sc0 >= 0) l.scrollTop = sc0; else if (on) l.scrollTop = Math.max(0, on.offsetTop - l.clientHeight / 2 + on.offsetHeight / 2); }
   document.querySelectorAll('[data-pg]').forEach(b => b.onclick = () => { ST.sel = +b.dataset.pg; loginV('', true); });
   $('#code').value = keep;
   const go = async () => {
     const code = $('#code').value.trim(); if (!code) return;
     ST.code = code; ST.pg = ST.sel;
-    try { const me = await api('me'); ST.role = me.role; ST.fromSuper = false; if (me.role === 'super') ST.pg = 0; saveSess(); start(); }
+    try { const me = await api('me'); applyMe(me); ST.fromSuper = false; if (me.role === 'super') ST.pg = 0; saveSess(); start(); }
     catch (e) { ST.code = ''; ST.role = null; loginV(e.status === 429 ? e.message : 'รหัสไม่ถูกต้อง'); }
   };
   $('#go').onclick = go; $('#code').onkeydown = e => { if (e.key === 'Enter') go(); };
@@ -320,7 +363,7 @@ function logout() { clearInterval(timer); clearSess(); ST = {code: '', pg: 0, ro
 async function superLoad() { ST.list = (await api('super')).pageants; }
 function superV() {
   app.innerHTML = topbar('ผู้ดูแลหลัก') + `<div class="box"><h2>เวทีทั้งหมด</h2>${ST.list.map(p => `<div class="ci"><div><b>${esc(p.name)}</b><div class="mu">รหัสแอดมินเวที: <b>${esc(p.adm)}</b> · กรรมการ ${p.judges} คน · ผู้เข้าประกวด ${p.contestants} คน</div></div><div class="btns"><button class="p" data-a="enter" data-id="${p.id}">เข้าไปจัดการ</button><button data-a="pgren" data-id="${p.id}">เปลี่ยนชื่อ</button><button data-a="pgcode" data-id="${p.id}">เปลี่ยนรหัสแอดมิน</button><button class="d" data-a="pgdel" data-id="${p.id}">ลบ</button></div></div>`).join('') || '<p class="mu">ยังไม่มีเวที</p>'}
-    <h2 style="margin-top:14px">เพิ่มเวทีใหม่</h2><div class="row"><input id="npn" placeholder="ชื่อเวที เช่น Miss Hong"><input id="npc" placeholder="รหัสแอดมินเวที (ตั้งเอง)"><button class="p" data-a="pgadd">เพิ่มเวที</button></div>
+    <h2 style="margin-top:14px">เพิ่มเวทีใหม่</h2><div class="row"><input id="npn" placeholder="ชื่อเวที เช่น Miss Hong"><input id="npc" placeholder="รหัสแอดมินเวที (ตั้งเอง)"></div>${copyOpts(ST.list)}<div class="row" style="margin-top:10px"><button class="p" data-a="pgadd">เพิ่มเวที</button></div>
     <p class="mu">ส่งรหัสแอดมินให้ผู้จัดเวทีนั้น เขาจะตั้งค่ารอบ ผู้เข้าประกวด กรรมการและรหัสกรรมการ สี และโลโก้ได้เองโดยไม่ต้องผ่านคุณ และมองไม่เห็นข้อมูลของเวทีอื่น</p></div>`;
 }
 async function sact(a, body) { try { await api('super/' + a, body); await superLoad(); } catch (e) { alert(e.message); } superV(); }
@@ -328,7 +371,7 @@ async function sact(a, body) { try { await api('super/' + a, body); await superL
 /* ---------- แอดมินเวที ---------- */
 async function load() { ST.p = await api('admin'); }
 function fadeKind(a, b) {
-  if (a === 'step' || a === 'cur' || a === 'rd' || a === 'annstart' || a === 'annstop') return 'all';
+  if (a === 'step' || a === 'cur' || a === 'rd') return 'all';
   if (a === 'settings' && b && b.k === 'hide' && b.v === '1') return 'all';
   if ((a === 'reveal' || a === 'revmany') && b && b.on === false) return 'scores';
   return null;
@@ -383,8 +426,8 @@ const onClick = async e => {
   if (a === 'csv') return csvTable();
   if (a === 'edsc') { editing = editing === id ? 0 : id; return render(); }
   // ผู้ดูแลหลัก
-  if (a === 'enter') { ST.pg = id; ST.role = 'admin'; ST.fromSuper = true; view = 'm'; editing = 0; ADD = blankAdd(5); saveSess(); try { await load(); } catch (er) { alert(er.message); } render(); return start(true); }
-  if (a === 'pgadd') return sact('pgadd', {name: $('#npn').value, adm: $('#npc').value});
+  if (a === 'enter') { ST.pg = id; ST.role = 'admin'; ST.co = false; ST.perms = null; ST.fromSuper = true; view = 'm'; editing = 0; ADD = blankAdd(5); saveSess(); try { await load(); } catch (er) { alert(er.message); } render(); return start(true); }
+  if (a === 'pgadd') { const from = +(($('#npf') || {}).value || 0), parts = {}; if (from) document.querySelectorAll('input[data-npp]').forEach(x => { parts[x.dataset.npp] = x.checked; }); return sact('pgadd', {name: $('#npn').value, adm: $('#npc').value, from, parts}); }
   if (a === 'pgren') { const x = ST.list.find(y => y.id === id), n = prompt('ชื่อเวที', x.name); return n === null ? null : sact('pgren', {id, name: n}); }
   if (a === 'pgcode') { const x = ST.list.find(y => y.id === id), n = prompt('รหัสแอดมินเวทีใหม่', x.adm); return n === null ? null : sact('pgcode', {id, adm: n}); }
   if (a === 'pgdel') { if (!confirm('ลบเวทีนี้และข้อมูลทั้งหมด (ลบแล้วกู้คืนไม่ได้)?')) return; return sact('pgdel', {id}); }
@@ -411,6 +454,10 @@ const onClick = async e => {
     return act('reveal', {id: cid, on: !r.rev});
   }
   if (a === 'foldall') return foldAll(v === '1');
+  if (a === 'coadd') { const perms = {}; document.querySelectorAll('input[data-newcop]').forEach(x => { perms[x.dataset.newcop] = x.checked; }); return act('coadd', {name: $('#con').value, code: $('#coc').value, perms}); }
+  if (a === 'coren') { const c = (p.CO || []).find(x => x.id === id), n = prompt('ชื่อ CO-ADMIN', c ? c.name : ''); return n === null ? null : act('coedit', {id, name: n}); }
+  if (a === 'cocode') { const n = prompt('รหัสเข้าระบบใหม่ของ CO-ADMIN'); return n === null ? null : act('cocode', {id, code: n}); }
+  if (a === 'codel') { if (!confirm('ลบ CO-ADMIN คนนี้? (รหัสนี้จะใช้เข้าระบบไม่ได้อีก)')) return; return act('codel', {id}); }
   if (a === 'out') return act('out', {id, round: b.dataset.r ? +b.dataset.r : 0});
   if (a === 'bulk') {
     const sel = [...SEL].filter(i => p.C.some(c => c.id === i));
@@ -419,12 +466,11 @@ const onClick = async e => {
     const inr = sel.filter(i => inR(p, p.round, p.C.find(c => c.id === i)));
     if (v === 'hide') return act('revmany', {ids: inr, on: false});
     if (v === 'show') return act('revmany', {ids: inr, on: true});
-    if (v === 'qual') { if (!inr.length) return alert('ไม่มีคนที่ติ๊กอยู่ในรอบนี้'); const m = p.C.filter(c => inR(p, p.round, c)).length - inr.length; if (!confirm(`ผู้เข้ารอบ ${inr.length} คน อีก ${m} คนที่ไม่ได้ติ๊กจะตกรอบ ตกลงไหม?`)) return; return act('qualify', {ids: inr}); }
+    if (v === 'out') return act('outmany', {ids: inr, on: true});
     if (v === 'in') return act('outmany', {ids: inr, on: false});
     if (v === 'del') { if (!confirm(`ลบผู้เข้าประกวด ${sel.length} คน และคะแนนทุกรอบ? (กู้คืนไม่ได้)`)) return; SEL.clear(); return act('delmany', {ids: sel}); }
     return;
   }
-  if (a === 'ann') return act(v === 'start' ? 'annstart' : 'annstop', {});
   if (a === 'next' || a === 'prev') return act('step', {dir: a});
   if (a === 'savesc') { const scores = {}; p.J.forEach(j => { scores[j.id] = $('#se-' + j.id).value; }); editing = 0; return act('setscores', {id, scores}); }
   if (a === 'img') return pick(false, async d => { try { await api('admin/img', {kind: b.dataset.k === 'C' ? 'contestant' : 'judge', id, data: d}); } catch (er) { alert(er.message); } await load(); render(); });
@@ -478,11 +524,15 @@ const onPaste = e => {
   refreshAdd();
 };
 const onChange = e => {
+  const t0 = e.target;
+  if (t0.id === 'npf') { const d = $('#npparts'); if (d) d.hidden = !(+t0.value); return; }
   if (ST.role !== 'admin') return; const t = e.target;
+  if (t.dataset && t.dataset.cop) { const row = t.closest('[data-co]'), perms = {}; row.querySelectorAll('input[data-cop]').forEach(x => { perms[x.dataset.cop] = x.checked; }); return act('coedit', {id: +row.dataset.co, perms}); }
   if (t.dataset && t.dataset.s) { const i = +t.dataset.s; if (t.checked) SEL.add(i); else SEL.delete(i); return selUpd(); }
   if (t.id === 'selall') { ST.p.C.forEach(c => { if (t.checked) SEL.add(c.id); else SEL.delete(c.id); }); document.querySelectorAll('input[data-s]').forEach(x => { x.checked = t.checked; }); return selUpd(); }
   if (['c1', 'c2', 'c3'].includes(t.id)) return act('settings', {k: 'colors', v: ['c1', 'c2', 'c3'].map(i => $('#' + i).value).join(',')});
   if (t.id === 'showlogo') return act('settings', {k: 'showLogo', v: t.checked ? '1' : '0'});
+  if (t.id === 'showjn') return act('settings', {k: 'showJN', v: t.checked ? '1' : '0'});
   if (t.id === 'showpv') return act('settings', {k: 'showPV', v: t.checked ? '1' : '0'});
   if (t.id === 'showround') return act('settings', {k: 'showRound', v: t.checked ? '1' : '0'});
   if (t.id === 'auto') return act('settings', {k: 'auto', v: t.checked ? '1' : '0'});
@@ -501,7 +551,7 @@ function judgeRender() {
   const d = JD, c = d.current, mine = d.mine, k2 = d.round + ':' + (c ? c.id : 0);
   if (jkey !== k2) { jkey = k2; kv = mine == null ? '' : String(mine); jmsg = ''; }
   if (d.ranking) { app.innerHTML = topbar('กรรมการ: ' + esc(d.name)) + rankV(d.ranking, d); return; }
-  app.innerHTML = topbar('กรรมการ: ' + esc(d.name)) + `<div class="box" style="text-align:center"><div class="mu">${esc(d.pgName)} · ${esc(d.round)}</div>` + (!c ? '<p class="mu">รอผู้ดูแลเลือกผู้เข้าประกวด…</p>' : `${c.img ? `<div class="jph" style="margin-top:8px">${ph(c.img)}</div>` : ''}<div style="font-size:1.4rem;font-weight:600;text-transform:uppercase;margin-top:${c.img ? 0 : 14}px">${esc(c.country || c.name)}</div>${c.country ? `<div class="mu" style="text-transform:uppercase">${esc(c.name)}</div>` : ''}`
+  app.innerHTML = topbar('กรรมการ: ' + esc(d.name)) + `<div class="box" style="text-align:center"><div class="mu">${esc(d.pgName)} · ${esc(d.round)}</div>` + (!c ? '<p class="mu">รอผู้ดูแลเลือกผู้เข้าประกวด…</p>' : `${c.img ? `<div class="jph" style="margin-top:8px">${ph(c.img)}</div>` : ''}<div style="font-size:2.2rem;font-weight:700;line-height:1.2;text-transform:uppercase;margin-top:${c.img ? 0 : 14}px">${esc(c.country || c.name)}</div>${c.country ? `<div style="font-size:1.4rem;font-weight:500;line-height:1.25;margin-top:2px;text-transform:uppercase">${esc(c.name)}</div>` : ''}`
     + (c.revealed ? `<p class="mu">เปิดคะแนนแล้ว แก้ไขไม่ได้ คะแนนที่คุณให้: ${mine ?? '-'}</p>` : mine != null ? `<div class="val">${fmtn(mine)}</div><p class="ok" style="margin:6px 0">ส่งคะแนนแล้ว ล็อกเรียบร้อย แก้ไขไม่ได้</p><p class="mu">ถ้าต้องแก้ไข ให้แจ้งผู้ดูแล</p>` : `<div class="val">${kv === '' ? '<span class="mu">–</span>' : esc(kv)}</div><div class="mu">คะแนนเต็ม ${d.max}</div><div class="kp">${'123456789'.split('').map(k => `<button data-k="${k}">${k}</button>`).join('')}<button data-k="max">${d.max}</button><button data-k=".">.</button><button data-k="0">0</button><button data-k="del">⌫</button><button class="cf" data-k="ok">ยืนยัน</button></div><p class="bad" style="margin:8px 0 0">${esc(jmsg)}</p>`)) + '</div>';
 }
 async function press(k) {
@@ -524,7 +574,6 @@ async function press(k) {
 
 /* ---------- เริ่มต้น ---------- */
 function render() {
-  document.body.classList.toggle('jd', ST.role === 'judge');
   if (!ST.role) return loginV();
   if (ST.role === 'super') return superV();
   if (ST.role === 'admin') { const r = adminV(); pvArm(); return r; }
@@ -561,7 +610,7 @@ async function boot() {
   ST.code = s.code; ST.pg = s.pg; ST.role = s.role; ST.fromSuper = !!s.fromSuper;
   try {
     const me = await api('me');
-    if (me.role === 'super') { if (!ST.fromSuper) { ST.role = 'super'; ST.pg = 0; } else ST.role = 'admin'; } else { ST.role = me.role; ST.fromSuper = false; ST.pg = me.pg; }
+    if (me.role === 'super') { if (!ST.fromSuper) { ST.role = 'super'; ST.pg = 0; } else ST.role = 'admin'; ST.co = false; ST.perms = null; } else { applyMe(me); ST.fromSuper = false; ST.pg = me.pg; }
     start();
   } catch (e) { clearSess(); ST.code = ''; ST.role = null; loginV(); }
 }
