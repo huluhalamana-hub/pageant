@@ -48,7 +48,7 @@ export function sumData(p, show, opts) {
 
 // ---------- คัดผู้เข้ารอบ + ที่นั่ง Popular Vote (wildcard) ----------
 // ค่าตั้งต่อรอบเก็บที่ p.qcfg = {รหัสรอบ: {n: จำนวนผู้เข้ารอบ "รวมที่นั่งโหวต" แล้ว, pv: ใช้ที่นั่งโหวตในรอบนี้ไหม (ไม่ตั้ง = เปิด)}}
-export const qcfgOf = (p, rid) => { const x = (p.qcfg || {})[rid] || {}; return {n: Math.max(0, Math.floor(+x.n || 0)), pv: x.pv !== false}; };
+export const qcfgOf = (p, rid) => { const x = (p.qcfg || {})[rid] || {}; return {n: Math.max(0, Math.floor(+x.n || 0)), pv: x.pv !== false, nm: !!x.nm}; };
 const rv4 = v => v == null ? null : Math.round(v * 1e4), nv = v => v == null ? -Infinity : v, cmpDesc = (x, y) => nv(y) > nv(x) ? 1 : nv(y) < nv(x) ? -1 : 0;
 // คำนวณว่าใครควรเข้ารอบ (ใช้แสดงในหน้าแอดมินเท่านั้น ไม่ขึ้นจอจนกว่าแอดมินจะกดประกาศ)
 // 1) เรียงตามคะแนนกรรมการเฉลี่ยของรอบนี้ (เสมอ → ดูโหวต → เลขที่) แล้วตัดที่ n คน
@@ -107,6 +107,7 @@ export function buildDisplay(p, opts) {
   let c = p.C.find(x => x.id === p.cur);
   if (force && (!c || !inR(p, p.round, c))) c = {id: -1, no: 1, name: 'ชื่อผู้เข้าประกวด', country: '', img: null};
   if (!c || (c.id !== -1 && !inR(p, p.round, c))) return vm;
+  if (!force && qcfgOf(p, p.round).nm) { vm.card = {c: {no: c.no, name: c.name, country: c.country, img: c.img}}; return vm; } // รอบที่ตั้งให้แสดงแค่การ์ดชื่อ: ไม่มีแถบคะแนนบนจอ (กรรมการให้คะแนน/ตารางสรุปปกติ)
   const k = calc(p, p.round, c); let R = k.rev ? {scores: k.scores, avg: k.avg} : null;
   if (!R && force) { const sc = p.J.map((_, i) => [8, 7.5, 9, 8.5, 7][i % 5]); R = {scores: sc, avg: sc.reduce((a, b) => a + b, 0) / (sc.length || 1)}; }
   const pre = p.pre || 'dash';

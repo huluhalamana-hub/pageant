@@ -112,7 +112,7 @@ const qualSel = (p, pl) => QS.round === p.round && QS.ids ? QS.ids : pl.sel;
 const qualCnt = (p, pl, sel) => { const ed = sel !== pl.sel && (sel.size !== pl.sel.size || [...sel].some(i => !pl.sel.has(i))); return `ติ๊กเข้ารอบ <b>${sel.size}</b> คน · ตกรอบ <b>${pl.pool.length - sel.size}</b> คน${ed ? ' · <span class="bad">แก้เองจากที่ระบบคำนวณ</span>' : ''}`; };
 function qRoundCfg(p, x) {
   const c = qcfgOf(p, x.id);
-  return `<div data-need="advance" style="margin-top:6px"><div class="row" style="align-items:center"><span class="mu">ผู้เข้ารอบ</span><input data-qn="${x.id}" type="number" min="0" max="1000" step="1" value="${c.n || ''}" placeholder="ว่าง = ไม่คัด" style="max-width:110px;flex:none"><span class="mu">คน</span><label style="margin:0;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" data-qp="${x.id}" ${c.pv ? 'checked' : ''} style="width:auto"> ที่นั่ง Popular Vote</label><button data-a="qset" data-id="${x.id}">บันทึก</button></div></div>`;
+  return `<div data-need="advance" style="margin-top:6px"><div class="row" style="align-items:center"><span class="mu">ผู้เข้ารอบ</span><input data-qn="${x.id}" type="number" min="0" max="1000" step="1" value="${c.n || ''}" placeholder="ว่าง = ไม่คัด" style="max-width:110px;flex:none"><span class="mu">คน</span><label style="margin:0;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" data-qp="${x.id}" ${c.pv ? 'checked' : ''} style="width:auto"> ที่นั่ง Popular Vote</label><button data-a="qset" data-id="${x.id}">บันทึก</button></div><label style="margin:6px 0 0;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" data-qm="${x.id}" ${c.nm ? 'checked' : ''} style="width:auto"> รอบนี้แสดงแค่การ์ดชื่อบนจอ (ไม่มีแถบคะแนน)</label>${c.nm ? '<p class="mu" style="margin:2px 0 0">กรรมการให้คะแนนปกติและเข้าตารางสรุปปกติ · คนสุดท้ายเฟดแล้ว ถ้ากรรมการส่งครบ จะซ่อนจอแล้วไปรอบถัดไปเอง (ถ้าตั้งจำนวนผู้เข้ารอบไว้ จะรอประกาศเข้ารอบก่อน) · ต้องตั้ง "การ์ดชื่อ" (วินาที) มากกว่า 0</p>' : ''}</div>`;
 }
 function qualV(p) {
   const rd = p.rounds.find(x => x.id === p.round); if (!rd) return '';
@@ -540,7 +540,7 @@ const onClick = async e => {
     return;
   }
   if (a === 'ann') return act(v === 'start' ? 'annstart' : 'annstop', {});
-  if (a === 'qset') { QS = {round: 0, ids: null}; return act('qset', {id, n: document.querySelector(`[data-qn="${id}"]`).value, pv: document.querySelector(`[data-qp="${id}"]`).checked}); }
+  if (a === 'qset') { QS = {round: 0, ids: null}; return act('qset', {id, n: document.querySelector(`[data-qn="${id}"]`).value, pv: document.querySelector(`[data-qp="${id}"]`).checked, nm: document.querySelector(`[data-qm="${id}"]`).checked}); }
   if (a === 'qreset') { QS = {round: 0, ids: null}; return render(); }
   if (a === 'qreload') { try { await load(); } catch (er) { alert(er.message); } return render(); }
   if (a === 'qsave' || a === 'qdo') return qualRun(a === 'qdo');
@@ -624,7 +624,8 @@ const onChange = e => {
   if (t.dataset && t.dataset.s) { const i = +t.dataset.s; if (t.checked) SEL.add(i); else SEL.delete(i); return selUpd(); }
   if (t.id === 'selall') { ST.p.C.forEach(c => { if (t.checked) SEL.add(c.id); else SEL.delete(c.id); }); document.querySelectorAll('input[data-s]').forEach(x => { x.checked = t.checked; }); return selUpd(); }
   if (['c1', 'c2', 'c3'].includes(t.id)) return act('settings', {k: 'colors', v: ['c1', 'c2', 'c3'].map(i => $('#' + i).value).join(',')});
-  if (t.dataset && t.dataset.qp) { QS = {round: 0, ids: null}; const rid = +t.dataset.qp; return act('qset', {id: rid, n: document.querySelector(`[data-qn="${rid}"]`).value, pv: t.checked}); }
+  if (t.dataset && t.dataset.qp) { QS = {round: 0, ids: null}; const rid = +t.dataset.qp; return act('qset', {id: rid, n: document.querySelector(`[data-qn="${rid}"]`).value, pv: t.checked, nm: document.querySelector(`[data-qm="${rid}"]`).checked}); }
+  if (t.dataset && t.dataset.qm) { QS = {round: 0, ids: null}; const rid = +t.dataset.qm; return act('qset', {id: rid, n: document.querySelector(`[data-qn="${rid}"]`).value, pv: document.querySelector(`[data-qp="${rid}"]`).checked, nm: t.checked}); }
   if (t.dataset && t.dataset.q) { const p = ST.p, pl = qualPlan(p, p.round); if (!(QS.round === p.round && QS.ids)) QS = {round: p.round, ids: new Set(pl.sel)}; const i = +t.dataset.q; if (t.checked) QS.ids.add(i); else QS.ids.delete(i); const row = t.closest('.ci'); if (row) row.classList.toggle('out', !t.checked); const q = $('#qcnt'); if (q) q.innerHTML = qualCnt(p, pl, QS.ids); return; }
   if (t.id === 'showlogo') return act('settings', {k: 'showLogo', v: t.checked ? '1' : '0'});
   if (t.id === 'showjn') return act('settings', {k: 'showJN', v: t.checked ? '1' : '0'});
