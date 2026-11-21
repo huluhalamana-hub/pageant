@@ -663,7 +663,12 @@ async function press(k) {
       catch (e) { jmsg = e.status === 409 ? e.message : 'ส่งไม่สำเร็จ กรุณาลองอีกครั้ง'; if (e.status === 409) { try { await judgeLoad(); } catch (x) {} } }
       jbusy = false;
     }
-  } else { const n = kv === '0' ? k : kv + k; if (/^\d*\.?\d{0,2}$/.test(n) && +n <= d.max) kv = n; }
+  } else {
+    let n = kv === '0' ? k : kv + k;
+    // ถ้าต่อเลขแล้วเกินคะแนนเต็ม (เช่น เต็ม 10 กด 9 แล้วกด 5 = 95) ให้เติมจุดทศนิยมให้เอง เป็น 9.5
+    if (kv !== '' && kv !== '0' && !kv.includes('.') && +n > d.max) n = kv + '.' + k;
+    if (/^\d*\.?\d{0,2}$/.test(n) && +n <= d.max) kv = n;
+  }
   judgeRender();
 }
 
