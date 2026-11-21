@@ -46,6 +46,41 @@ export function sumData(p, show, opts) {
   return {rows, ranked};
 }
 
+// ---------- คัดผู้เข้ารอบ + ที่นั่ง Popular Vote (wildcard) ----------
+// ค่าตั้งต่อรอบเก็บที่ p.qcfg = {รหัสรอบ: {n: จำนวนผู้เข้ารอบ "รวมที่นั่งโหวต" แล้ว, pv: ใช้ที่นั่งโหวตในรอบนี้ไหม (ไม่ตั้ง = เปิด)}}
+export const qcfgOf = (p, rid) => { const x = (p.qcfg || {})[rid] || {}; return {n: Math.max(0, Math.floor(+x.n || 0)), pv: x.pv !== false}; };
+const rv4 = v => v == null ? null : Math.round(v * 1e4), nv = v => v == null ? -Infinity : v, cmpDesc = (x, y) => nv(y) > nv(x) ? 1 : nv(y) < nv(x) ? -1 : 0;
+// คำนวณว่าใครควรเข้ารอบ (ใช้แสดงในหน้าแอดมินเท่านั้น ไม่ขึ้นจอจนกว่าแอดมินจะกดประกาศ)
+// 1) เรียงตามคะแนนกรรมการเฉลี่ยของรอบนี้ (เสมอ → ดูโหวต → เลขที่) แล้วตัดที่ n คน
+// 2) คนโหวตสูงสุดมีสิทธิ์พิเศษ: อยู่ใน n อันดับแรกอยู่แล้ว = ไม่ทำอะไรพิเศษ / ไม่ถึง = ได้ที่นั่งสุดท้าย แล้วคนอันดับ n ตามคะแนนตกรอบแทน (ไม่ส่งสิทธิ์ต่อให้โหวตอันดับ 2)
+// 3) เสมอที่ขอบตัดทั้งคะแนนและโหวต → บอกใน tie ให้แอดมินเลือกเอง
+export function qualPlan(p, rid) {
+  const cfg = qcfgOf(p, rid), nj = p.J.length;
+  const votesOf = c => p.vmode === 'round' ? gr(p, rid, c.id).votes : c.votes;
+  const pool = p.C.filter(c => inR(p, rid, c)).map(c => {
+    const s = p.J.map(j => gs(p, rid, c.id, j.id)).filter(x => x != null);
+    return {c, cnt: s.length, avg: s.length ? s.reduce((a, b) => a + b, 0) / s.length : null, votes: votesOf(c) ?? null};
+  }).sort((a, b) => cmpDesc(rv4(a.avg), rv4(b.avg)) || cmpDesc(a.votes, b.votes) || a.c.no - b.c.no || a.c.id - b.c.id);
+  const same = (a, b) => rv4(a.avg) === rv4(b.avg) && a.votes === b.votes;
+  const res = {cfg, pool, nj, sel: new Set(), tag: {}, tie: [], pvId: 0, pvIn: false, pvTie: [], pvNone: false, need: false, all: false, miss: pool.filter(x => x.cnt < nj).length};
+  if (!pool.length) return res;
+  if (!cfg.n) { res.need = true; pool.forEach(x => res.sel.add(x.c.id)); return res; }
+  if (cfg.n >= pool.length) { res.all = true; pool.forEach(x => { res.sel.add(x.c.id); res.tag[x.c.id] = 'score'; }); return res; }
+  let pv = null;
+  if (cfg.pv) {
+    const vs = pool.filter(x => x.votes != null), mx = vs.length ? Math.max(...vs.map(x => x.votes)) : 0;
+    if (mx <= 0) res.pvNone = true;
+    else { const top = vs.filter(x => x.votes === mx); pv = top[0]; if (top.length > 1) res.pvTie = top.map(x => x.c.id); } // เสมอโหวตสูงสุด: เอาคนที่คะแนนกรรมการสูงกว่าก่อน (pool เรียงคะแนนอยู่แล้ว)
+  }
+  let list = pool, k = cfg.n;
+  if (pv) { res.pvId = pv.c.id; if (pool.indexOf(pv) < cfg.n) res.pvIn = true; else { list = pool.filter(x => x !== pv); k = cfg.n - 1; } }
+  list.slice(0, k).forEach(x => { res.sel.add(x.c.id); res.tag[x.c.id] = 'score'; });
+  if (pv) { res.sel.add(pv.c.id); res.tag[pv.c.id] = res.pvIn ? 'pvin' : 'pv'; }
+  pool.forEach(x => { if (!res.sel.has(x.c.id)) res.tag[x.c.id] = 'cut'; });
+  if (k >= 1 && list[k] && same(list[k - 1], list[k])) res.tie = list.filter(x => same(x, list[k - 1])).map(x => x.c.id);
+  return res;
+}
+
 const tn = (v, d) => (v === '' || v == null || !Number.isFinite(+v) ? d : +v);
 // ข้อมูลสำหรับวาดจอไลฟ์ (view model) เซิร์ฟเวอร์ส่งเฉพาะสิ่งที่เปิดคะแนนแล้วให้หน้าจอสาธารณะ
 function summaryVM(p) {
