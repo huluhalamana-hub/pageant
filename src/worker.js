@@ -31,7 +31,11 @@ async function getS(env, pg) {
   (await env.DB.prepare('SELECT key,value FROM settings WHERE pg=?').bind(pg).all()).results.forEach(r => (o[r.key] = r.value));
   return o;
 }
-const setS = (env, pg, k, v) => env.DB.prepare('INSERT INTO settings(pg,key,value) VALUES(?,?,?) ON CONFLICT(pg,key) DO UPDATE SET value=excluded.value').bind(pg, k, String(v)).run();
+const setS = async (env, pg, k, v) => {
+  const put = (kk, vv) => env.DB.prepare('INSERT INTO settings(pg,key,value) VALUES(?,?,?) ON CONFLICT(pg,key) DO UPDATE SET value=excluded.value').bind(pg, kk, String(vv)).run();
+  await put(k, v);
+  if (k === 'cur' || (k === 'hide' && String(v) === '0')) await put('curAt', Date.now()); // เวลาที่คนนี้ขึ้นจอ ใช้นับเวลาการ์ดชื่อก่อนไปรอบถัดไปอัตโนมัติ
+};
 const bump = (env, pg) => env.DB.prepare('UPDATE pageants SET rev=rev+1 WHERE id=?').bind(pg).run();
 const logE = (env, pg, who, round, c, what, from, to) => env.DB.prepare('INSERT INTO log(pg,t,who,round,c,what,from_v,to_v) VALUES(?,?,?,?,?,?,?,?)').bind(pg, Date.now(), who, round, c, what, from == null ? null : String(from), to == null ? null : String(to)).run();
 
@@ -139,8 +143,28 @@ async function autoHide(env, pg, at) {
 async function finishAnn(env, pg) {
   const s = await getS(env, pg), rd = await curRound(env, pg, s);
   await setS(env, pg, 'annAt', 0); await setS(env, pg, 'annEnd', 0); await setS(env, pg, 'hide', '1');
+  await goNextRound(env, pg, rd);
+}
+// ซ่อนจอ แล้วไปรอบถัดไป (คนแรกของรอบนั้น) จอยังซ่อนอยู่จนกว่าจะกด "แสดงจอ"
+async function goNextRound(env, pg, rd) {
+  await setS(env, pg, 'hide', '1');
   const nx = rd ? await env.DB.prepare('SELECT id FROM rounds WHERE pg=? AND id>? ORDER BY id LIMIT 1').bind(pg, rd.id).first() : null;
   if (nx) { await setS(env, pg, 'round', nx.id); await setS(env, pg, 'cur', await firstContestant(env, pg, nx.id)); }
+}
+// รอบที่ตั้ง "แสดงแค่การ์ดชื่อ": การ์ดคนสุดท้ายขึ้นแล้วเฟด + กรรมการส่งคะแนนคนสุดท้ายครบ → ซ่อนจอแล้วไปรอบถัดไปเอง
+// ถ้ารอบนั้นตั้งจำนวนผู้เข้ารอบไว้และยังมีคนต้องคัดออก จะรอประกาศเข้ารอบก่อน (ประกาศจบแล้วไปรอบถัดไปเอง)
+async function nmAutoNext(env, pg) {
+  const s = await getS(env, pg); if (s.hide === '1' || +s.annAt > 0 || s.mode === 'ranking') return false;
+  const rd = await curRound(env, pg, s); if (!rd) return false;
+  let q = {}; try { q = JSON.parse(s.qcfg) || {}; } catch (e) {}
+  const cfg = q[rd.id] || {}; if (!cfg.nm) return false;
+  if (!(+s.introSec > 0) || Date.now() < (+s.curAt || 0) + +s.introSec * 1000 + 3500) return false;
+  const ids = await activeIds(env, pg, rd.id); if (!ids.length || +s.cur !== ids[ids.length - 1]) return false;
+  if (+cfg.n > 0 && +cfg.n < ids.length) return false;
+  const t = (await env.DB.prepare('SELECT COUNT(*) n FROM judges WHERE pg=?').bind(pg).first()).n;
+  const n = (await env.DB.prepare('SELECT COUNT(*) n FROM scores WHERE round_id=? AND contestant_id=?').bind(rd.id, +s.cur).first()).n;
+  if (!(t > 0 && n >= t)) return false;
+  await goNextRound(env, pg, rd); await bump(env, pg); return true;
 }
 // การ์ดคนสุดท้ายขึ้นจอแล้ว (annEnd = เวลาที่เริ่มขึ้น) พอการ์ดเฟดหายแล้วให้จบการประกาศเอง เซิร์ฟเวอร์เช็กตอนมีคนโพลล์ /api/rev
 async function annAutoEnd(env, pg, at) {
@@ -162,10 +186,11 @@ async function judgeSubmit(env, me, b) {
   if (b.score === '' || b.score == null || !Number.isFinite(v) || v < 0 || v > max) return J({ error: `คะแนนต้องอยู่ระหว่าง 0 ถึง ${max}` }, 400);
   const r = await env.DB.prepare('INSERT INTO scores(round_id,contestant_id,judge_id,score) VALUES(?,?,?,?) ON CONFLICT(round_id,contestant_id,judge_id) DO NOTHING').bind(rd.id, c.id, me.jid, v).run();
   if (r.meta.changes !== 1) return J({ error: 'ส่งคะแนนไปแล้ว ล็อกแล้ว แก้ไขเองไม่ได้ ถ้าต้องแก้ให้แจ้งผู้ดูแล' }, 409);
-  if (s.auto === '1') {
+  let nm = false; try { nm = !!((JSON.parse(s.qcfg) || {})[rd.id] || {}).nm; } catch (e) {} // รอบแสดงแค่การ์ดชื่อ: เปิดคะแนนอัตโนมัติเมื่อกรรมการครบ (เข้าตารางสรุปปกติ แต่ไม่ขึ้นแถบบนจอ)
+  if (s.auto === '1' || nm) {
     const n = (await env.DB.prepare('SELECT COUNT(*) n FROM scores WHERE round_id=? AND contestant_id=?').bind(rd.id, c.id).first()).n;
     const t = (await env.DB.prepare('SELECT COUNT(*) n FROM judges WHERE pg=?').bind(pg).first()).n;
-    if (t > 0 && n >= t) { await setReveal(env, rd.id, c.id, 1); await armAH(env, pg); }
+    if (t > 0 && n >= t) { await setReveal(env, rd.id, c.id, 1); if (!nm) await armAH(env, pg); }
   }
   await bump(env, pg);
   return J({ ok: true, score: v });
@@ -352,7 +377,7 @@ async function adminAction(env, a, b, pg, role, me) {
       let q = {}; try { q = JSON.parse(s.qcfg) || {}; } catch (e) {}
       const live = new Set((await db.prepare('SELECT id FROM rounds WHERE pg=?').bind(pg).all()).results.map(x => String(x.id))), o = {};
       for (const k of Object.keys(q)) if (live.has(k)) o[k] = q[k];
-      o[id] = { n, pv: !!b.pv };
+      o[id] = { n, pv: !!b.pv, nm: !!b.nm };
       await setS(env, pg, 'qcfg', JSON.stringify(o)); break;
     }
     case 'annstart': { // ประกาศผู้เข้ารอบ: สุ่มลำดับคนที่เข้ารอบ แล้วขึ้นการ์ดชื่อทีละคนอัตโนมัติ (ลำดับในรอบถัดไปยังเรียงตามเลขที่เหมือนเดิม)
@@ -498,7 +523,7 @@ async function deletePageant(env, id) {
 // คัดลอกข้อมูลจากเวทีเดิมไปเวทีใหม่ตามที่ติ๊ก: settings=การตั้งค่าไลฟ์/คะแนน colors=สี logo=โลโก้ contestants=ผู้เข้าประกวด(+รูป) judges=กรรมการ(+รหัส+รูป) rounds=ทำที่ผู้เรียกแล้ว
 // ไม่คัดลอก: คะแนน ผลการเปิดคะแนน/ตกรอบ ประวัติ CO-ADMIN และสถานะหน้าจอขณะนั้น (รอบที่ใช้ คนปัจจุบัน ซ่อนจอ โหมด)
 async function copyParts(env, from, to, parts) {
-  const db = env.DB, now = Date.now(), RUNTIME = new Set(['round', 'cur', 'hide', 'mode', 'rank', 'ahAt', 'qcfg']), COL = new Set(['c1', 'c2', 'c3']);
+  const db = env.DB, now = Date.now(), RUNTIME = new Set(['round', 'cur', 'hide', 'mode', 'rank', 'ahAt', 'qcfg', 'curAt']), COL = new Set(['c1', 'c2', 'c3']);
   const st = (await db.prepare('SELECT key,value FROM settings WHERE pg=?').bind(from).all()).results.filter(x => !RUNTIME.has(x.key) && (COL.has(x.key) ? parts.colors : x.key === 'showLogo' ? parts.logo : parts.settings));
   for (let i = 0; i < st.length; i += 40) await db.batch(st.slice(i, i + 40).map(x => db.prepare('INSERT INTO settings(pg,key,value) VALUES(?,?,?) ON CONFLICT(pg,key) DO UPDATE SET value=excluded.value').bind(to, x.key, x.value)));
   if (parts.settings && parts.rounds) { // ค่าคัดผู้เข้ารอบผูกกับรหัสรอบ: รอบใหม่ได้รหัสใหม่ จึงจับคู่ตามลำดับรอบแล้วแปลงรหัสให้
@@ -569,11 +594,12 @@ export default {
       if (p === 'pageants' && m === 'GET') return J((await env.DB.prepare('SELECT id,name FROM pageants ORDER BY id').all()).results.map(x => ({ ...x, name: UP(x.name) })));
       if (p === 'rev' && m === 'GET') {
         const pgId = +url.searchParams.get('pg') || 0;
-        const r = await env.DB.prepare("SELECT rev,(SELECT value FROM settings WHERE pg=pageants.id AND key='ahAt') ah,(SELECT value FROM settings WHERE pg=pageants.id AND key='annEnd') ae FROM pageants WHERE id=?").bind(pgId).first();
+        const r = await env.DB.prepare("SELECT rev,(SELECT value FROM settings WHERE pg=pageants.id AND key='ahAt') ah,(SELECT value FROM settings WHERE pg=pageants.id AND key='annEnd') ae,(SELECT value FROM settings WHERE pg=pageants.id AND key='qcfg') qc FROM pageants WHERE id=?").bind(pgId).first();
         if (!r) return J({ error: 'ไม่พบเวที' }, 404);
         let chg = false;
         if (+r.ah > 0 && (await autoHide(env, pgId, +r.ah))) chg = true;
         if (+r.ae > 0 && (await annAutoEnd(env, pgId, +r.ae))) chg = true;
+        if (r.qc && r.qc.includes('"nm":true') && (await nmAutoNext(env, pgId))) chg = true;
         if (chg) return J({ rev: (await env.DB.prepare('SELECT rev FROM pageants WHERE id=?').bind(pgId).first()).rev });
         return J({ rev: r.rev });
       }
