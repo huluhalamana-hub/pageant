@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="theme-color" content="#000000">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>ระบบลงคะแนนประกวด</title>
+<title>Pageant Scoring System</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600;700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wdth,wght@75..125,200..1000&display=swap" rel="stylesheet">
@@ -38,6 +38,7 @@ button.d{color:var(--bad)}button:focus-visible,input:focus-visible{outline:3px s
 
 .cf{grid-column:span 2;background:var(--gold)!important;color:var(--on)!important;border-color:var(--gold)!important;font-weight:700}
 input:not([type=password]):not([type=number]):not([type=checkbox]):not([type=color]):not([type=file]),textarea{text-transform:uppercase}
+input[readonly]{text-transform:none!important}
 .kp{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:340px;margin:12px auto 0}.kp button{font-size:1.6rem;padding:15px 0;font-weight:600}
 .val{font-size:3rem;font-weight:700;color:var(--gold);min-height:1.25em;text-align:center;line-height:1.25}
 .jph{width:112px;height:112px;border-radius:50%;margin:0 auto 8px;border:4px solid var(--gold);overflow:hidden;background:var(--btn);display:flex;align-items:center;justify-content:center;font-size:3rem;color:var(--gold);font-weight:700}.jph img{width:100%;height:100%;object-fit:cover}
@@ -57,6 +58,7 @@ h2.fold{cursor:pointer;user-select:none;-webkit-user-select:none}h2.fold::before
 .addr .a-dl{padding:8px 0}
 @media (max-width:560px){.addr{grid-template-columns:56px 1fr 36px;grid-template-areas:"ph ct dl" "no nm nm"}.addr.addh{display:none}.addr .a-ph{grid-area:ph}.addr .a-ct{grid-area:ct}.addr .a-dl{grid-area:dl}.addr .a-no{grid-area:no}.addr .a-nm{grid-area:nm}.addr+.addr{padding-top:8px;border-top:1px solid var(--bd)}.addr.addh+.addr{border-top:0;padding-top:0}}
 .lgn{max-width:420px;margin:0 auto;min-height:calc(100vh - 40px);min-height:calc(100dvh - 40px);display:flex;flex-direction:column;justify-content:center}.lgn h1{text-align:center;font-size:1.6rem;margin:0 0 14px}.lgn .box{margin:0}
+.pres{text-align:center;margin-top:14px;font-size:.85rem;color:var(--mu)}.pres a{color:var(--ink);text-decoration:underline}
 .pgl{position:relative;border:1px solid var(--bd);border-radius:10px;max-height:240px;overflow-y:auto;background:var(--bg);-webkit-overflow-scrolling:touch}.pgl button{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid var(--bd);border-radius:0;padding:12px 14px;background:transparent}.pgl button:last-child{border-bottom:0}.pgl button.p{background:var(--gold);color:var(--on)}
 @media print{.noprint{display:none!important}body{background:#fff;color:#000}}
 /* จอไลฟ์ */

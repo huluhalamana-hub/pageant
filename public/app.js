@@ -72,6 +72,13 @@ function coFilter() {
   app.querySelectorAll('[data-a="tab"]').forEach(el => { const t = T[el.dataset.v]; if (t && !canAny(...t)) hide(el); });
 }
 const permBoxes = (cls, perms) => COP.map(([k, t]) => `<label style="margin:4px 0 0;color:var(--ink);display:flex;gap:8px;align-items:flex-start"><input type="checkbox" ${cls}="${k}" ${perms && perms[k] ? 'checked' : ''} style="width:auto;flex:none;margin-top:5px"><span>${t}</span></label>`).join('');
+function resetBox() {
+  return `<div class="box noprint"><h2>ล้างข้อมูลซ้อม</h2><p class="mu" style="margin:0 0 8px">ล้างแล้วเริ่มซ้อมใหม่ได้ทันที ไม่แตะรายชื่อผู้เข้าประกวด กรรมการ รหัส รูป และค่าตั้งต่าง ๆ ย้อนกลับไม่ได้</p>
+    <label style="margin:4px 0 0;color:var(--ink)"><input type="checkbox" id="rs-sc" checked> คะแนนที่กรรมการให้</label>
+    <label style="margin:4px 0 0;color:var(--ink)"><input type="checkbox" id="rs-st" checked> สถานะเปิดเผยคะแนน เข้ารอบ/ตกรอบ และการประกาศที่ค้างอยู่ (กลับไปรอบแรก ซ่อนจอ)</label>
+    <label style="margin:4px 0 0;color:var(--ink)"><input type="checkbox" id="rs-vt" checked> คะแนนโหวต (Popular Vote)</label>
+    <div class="row" style="margin-top:10px"><input id="rs-cf" placeholder="พิมพ์คำว่า ล้าง เพื่อยืนยัน" autocomplete="off"><button class="p" data-a="reset">ล้างข้อมูล</button></div></div>`;
+}
 function coBox(p) {
   const L = p.CO || [];
   return `<div class="box"><h2>รหัส CO-ADMIN</h2><p class="mu" style="margin:0 0 8px">รหัสผู้ช่วยแอดมินของเวทีนี้ ติ๊กได้ว่าแต่ละรหัสทำอะไรได้บ้าง (ติ๊กแล้วบันทึกทันที) CO-ADMIN จะไม่เห็นรหัสของกรรมการและไม่สามารถสร้าง/ลบ CO-ADMIN คนอื่นได้</p>
@@ -151,7 +158,7 @@ function manageV(p) {
     <div id="addt">${addRowsV()}</div>
     <div class="row" style="margin-top:6px"><button data-a="aadd" data-v="1">+ เพิ่มแถว</button><button data-a="aadd" data-v="5">+ 5 แถว</button><button class="p" data-a="addcs">เพิ่มทั้งหมด (<span id="addn">${addCount()}</span> คน)</button></div>
     <p class="mu">"ตกรอบ" ใช้เมื่อบางคนไม่ได้ไปต่อ เขายังอยู่ในรอบนี้ (ยังเห็นคะแนนของรอบนี้) แต่จะไม่มีชื่ออยู่ในทุกรอบถัดไป (เรียงจากบนลงล่างในรายการรอบ) ผู้เข้าประกวดที่เพิ่มใหม่จะอยู่ในทุกรอบ และรอบที่เพิ่มใหม่จะดึงผู้เข้าประกวดทุกคนที่ยังไม่ตกรอบเข้ามาเอง ถ้ากดผิด กด "ยกเลิกตกรอบ" ได้ที่รอบเดิมหรือรอบถัดไป</p></div>
-  ${ST.co ? '' : coBox(p)}<div class="box" data-need="edit"><h2>กรรมการ</h2>${p.J.map(j => `<div class="ci"><div class="l">${th(j.img, j.name)}<div>${esc(j.name)}<div class="mu">รหัสเข้าระบบ: <b>${j.code == null ? '••••' : esc(j.code)}</b></div></div></div><div class="btns"><button data-a="editj" data-id="${j.id}">แก้ชื่อ</button><button data-a="img" data-k="J" data-id="${j.id}">รูป</button><button data-a="jcode" data-id="${j.id}">แก้รหัส</button><button class="d" data-a="jdel" data-id="${j.id}">ลบ</button></div></div>`).join('') || '<p class="mu">ยังไม่มีกรรมการ</p>'}
+  ${ST.co ? '' : coBox(p)}${ST.co ? '' : resetBox()}<div class="box" data-need="edit"><h2>กรรมการ</h2>${p.J.map(j => `<div class="ci"><div class="l">${th(j.img, j.name)}<div>${esc(j.name)}<div class="mu">รหัสเข้าระบบ: <b>${j.code == null ? '••••' : esc(j.code)}</b></div></div></div><div class="btns"><button data-a="editj" data-id="${j.id}">แก้ชื่อ</button><button data-a="img" data-k="J" data-id="${j.id}">รูป</button><button data-a="jcode" data-id="${j.id}">แก้รหัส</button><button class="d" data-a="jdel" data-id="${j.id}">ลบ</button></div></div>`).join('') || '<p class="mu">ยังไม่มีกรรมการ</p>'}
     <div class="row" style="margin-top:10px"><input id="jnm" placeholder="ชื่อกรรมการ"><input id="jcd" placeholder="รหัสเข้าระบบ (ตั้งเอง)"><button class="p" data-a="addj">เพิ่ม</button></div>
     <label><input type="checkbox" id="showjn" style="width:auto" ${p.showJN !== false ? 'checked' : ''}> แสดงชื่อกรรมการใต้รูปในตารางคะแนนรวม (ไม่ติ๊ก = แสดงแต่รูป)</label>
     <p class="mu">รหัสกรรมการตั้งเองได้ ไม่ซ้ำกันในเวทีเดียวกัน กรรมการแต่ละคนเห็นแค่คะแนนที่ตัวเองให้จนกว่าจะเปิดคะแนน และเมื่อกด "ยืนยัน" แล้วคะแนนจะล็อก กรรมการแก้เองไม่ได้ ถ้าต้องแก้ แอดมินแก้ให้ได้ที่ปุ่ม "ใส่/แก้คะแนน"</p></div>`;
@@ -340,13 +347,14 @@ function displayMode() {
 }
 
 /* ---------- เข้าสู่ระบบ ---------- */
+const TT_URL = 'https://www.tiktok.com/@moohong.org'; // ใส่ลิงก์ TikTok ของ MHO ตรงนี้ เช่น 'https://www.tiktok.com/@xxxx' (ว่างไว้ = MHO เป็นข้อความเฉย ๆ ไม่มีลิงก์)
 async function loginV(msg, cached) {
   const keep = $('#code') ? $('#code').value : '';
   let list = ST.list; if (!cached || !list.length) { try { list = await pub('pageants'); } catch (e) {} ST.list = list; }
   if (ST.sel === null || (ST.sel !== 0 && !list.some(x => x.id === ST.sel))) ST.sel = list[0] ? list[0].id : 0;
   const sc0 = $('.pgl') ? $('.pgl').scrollTop : -1;
-  app.innerHTML = `<div class="lgn"><h1>ระบบลงคะแนนประกวด</h1><div class="box"><label style="margin-top:0">เลือกเวที (เลื่อนหาแล้วแตะที่ชื่อ)</label><div class="pgl">${list.map(p => `<button data-pg="${p.id}" class="${ST.sel === p.id ? 'p' : ''}">${esc(p.name)}</button>`).join('')}<button data-pg="0" class="${ST.sel === 0 ? 'p' : ''}" style="font-style:italic">ผู้ดูแลหลัก</button></div>
-    <label>${ST.sel === 0 ? 'รหัสผู้ดูแลหลัก' : 'รหัส (กรรมการหรือแอดมินเวที)'}</label><input id="code" type="password" autocomplete="off" placeholder="รหัส"><div style="margin-top:10px"><button class="p" id="go" style="width:100%">เข้าสู่ระบบ</button></div><div class="bad" id="lm" style="text-align:center">${esc(msg || '')}</div></div></div>`;
+  app.innerHTML = `<div class="lgn"><h1>Pageant Scoring System</h1><div class="box"><label style="margin-top:0">เลือกเวที (เลื่อนหาแล้วแตะที่ชื่อ)</label><div class="pgl">${list.map(p => `<button data-pg="${p.id}" class="${ST.sel === p.id ? 'p' : ''}">${esc(p.name)}</button>`).join('')}<button data-pg="0" class="${ST.sel === 0 ? 'p' : ''}" style="font-style:italic">ผู้ดูแลหลัก</button></div>
+    <label>${ST.sel === 0 ? 'รหัสผู้ดูแลหลัก' : 'รหัส (กรรมการหรือแอดมินเวที)'}</label><input id="code" type="password" autocomplete="off" placeholder="รหัส"><div style="margin-top:10px"><button class="p" id="go" style="width:100%">เข้าสู่ระบบ</button></div><div class="bad" id="lm" style="text-align:center">${esc(msg || '')}</div></div><div class="pres">Presented by ${TT_URL.startsWith('https://') || TT_URL.startsWith('http://') ? `<a href="${esc(TT_URL)}" target="_blank" rel="noopener noreferrer">MHO</a>` : 'MHO'}</div></div>`;
   { const l = $('.pgl'), on = l.querySelector('button.p'); if (sc0 >= 0) l.scrollTop = sc0; else if (on) l.scrollTop = Math.max(0, on.offsetTop - l.clientHeight / 2 + on.offsetHeight / 2); }
   document.querySelectorAll('[data-pg]').forEach(b => b.onclick = () => { ST.sel = +b.dataset.pg; loginV('', true); });
   $('#code').value = keep;
@@ -473,6 +481,13 @@ const onClick = async e => {
     return;
   }
   if (a === 'ann') return act(v === 'start' ? 'annstart' : 'annstop', {});
+  if (a === 'reset') {
+    const o = {scores: $('#rs-sc').checked, status: $('#rs-st').checked, votes: $('#rs-vt').checked, confirm: $('#rs-cf').value.trim()};
+    if (!o.scores && !o.status && !o.votes) return alert('ยังไม่ได้ติ๊กสิ่งที่จะล้าง');
+    if (o.confirm !== 'ล้าง') return alert('พิมพ์คำว่า ล้าง ในช่องยืนยันก่อน');
+    if (!confirm('ล้างข้อมูลที่เลือกทั้งหมดของเวทีนี้ ย้อนกลับไม่ได้ ตกลงไหม?')) return;
+    return act('reset', o);
+  }
   if (a === 'next' || a === 'prev') return act('step', {dir: a});
   if (a === 'savesc') { const scores = {}; p.J.forEach(j => { scores[j.id] = $('#se-' + j.id).value; }); editing = 0; return act('setscores', {id, scores}); }
   if (a === 'img') return pick(false, async d => { try { await api('admin/img', {kind: b.dataset.k === 'C' ? 'contestant' : 'judge', id, data: d}); } catch (er) { alert(er.message); } await load(); render(); });
