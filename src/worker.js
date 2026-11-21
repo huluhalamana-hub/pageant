@@ -340,6 +340,22 @@ async function adminAction(env, a, b, pg, role, me) {
       await setS(env, pg, 'hide', '0'); await setS(env, pg, 'mode', 'current'); break;
     }
     case 'annstop': { await setS(env, pg, 'annAt', 0); await setS(env, pg, 'annEnd', 0); await setS(env, pg, 'hide', '1'); break; }
+    case 'reset': { // ล้างข้อมูลซ้อม (เฉพาะแอดมินเวที/ผู้ดูแลหลัก — ไม่อยู่ใน PERM จึง CO-ADMIN สั่งไม่ได้) ไม่แตะรายชื่อ กรรมการ รหัส รูป ค่าตั้ง
+      if (String(b.confirm || '').trim() !== 'ล้าง') return bad('พิมพ์คำว่า ล้าง เพื่อยืนยัน');
+      const sc = !!b.scores, st = !!b.status, vt = !!b.votes;
+      if (!sc && !st && !vt) return bad('ยังไม่ได้เลือกสิ่งที่จะล้าง');
+      const RID = 'SELECT id FROM rounds WHERE pg=?';
+      if (sc) await db.prepare(`DELETE FROM scores WHERE round_id IN (${RID})`).bind(pg).run();
+      if (vt) { await db.prepare(`UPDATE results SET votes=NULL WHERE round_id IN (${RID})`).bind(pg).run(); await db.prepare('UPDATE contestants SET votes=NULL WHERE pg=?').bind(pg).run(); }
+      if (st) {
+        await db.prepare(`UPDATE results SET revealed=0, is_out=0 WHERE round_id IN (${RID})`).bind(pg).run();
+        const r1 = await db.prepare('SELECT id FROM rounds WHERE pg=? ORDER BY id LIMIT 1').bind(pg).first();
+        if (r1) { await setS(env, pg, 'round', r1.id); await setS(env, pg, 'cur', await firstContestant(env, pg, r1.id)); }
+        await setS(env, pg, 'hide', '1'); await setS(env, pg, 'ann', '[]'); await setS(env, pg, 'annAt', 0); await setS(env, pg, 'annEnd', 0); await setS(env, pg, 'annI', -1);
+      }
+      await logE(env, pg, who, '(ทั้งเวที)', '-', 'ล้างข้อมูลซ้อม', null, [sc && 'คะแนน', st && 'สถานะ', vt && 'โหวต'].filter(Boolean).join(', '));
+      break;
+    }
     case 'revmany': {
       const ids = await ownIds(env, pg, b.ids); if (!rd || !ids.length) break;
       await db.batch(ids.map(cid => db.prepare('INSERT INTO results(round_id,contestant_id,revealed) VALUES(?,?,?) ON CONFLICT(round_id,contestant_id) DO UPDATE SET revealed=excluded.revealed').bind(rd.id, cid, b.on ? 1 : 0))); break;
