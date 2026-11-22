@@ -7,7 +7,7 @@ const txt = (s, n = 100) => String(s ?? '').trim().slice(0, n);
 const nm = (s, n = 100) => txt(s, n).toUpperCase();
 const UP = s => String(s ?? '').toUpperCase();
 const r2 = n => Math.round(n * 100) / 100;
-const DEF = { max: '10', jw: '100', vm: 'share', agg: 'avg', vmode: 'all', rank: '0', mode: 'current', hide: '0', pre: 'dash', big: 'country', preImg: '1', noj: '{}', annWin: '0', annLbl: '[]', lblW: '', winN: '3', introSec: '4', holdSec: '0', sumPer: '10', sumSec: '8', showPV: '1', showJN: '1', sumScale: '100', barScale: '100', cardScale: '100', annScale: '100', lang: 'th', showLogo: '0', showRound: '1', auto: '0', c1: '#e3b95a', c2: '#1c1006', c3: '#f4e9d3', round: '0', cur: '0', ann: '[]', annAt: '0', annI: '-1', annEnd: '0', qcfg: '{}' };
+const DEF = { max: '10', jw: '100', vm: 'share', agg: 'avg', vmode: 'all', rank: '0', mode: 'current', hide: '0', pre: 'dash', big: 'country', preImg: '1', noj: '{}', annWin: '0', annLbl: '[]', lblW: '', winN: '3', introSec: '4', holdSec: '0', sumPer: '10', sumSec: '8', showPV: '1', showJN: '1', sumScale: '100', barScale: '100', cardScale: '100', annScale: '100', lang: 'th', showLogo: '0', showRound: '1', auto: '0', c1: '#e3b95a', c2: '#1c1006', c3: '#f4e9d3', round: '0', cur: '0', ann: '[]', annAt: '0', annI: '-1', annEnd: '0', qcfg: '{}', ord: '{}' };
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
 // ---------- CO-ADMIN: รหัสผู้ช่วยแอดมินของแต่ละเวที ติ๊กสิทธิ์ได้ (edit=แก้ไขข้อมูล/ตั้งค่า, scores=แก้คะแนน, advance=จัดการผู้เข้ารอบ, screen=สั่งขึ้นจอ) ----------
@@ -20,7 +20,7 @@ const cleanPerms = o => { const r = {}; PKEYS.forEach(k => (r[k] = !!(o && o[k])
 const PERM = {
   addc: 'edit', addcs: 'edit', editc: 'edit', editcs: 'edit', delc: 'edit', delmany: 'edit', addj: 'edit', editj: 'edit', jcode: 'edit', delj: 'edit', rdadd: 'edit', rdren: 'edit', rddel: 'edit', intotal: 'edit', rjskip: 'edit', img: 'edit',
   setscores: 'scores', clearscores: 'scores', savevotes: 'scores',
-  out: 'advance', outmany: 'advance', rd: 'advance', qualify: 'advance', qset: 'advance',
+  out: 'advance', outmany: 'advance', rd: 'advance', qualify: 'advance', qset: 'advance', qord: 'advance',
   cur: 'screen', annwin: 'screen', step: 'screen', reveal: 'screen', revmany: 'screen', annstart: 'screen', annstop: 'screen', jopen: 'screen',
   coadd: 'admin', coedit: 'admin', cocode: 'admin', codel: 'admin',
 };
@@ -67,6 +67,7 @@ async function snapshot(env, pgId, opt = {}) {
     lblW: s.lblW, winN: Math.min(10, Math.max(1, +s.winN || 3)),
     annL: +s.annAt > 0 && s.annWin === '1' ? ((() => { try { return JSON.parse(s.annLbl); } catch (e) { return []; } })()[+s.annI] || '') : '',
     annId: +s.annAt > 0 ? ((() => { try { return JSON.parse(s.ann); } catch (e) { return []; } })()[+s.annI] || 0) : 0,
+    ordR: (() => { try { return Object.keys(JSON.parse(s.ord) || {}).map(Number); } catch (e) { return []; } })(),
     qcfg: (() => { try { const o = JSON.parse(s.qcfg); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; } })(),
     rounds: rounds.map(r => ({ id: r.id, name: UP(r.name), inTotal: !!r.in_total, noJ: nojOf(s)[r.id] || [] })),
     C: cs.map(c => ({ id: c.id, no: c.no, name: UP(c.name), country: UP(c.country), votes: c.votes, img: iu('contestant', c.id) })),
@@ -121,10 +122,15 @@ const ownIds = async (env, pg, raw) => {
   }
   return ok;
 };
-const firstContestant = async (env, pg, roundId) => {
-  const r = await env.DB.prepare('SELECT c.id FROM contestants c WHERE c.pg=? AND ' + NOT_ELIM + ' ORDER BY c.no,c.id LIMIT 1').bind(pg, roundId).first();
-  return r ? r.id : 0;
+// ลำดับให้คะแนนของรอบ: ถ้าไม่ได้เลือก "ตามเลขที่" และรอบก่อนเคยประกาศเข้ารอบไว้ → เรียงตามลำดับที่ประกาศ (คนที่ไม่อยู่ในลำดับนั้น เช่น เพิ่มทีหลัง ต่อท้ายตามเลขที่) ไม่งั้นเรียงตามเลขที่
+const orderedIds = async (env, pg, rid, s) => {
+  const ids = await activeIds(env, pg, rid); s = s || await getS(env, pg);
+  let q = {}, o = {}; try { q = JSON.parse(s.qcfg) || {}; } catch (e) {} try { o = JSON.parse(s.ord) || {}; } catch (e) {}
+  const a = o[rid]; if ((q[rid] || {}).ob === 'n' || !Array.isArray(a) || !a.length) return ids;
+  const pos = new Map(a.map((x, i) => [x, i]));
+  return ids.map((x, i) => ({ x, k: pos.has(x) ? pos.get(x) : a.length, i })).sort((u, v) => u.k - v.k || u.i - v.i).map(u => u.x);
 };
+const firstContestant = async (env, pg, roundId) => { const l = await orderedIds(env, pg, roundId); return l.length ? l[0] : 0; };
 const curRound = async (env, pg, s) => {
   const r = s ? await ownRound(env, +s.round, pg) : null;
   return r || (await env.DB.prepare('SELECT * FROM rounds WHERE pg=? ORDER BY id LIMIT 1').bind(pg).first());
@@ -169,7 +175,7 @@ async function nmAutoNext(env, pg) {
   let q = {}; try { q = JSON.parse(s.qcfg) || {}; } catch (e) {}
   const cfg = q[rd.id] || {}; if (!cfg.nm) return false;
   if (!(+s.introSec > 0) || Date.now() < (+s.curAt || 0) + +s.introSec * 1000 + 3500) return false;
-  const ids = await activeIds(env, pg, rd.id); if (!ids.length || +s.cur !== ids[ids.length - 1]) return false;
+  const ids = await orderedIds(env, pg, rd.id, s); if (!ids.length || +s.cur !== ids[ids.length - 1]) return false;
   if (+cfg.n > 0 && +cfg.n < ids.length) return false;
   const { t, n } = await needScored(env, pg, rd.id, +s.cur, s);
   if (!(t > 0 && n >= t)) return false;
@@ -364,7 +370,7 @@ async function adminAction(env, a, b, pg, role, me) {
         if (ni >= ids.length) await finishAnn(env, pg); else { await setS(env, pg, 'annI', ni); await setS(env, pg, 'annEnd', ni === ids.length - 1 ? Date.now() : 0); }
         break;
       }
-      const l = (await db.prepare('SELECT c.id FROM contestants c WHERE c.pg=? AND ' + NOT_ELIM + ' ORDER BY c.no,c.id').bind(pg, rd.id).all()).results.map(x => x.id);
+      const l = await orderedIds(env, pg, rd.id, s);
       if (!l.length) break;
       const i = l.indexOf(+s.cur);
       await setS(env, pg, 'cur', b.dir === 'prev' ? l[Math.max(0, i < 0 ? 0 : i - 1)] : l[Math.min(l.length - 1, i + 1)]); break;
@@ -400,6 +406,12 @@ async function adminAction(env, a, b, pg, role, me) {
       o[id] = { ...(q[id] || {}), n, pv: !!b.pv, nm: !!b.nm, ge: !!b.ge };
       await setS(env, pg, 'qcfg', JSON.stringify(o)); break;
     }
+    case 'qord': { // ลำดับให้คะแนนของรอบนี้: a = ตามลำดับที่ประกาศเข้ารอบก่อนหน้า (ค่าเริ่มต้น) / n = ตามเลขที่
+      if (!(await ownRound(env, id, pg))) return bad('ไม่พบรอบ');
+      let q = {}; try { q = JSON.parse(s.qcfg) || {}; } catch (e) {}
+      q[id] = { ...(q[id] || {}), ob: b.ob === 'n' ? 'n' : 'a' };
+      await setS(env, pg, 'qcfg', JSON.stringify(q)); break;
+    }
     case 'jopen': { // เปิด/ปิดให้กรรมการลงคะแนนเป็นรอบ (ปิด = กรรมการกดส่งคะแนนไม่ได้จนกว่าจะเปิด) เก็บรวมใน qcfg ของรอบนั้น
       if (!(await ownRound(env, id, pg))) return bad('ไม่พบรอบ');
       let q = {}; try { q = JSON.parse(s.qcfg) || {}; } catch (e) {}
@@ -414,6 +426,14 @@ async function adminAction(env, a, b, pg, role, me) {
       for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
       // รอบที่มีที่นั่ง Popular Vote: ประกาศคนได้ที่นั่งโหวตก่อนเป็นคนแรก ที่เหลือสุ่มเหมือนเดิม (ถ้าแอดมินติ๊กเอาคนนั้นออก ก็ไม่ขึ้นก่อน)
       try { const snap = await snapshot(env, pg), pl = snap && qualPlan(snap, rd.id); if (pl && pl.pvId && !pl.need && !pl.all) { const k = ids.indexOf(pl.pvId); if (k > 0) { ids.splice(k, 1); ids.unshift(pl.pvId); } } } catch (e) {}
+      // เก็บลำดับที่ประกาศไว้เป็นลำดับให้คะแนนของรอบถัดไป (รอบถัดไปจะเรียงตามนี้ ถ้าไม่ได้เลือก "ตามเลขที่")
+      const nx = await db.prepare('SELECT id FROM rounds WHERE pg=? AND id>? ORDER BY id LIMIT 1').bind(pg, rd.id).first();
+      if (nx) {
+        let oo = {}; try { oo = JSON.parse(s.ord) || {}; } catch (e) {}
+        const live = new Set((await db.prepare('SELECT id FROM rounds WHERE pg=?').bind(pg).all()).results.map(x => String(x.id))), on = {};
+        for (const k of Object.keys(oo)) if (live.has(k)) on[k] = oo[k];
+        on[nx.id] = ids.slice(); await setS(env, pg, 'ord', JSON.stringify(on));
+      }
       await setS(env, pg, 'annWin', '0'); await setS(env, pg, 'ann', JSON.stringify(ids)); await setS(env, pg, 'annI', -1); await setS(env, pg, 'annAt', Date.now());
       await setS(env, pg, 'hide', '0'); await setS(env, pg, 'mode', 'current'); break;
     }
