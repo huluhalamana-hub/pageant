@@ -123,11 +123,12 @@ function buildDisplay0(p, opts) {
   const vm = {col: p.col, L: LB(p), chip: p.showRound !== false && p.mode !== 'ranking' && rd.name ? rd.name : null, logo: null, bar: null, card: null, sum: null, rev: p.rev, t: {intro: tn(p.introSec, 4), hold: tn(p.holdSec, 0)}, z: {bar: tn(p.barScale, 100), card: tn(p.cardScale, 100), sum: tn(p.sumScale, 100)}};
   if (p.showLogo) vm.logo = p.logo || (force ? '' : null);
   if (p.hide && !force) return vm;
-  if (p.annOn && !force) { const ac = p.annId ? p.C.find(x => x.id === p.annId) : null; vm.chip = null; if (ac) { const cc = {no: ac.no, name: ac.name, country: ac.country, img: ac.img};
+  if (p.annOn && !force) { const ac = p.annId ? p.C.find(x => x.id === p.annId) : null; vm.chip = null; if (ac) { const cc = {no: ac.no, name: ac.name, country: ac.country, img: null};
       // ประกาศเข้ารอบตามตั้งค่า "ก่อนเปิดคะแนน จอแสดง": รูปและชื่อ → แถบรูปและชื่อ (ไม่มีช่องคะแนน)
       // รูปและชื่อ / ขีด / ไม่แสดง → แถบรูปและชื่อแบบไม่มีรูป / การ์ดชื่อ → การ์ดชื่อ
-      if (p.pre === 'card' || p.annL) vm.card = {c: cc, lbl: p.annL || ''};
-      else vm.bar = {c: {...cc, img: null}, judges: p.J.map(j => ({name: j.name, img: j.img})), R: null, cols: false};
+      // ประกาศ (ทั้งเข้ารอบและผู้ชนะ) ใช้ตามตั้งค่า "ก่อนเปิดคะแนน จอแสดง": การ์ดชื่อโปร่งใส → การ์ด / แบบอื่น → แถบรูปและชื่อ (ไม่มีช่องคะแนน) รูปตามช่องติ๊ก "แสดงรูปในแถบรูปและชื่อ"
+      if (p.pre === 'card') vm.card = {c: cc, lbl: p.annL || ''};
+      else vm.bar = {c: cc, judges: p.J.map(j => ({name: j.name, img: j.img})), R: null, cols: false, lbl: p.annL || ''};
       const as = tn(p.annScale, 100); vm.z.card = Math.round(vm.z.card * as / 100); vm.z.bar = Math.round(vm.z.bar * as / 100); }
     return vm; } // โหมดประกาศผู้เข้ารอบ: ขึ้นการ์ดชื่อของคนที่ประกาศอยู่ (ยังไม่กดถัดไป = จอว่าง)
   if (p.mode === 'ranking') { vm.sum = summaryVM(p); return vm; }
