@@ -96,7 +96,7 @@ function summaryVM(p) {
   const rows = d.ranked.map(r => ({rank: r.rank, gone: r.gone, c: {no: r.c.no, name: r.c.name, country: r.c.country, img: r.c.img}, per: r.per, jt: r.jt, votes: r.votes, vsc: r.vsc, tot: r.tot, pvv: pvOf(r)}));
   return {title, show: show.map(x => ({id: x.id, name: x.name})), single, rows, C: CC, pv: p.showPV !== false && CC.tail <= 1, jn: p.showJN !== false, n, J: p.J.map(j => ({name: j.name, img: j.img})), agg: p.agg, jw: p.jw, per, sec};
 }
-export function buildDisplay(p, opts) {
+function buildDisplay0(p, opts) {
   const force = !!(opts && opts.force);
   const rd = p.rounds.find(x => x.id === p.round) || {name: ''};
   const vm = {col: p.col, L: LB(p), chip: p.showRound !== false && p.mode !== 'ranking' && rd.name ? rd.name : null, logo: null, bar: null, card: null, sum: null, rev: p.rev, t: {intro: tn(p.introSec, 4), hold: tn(p.holdSec, 0)}, z: {bar: tn(p.barScale, 100), card: tn(p.cardScale, 100), sum: tn(p.sumScale, 100)}};
@@ -109,7 +109,7 @@ export function buildDisplay(p, opts) {
   if (!c || (c.id !== -1 && !inR(p, p.round, c))) return vm;
   const qn = qcfgOf(p, p.round);
   if (!force && qn.nm) { // รอบ "ไม่แสดงคะแนน": ไม่มีแถบคะแนนบนจอ หน้าตาตามตัวเลือก "ก่อนเปิดคะแนน จอแสดง" (ขีด = ว่าง เพราะรอบนี้ไม่มีช่องคะแนนให้ขีด)
-    const pre = p.pre || 'dash', cc = {no: c.no, name: c.name, country: c.country, img: c.img};
+    const pre = p.pre || 'dash', cc = {no: c.no, name: c.name, country: c.country, img: p.preImg === false ? null : c.img};
     if (pre === 'card') vm.card = {c: cc};
     else if (pre === 'name') vm.bar = {c: cc, judges: p.J.map(j => ({name: j.name, img: j.img})), R: null, cols: false};
     return vm;
@@ -119,6 +119,14 @@ export function buildDisplay(p, opts) {
   const pre = p.pre || 'dash';
   if (!R && !force && pre === 'none') return vm;
   if (!R && !force && pre === 'card') { vm.card = {c: {no: c.no, name: c.name, country: c.country, img: c.img}}; return vm; }
-  vm.bar = {c: {no: c.no, name: c.name, country: c.country, img: c.img}, judges: p.J.map(j => ({name: j.name, img: j.img})), R, cols: !(!R && !force && pre === 'name')};
+  const noImg = !R && !force && pre === 'name' && p.preImg === false; // ยังไม่เปิดคะแนน + ปิดรูป: เหลือแต่ตัวหนังสือ พอคะแนนขึ้นรูปกลับมา
+  vm.bar = {c: {no: c.no, name: c.name, country: c.country, img: noImg ? null : c.img}, judges: p.J.map(j => ({name: j.name, img: j.img})), R, cols: !(!R && !force && pre === 'name')};
+  return vm;
+}
+// ตัวใหญ่บนการ์ดชื่อ/แถบชื่อ: p.big = 'country' (ประเทศตัวใหญ่ ชื่อตัวเล็ก) หรือ 'name' (สลับกัน) ใช้ทุกที่ที่ขึ้นชื่อบนจอ
+export function buildDisplay(p, opts) {
+  const vm = buildDisplay0(p, opts), big = p.big === 'name' ? 'name' : 'country';
+  if (vm.bar) vm.bar.big = big;
+  if (vm.card) vm.card.big = big;
   return vm;
 }

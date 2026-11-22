@@ -51,7 +51,7 @@ const COP = [
   ['screen', 'สั่งขึ้นจอ (เลือกคน ถัดไป แสดง/ซ่อนจอ เปิด/ซ่อนคะแนน โหมดตารางอันดับ ประกาศเข้ารอบ)']
 ];
 const NEED = {
-  edit: 'addcs addj editc editj jcode jdel del rdadd rdren rddel logoup logoclr preset aadd adel aph aphx img imgdel edall edsave edcancel edph edphx max jw sumPer sumSec sumScale introSec holdSec barScale cardScale agg vm vmode pre lang',
+  edit: 'addcs addj editc editj jcode jdel del rdadd rdren rddel logoup logoclr preset aadd adel aph aphx img imgdel edall edsave edcancel edph edphx max jw sumPer sumSec sumScale introSec holdSec barScale cardScale agg vm vmode pre big lang',
   screen: 'hide toggle mode rank cur next prev rev revcur ann',
   advance: 'out rd qset qsave qreset qreload',
   scores: 'edsc savesc clrsc savevotes'
@@ -188,7 +188,7 @@ function manageV(p) {
     <label>ภาษาป้ายบนจอ</label><div class="row">${B('lang', 'th', 'ไทย', (p.lang || 'th') === 'th')}${B('lang', 'en', 'English', p.lang === 'en')}</div><label><input type="checkbox" id="showlogo" style="width:auto" ${p.showLogo ? 'checked' : ''}> แสดงโลโก้บนจอ</label><label><input type="checkbox" id="showround" style="width:auto" ${p.showRound !== false ? 'checked' : ''}> แสดงชื่อรอบที่มุมซ้ายบนจอตลอด (กด "ใช้รอบนี้" แล้วขึ้นทันที)</label><div class="row"><button data-a="logoup">อัปโหลดโลโก้</button>${p.logo ? '<button class="d" data-a="logoclr">ลบโลโก้</button>' : ''}</div></div>
   <div class="box" data-need="edit"><h2>การแสดงผลและคะแนน</h2><div class="row">${B('mode', 'current', 'แสดงผู้เข้าประกวดปัจจุบัน', p.mode === 'current')}${B('mode', 'ranking', 'แสดงอันดับ', p.mode === 'ranking')}</div>
     ${p.mode === 'ranking' ? `<label>อันดับที่จะแสดง</label><div class="row">${B('rank', 0, 'สรุปคะแนน (รอบที่ติ๊ก)', p.rank === 0)}${p.rounds.map(x => B('rank', x.id, esc(x.name), p.rank === x.id)).join('')}</div>` : ''}
-    <label>ก่อนเปิดคะแนน จอแสดง</label><div class="row">${B('pre', 'name', 'เฉพาะรูปและชื่อ', p.pre === 'name')}${B('pre', 'dash', 'ช่องคะแนนเป็นขีด', (p.pre || 'dash') === 'dash')}${B('pre', 'none', 'ว่างจนกว่าจะเปิดคะแนน', p.pre === 'none')}${B('pre', 'card', 'การ์ดชื่อโปร่งใส (เฟดหายเอง)', p.pre === 'card')}</div>
+    <label>ก่อนเปิดคะแนน จอแสดง</label><div class="row">${B('pre', 'name', 'เฉพาะรูปและชื่อ', p.pre === 'name')}${B('pre', 'dash', 'ช่องคะแนนเป็นขีด', (p.pre || 'dash') === 'dash')}${B('pre', 'none', 'ว่างจนกว่าจะเปิดคะแนน', p.pre === 'none')}${B('pre', 'card', 'การ์ดชื่อโปร่งใส', p.pre === 'card')}</div><label><input type="checkbox" id="preimg" style="width:auto" ${p.preImg !== false ? 'checked' : ''}> แสดงรูปในแถบรูปและชื่อ (ไม่ติ๊ก = เหลือแต่ตัวหนังสือ · พอเปิดคะแนนรูปขึ้นเหมือนเดิม)</label><label>ตัวใหญ่บนการ์ดชื่อและแถบชื่อ</label><div class="row">${B('big', 'country', 'ประเทศตัวใหญ่', (p.big || 'country') === 'country')}${B('big', 'name', 'ชื่อตัวใหญ่', p.big === 'name')}</div>
     <label>การ์ดชื่อค้างไว้ก่อนเฟดหาย (วินาที · 0 = ค้างไว้ไม่เฟดเอง)</label><div class="row"><input id="introSec" type="number" min="0" max="600" step="0.5" value="${p.introSec}" style="max-width:120px;flex:none"><button data-a="introSec">บันทึก</button></div>
     <label>คะแนนค้างไว้ก่อนเฟดออก (วินาที · 0 = ค้างไว้ไม่เฟดเอง)</label><div class="row"><input id="holdSec" type="number" min="0" max="600" step="0.5" value="${p.holdSec}" style="max-width:120px;flex:none"><button data-a="holdSec">บันทึก</button></div><label>ขนาดการ์ดชื่อบนจอ (% · 100 = ปกติ)</label><div class="row"><input id="cardScale" type="number" min="30" max="150" value="${p.cardScale}" style="max-width:120px;flex:none"><button data-a="cardScale">บันทึก</button></div>
     <label>ขนาดตารางคะแนนรวมบนจอ (% · 100 = ปกติ · ตารางอยู่กึ่งกลางจอเสมอ)</label><div class="row"><input id="sumScale" type="number" min="30" max="150" value="${p.sumScale}" style="max-width:120px;flex:none"><button data-a="sumScale">บันทึก</button></div>
@@ -259,6 +259,8 @@ async function api(path, body) {
 const pub = async path => (await fetch('/api/' + path)).json();
 
 /* ---------- วาดจอไลฟ์จากข้อมูลที่เซิร์ฟเวอร์ส่งมา ---------- */
+/* ชื่อบรรทัดใหญ่/เล็ก: [ใหญ่, เล็ก] ตามตั้งค่า big (ไม่มีประเทศ = ชื่อบรรทัดเดียว) */
+const nm2 = d => { const c = d.c; return !c.country ? [c.name, ''] : d.big === 'name' ? [c.name, c.country] : [c.country, c.name]; };
 function barCore(b, L) {
   const n = b.judges.length, R = b.R, col = Math.min(190, Math.floor(920 / (n + 1)));
   const jp = Math.max(40, Math.min(92, col - 14)), jn = Math.max(13, Math.min(22, Math.round(col * .15))), jsz = Math.max(22, Math.min(48, Math.round(col * .36))), t0 = n * .3 + .2;
@@ -266,7 +268,7 @@ function barCore(b, L) {
   const av = `<div class="jc av" style="width:${col}px"><div class="jp ic bars"><b style="height:30%"></b><b style="height:60%"></b><b style="height:90%"></b></div><div class="jn">${esc(L.avg)}</div><div class="js ${R ? '' : 'dim'}" ${R ? `style="animation-delay:${t0}s"` : ''}>${R ? fmtn(R.avg) : '–'}</div></div>`;
   // ไม่มีรูป: ไม่วาดวงกลมรูป ย่อแถบลง แล้วจัดทั้งแถบให้อยู่กึ่งกลางจอ (มีรูป: ตำแหน่งเดิม ซึ่งรวมวงกลมรูปแล้วก็อยู่กึ่งกลางพอดี)
   const ni = !b.c.img, W = (b.cols ? 1680 : 760) - (ni ? 120 : 0), left = ni ? (1920 - W) / 2 : 150;
-  return `<div class="bar${ni ? ' ni' : ''}${b.cols ? '' : ' nc'}" style="left:${left}px;width:${W}px;--jp:${jp}px;--jn:${jn}px;--js:${jsz}px">${ni ? '' : `<div class="cph"><img src="${b.c.img}" alt=""></div>`}<div class="info"><div class="cn2">${esc(b.c.country || b.c.name)}</div>${b.c.country ? `<div class="cc">${esc(b.c.name)}</div>` : ''}</div>${b.cols ? `<div class="jrow">${jc}${av}</div>` : ''}</div>`;
+  return `<div class="bar${ni ? ' ni' : ''}${b.cols ? '' : ' nc'}" style="left:${left}px;width:${W}px;--jp:${jp}px;--jn:${jn}px;--js:${jsz}px">${ni ? '' : `<div class="cph"><img src="${b.c.img}" alt=""></div>`}<div class="info"><div class="cn2">${esc(nm2(b)[0])}</div>${nm2(b)[1] ? `<div class="cc">${esc(nm2(b)[1])}</div>` : ''}</div>${b.cols ? `<div class="jrow">${jc}${av}</div>` : ''}</div>`;
 }
 function barHTML(b, L, z) {
   const ni = !b.c.img, W = (b.cols ? 1680 : 760) - (ni ? 120 : 0), s = Math.min((z || 100) / 100, 1880 / W);
@@ -303,8 +305,8 @@ function sumVMHTML(s, L, z) {
   return `<div class="rkw" style="left:${(1920 - W) / 2}px;width:${W}px;transform:translateY(-50%) scale(${+k.toFixed(4)})"><div class="rkp" style="width:${W}px;--hs:${hs}px;--pw:${pw}px">${head}${body}</div></div>`;
 }
 function cardHTML(d, z) {
-  const c = d.c, big = c.country || c.name, len = [...big].length, fs = len > 22 ? 46 : len > 16 ? 58 : len > 11 ? 70 : 86, s = (z || 100) / 100;
-  return `<div class="scl" style="transform:scale(${s});transform-origin:50% 990px"><div class="ncard"><div class="n1" style="font-size:${fs}px">${esc(big)}</div>${c.country ? `<i></i><div class="n2">${esc(c.name)}</div>` : ''}</div></div>`;
+  const c = d.c, big = nm2(d)[0], len = [...big].length, fs = len > 22 ? 46 : len > 16 ? 58 : len > 11 ? 70 : 86, s = (z || 100) / 100;
+  return `<div class="scl" style="transform:scale(${s});transform-origin:50% 990px"><div class="ncard"><div class="n1" style="font-size:${fs}px">${esc(big)}</div>${nm2(d)[1] ? `<i></i><div class="n2">${esc(nm2(d)[1])}</div>` : ''}</div></div>`;
 }
 const partOf = vm => vm.bar ? barHTML(vm.bar, vm.L, (vm.z || {}).bar) : vm.card ? cardHTML(vm.card, (vm.z || {}).card) : vm.sum ? sumVMHTML(sumPage(vm.sum, vm.pg || 0), vm.L, (vm.z || {}).sum) : '';
 function innerVM(vm) {
@@ -506,7 +508,7 @@ const onClick = async e => {
   if (a === 'pgdel') { if (!confirm('ลบเวทีนี้และข้อมูลทั้งหมด (ลบแล้วกู้คืนไม่ได้)?')) return; return sact('pgdel', {id}); }
   // แอดมินเวที
   const st = (k, val) => act('settings', {k, v: val});
-  if (['mode', 'agg', 'vm', 'vmode', 'pre', 'lang', 'rank'].includes(a)) return st(a, v);
+  if (['mode', 'agg', 'vm', 'vmode', 'pre', 'big', 'lang', 'rank'].includes(a)) return st(a, v);
   if (a === 'toggle') return st('mode', p.mode === 'ranking' ? 'current' : 'ranking');
   if (a === 'hide') return st('hide', p.hide ? '0' : '1');
   if (a === 'max') return st('max', $('#max').value);
@@ -633,6 +635,7 @@ const onChange = e => {
   if (t.dataset && t.dataset.qm) { QS = {round: 0, ids: null}; const rid = +t.dataset.qm; return act('qset', qArgs(rid, {nm: t.checked})); }
   if (t.dataset && t.dataset.q) { const p = ST.p, pl = qualPlan(p, p.round); if (!(QS.round === p.round && QS.ids)) QS = {round: p.round, ids: new Set(pl.sel)}; const i = +t.dataset.q; if (t.checked) QS.ids.add(i); else QS.ids.delete(i); const row = t.closest('.ci'); if (row) row.classList.toggle('out', !t.checked); const q = $('#qcnt'); if (q) q.innerHTML = qualCnt(p, pl, QS.ids); return; }
   if (t.id === 'showlogo') return act('settings', {k: 'showLogo', v: t.checked ? '1' : '0'});
+  if (t.id === 'preimg') return act('settings', {k: 'preImg', v: t.checked ? '1' : '0'});
   if (t.id === 'showjn') return act('settings', {k: 'showJN', v: t.checked ? '1' : '0'});
   if (t.id === 'showpv') return act('settings', {k: 'showPV', v: t.checked ? '1' : '0'});
   if (t.id === 'showround') return act('settings', {k: 'showRound', v: t.checked ? '1' : '0'});
