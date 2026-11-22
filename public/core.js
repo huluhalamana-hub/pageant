@@ -102,7 +102,8 @@ const tn = (v, d) => (v === '' || v == null || !Number.isFinite(+v) ? d : +v);
 function summaryVM(p) {
   const n = p.J.length, single = !!p.rank, L = LB(p); let show, title;
   if (single) { const r = p.rounds.find(x => x.id === p.rank); show = r ? [r] : []; title = L.rank + (r ? r.name : ''); }
-  else { show = p.rounds.filter(x => x.inTotal !== false); title = L.sum; }
+  else { show = p.rounds.filter(x => x.inTotal !== false); title = L.sum;
+    const sc = show.filter(x => p.C.some(c => inR(p, x.id, c) && calc(p, x.id, c).rev)); if (sc.length) show = sc; }
   const d = sumData(p, show, {single}); if (!d.ranked.length) return null;
   // ส่งทุกคนเรียงจากคะแนนรวมมาก→น้อย ฝั่งหน้าจอเป็นคนแบ่งหน้าต่างตาม per (คนต่อหน้าต่าง) และ sec (วินาทีต่อหน้าต่าง)
   const per = Math.max(1, Math.min(20, Math.round(tn(p.sumPer, 10)))), sec = Math.max(0, tn(p.sumSec, 8));
