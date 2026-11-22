@@ -1,4 +1,4 @@
-import { buildDisplay } from '../public/core.js';
+import { buildDisplay, qualPlan } from '../public/core.js';
 
 const J = (d, s = 200) => new Response(JSON.stringify(d), { status: s, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 const eq = (a, b) => { if (!a || !b || a.length !== b.length) return false; let r = 0; for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i); return r === 0; };
@@ -377,15 +377,17 @@ async function adminAction(env, a, b, pg, role, me) {
       let q = {}; try { q = JSON.parse(s.qcfg) || {}; } catch (e) {}
       const live = new Set((await db.prepare('SELECT id FROM rounds WHERE pg=?').bind(pg).all()).results.map(x => String(x.id))), o = {};
       for (const k of Object.keys(q)) if (live.has(k)) o[k] = q[k];
-      o[id] = { n, pv: !!b.pv, nm: !!b.nm };
+      o[id] = { n, pv: !!b.pv, nm: !!b.nm, ge: !!b.ge };
       await setS(env, pg, 'qcfg', JSON.stringify(o)); break;
     }
-    case 'annstart': { // ประกาศผู้เข้ารอบ: สุ่มลำดับคนที่เข้ารอบ แล้วขึ้นการ์ดชื่อทีละคนอัตโนมัติ (ลำดับในรอบถัดไปยังเรียงตามเลขที่เหมือนเดิม)
+    case 'annstart': { // ประกาศผู้เข้ารอบ: คนได้ที่นั่ง Popular Vote (ถ้ามี) ขึ้นก่อน ที่เหลือสุ่มลำดับ แล้วขึ้นการ์ดชื่อทีละคนอัตโนมัติ (ลำดับในรอบถัดไปยังเรียงตามเลขที่เหมือนเดิม)
       if (!rd) break;
       const outs = new Set((await db.prepare('SELECT contestant_id FROM results WHERE round_id=? AND is_out=1').bind(rd.id).all()).results.map(x => x.contestant_id));
       const ids = (await activeIds(env, pg, rd.id)).filter(x => !outs.has(x));
       if (!ids.length) return bad('ยังไม่มีผู้เข้ารอบให้ประกาศ');
       for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
+      // รอบที่มีที่นั่ง Popular Vote: ประกาศคนได้ที่นั่งโหวตก่อนเป็นคนแรก ที่เหลือสุ่มเหมือนเดิม (ถ้าแอดมินติ๊กเอาคนนั้นออก ก็ไม่ขึ้นก่อน)
+      try { const snap = await snapshot(env, pg), pl = snap && qualPlan(snap, rd.id); if (pl && pl.pvId && !pl.need && !pl.all) { const k = ids.indexOf(pl.pvId); if (k > 0) { ids.splice(k, 1); ids.unshift(pl.pvId); } } } catch (e) {}
       await setS(env, pg, 'ann', JSON.stringify(ids)); await setS(env, pg, 'annI', -1); await setS(env, pg, 'annAt', Date.now());
       await setS(env, pg, 'hide', '0'); await setS(env, pg, 'mode', 'current'); break;
     }
