@@ -385,7 +385,7 @@ async function adminAction(env, a, b, pg, role, me) {
       const outs = new Set((await db.prepare('SELECT contestant_id FROM results WHERE round_id=? AND is_out=1').bind(rd.id).all()).results.map(x => x.contestant_id));
       const ids = (await activeIds(env, pg, rd.id)).filter(x => !outs.has(x));
       if (!ids.length) return bad('ยังไม่มีผู้เข้ารอบให้ประกาศ');
-      if (!b.ord) for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
+      for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
       // รอบที่มีที่นั่ง Popular Vote: ประกาศคนได้ที่นั่งโหวตก่อนเป็นคนแรก ที่เหลือสุ่มเหมือนเดิม (ถ้าแอดมินติ๊กเอาคนนั้นออก ก็ไม่ขึ้นก่อน)
       try { const snap = await snapshot(env, pg), pl = snap && qualPlan(snap, rd.id); if (pl && pl.pvId && !pl.need && !pl.all) { const k = ids.indexOf(pl.pvId); if (k > 0) { ids.splice(k, 1); ids.unshift(pl.pvId); } } } catch (e) {}
       await setS(env, pg, 'ann', JSON.stringify(ids)); await setS(env, pg, 'annI', -1); await setS(env, pg, 'annAt', Date.now());
