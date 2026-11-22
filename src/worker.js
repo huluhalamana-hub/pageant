@@ -21,7 +21,7 @@ const PERM = {
   addc: 'edit', addcs: 'edit', editc: 'edit', editcs: 'edit', delc: 'edit', delmany: 'edit', addj: 'edit', editj: 'edit', jcode: 'edit', delj: 'edit', rdadd: 'edit', rdren: 'edit', rddel: 'edit', intotal: 'edit', rjskip: 'edit', img: 'edit',
   setscores: 'scores', clearscores: 'scores', savevotes: 'scores',
   out: 'advance', outmany: 'advance', rd: 'advance', qualify: 'advance', qset: 'advance',
-  cur: 'screen', annwin: 'screen', step: 'screen', reveal: 'screen', revmany: 'screen', annstart: 'screen', annstop: 'screen',
+  cur: 'screen', annwin: 'screen', step: 'screen', reveal: 'screen', revmany: 'screen', annstart: 'screen', annstop: 'screen', jopen: 'screen',
   coadd: 'admin', coedit: 'admin', cocode: 'admin', codel: 'admin',
 };
 const SCREEN_KEYS = ['hide', 'mode', 'rank'];
@@ -134,7 +134,7 @@ const activeIds = async (env, pg, rid) => (await env.DB.prepare('SELECT c.id FRO
 // ahAt = เวลาที่คะแนนคนสุดท้ายเริ่มโชว์ (0 = ไม่มีอะไรรอซ่อน) เซิร์ฟเวอร์เป็นคนเช็กตอนมีคนโพลล์ /api/rev จึงไม่ต้องเปิดหน้าแอดมินค้างไว้
 const ahSet = (env, pg, v) => setS(env, pg, 'ahAt', v);
 async function lastShown(env, pg, s) {
-  if (!(+s.holdSec > 0) || s.mode !== 'current' || s.hide === '1' || !+s.cur) return false;
+  if (+s.annAt > 0 || !(+s.holdSec > 0) || s.mode !== 'current' || s.hide === '1' || !+s.cur) return false; // กำลังประกาศอยู่ ห้ามซ่อนจอเอง
   const rd = await curRound(env, pg, s); if (!rd) return false;
   const l = await activeIds(env, pg, rd.id); if (!l.length || l[l.length - 1] !== +s.cur) return false;
   const rs = await env.DB.prepare('SELECT revealed FROM results WHERE round_id=? AND contestant_id=?').bind(rd.id, +s.cur).first();
@@ -193,6 +193,7 @@ async function judgeSubmit(env, me, b) {
   if (await elimBefore(env, pg, rd.id, c.id)) return J({ error: 'ผู้เข้าประกวดคนนี้ไม่ได้อยู่ในรอบนี้' }, 409);
   if ((nojOf(s)[rd.id] || []).map(Number).includes(me.jid)) return J({ error: 'รอบนี้คุณไม่ต้องให้คะแนน' }, 409);
   if (rs && rs.revealed) return J({ error: 'เปิดคะแนนแล้ว แก้ไขไม่ได้' }, 409);
+  try { if (((JSON.parse(s.qcfg) || {})[rd.id] || {}).jc) return J({ error: 'ยังไม่เปิดให้ลงคะแนนรอบนี้ รอผู้ดูแลเปิด' }, 409); } catch (e) {}
   const max = +s.max, v = r2(Number(b.score));
   if (b.score === '' || b.score == null || !Number.isFinite(v) || v < 0 || v > max) return J({ error: `คะแนนต้องอยู่ระหว่าง 0 ถึง ${max}` }, 400);
   const r = await env.DB.prepare('INSERT INTO scores(round_id,contestant_id,judge_id,score) VALUES(?,?,?,?) ON CONFLICT(round_id,contestant_id,judge_id) DO NOTHING').bind(rd.id, c.id, me.jid, v).run();
@@ -396,8 +397,14 @@ async function adminAction(env, a, b, pg, role, me) {
       let q = {}; try { q = JSON.parse(s.qcfg) || {}; } catch (e) {}
       const live = new Set((await db.prepare('SELECT id FROM rounds WHERE pg=?').bind(pg).all()).results.map(x => String(x.id))), o = {};
       for (const k of Object.keys(q)) if (live.has(k)) o[k] = q[k];
-      o[id] = { n, pv: !!b.pv, nm: !!b.nm, ge: !!b.ge };
+      o[id] = { ...(q[id] || {}), n, pv: !!b.pv, nm: !!b.nm, ge: !!b.ge };
       await setS(env, pg, 'qcfg', JSON.stringify(o)); break;
+    }
+    case 'jopen': { // เปิด/ปิดให้กรรมการลงคะแนนเป็นรอบ (ปิด = กรรมการกดส่งคะแนนไม่ได้จนกว่าจะเปิด) เก็บรวมใน qcfg ของรอบนั้น
+      if (!(await ownRound(env, id, pg))) return bad('ไม่พบรอบ');
+      let q = {}; try { q = JSON.parse(s.qcfg) || {}; } catch (e) {}
+      q[id] = { ...(q[id] || {}), jc: !!b.closed };
+      await setS(env, pg, 'qcfg', JSON.stringify(q)); break;
     }
     case 'annstart': { // ประกาศผู้เข้ารอบ: คนได้ที่นั่ง Popular Vote (ถ้ามี) ขึ้นก่อน ที่เหลือสุ่มลำดับ แล้วขึ้นการ์ดชื่อทีละคนอัตโนมัติ (ลำดับในรอบถัดไปยังเรียงตามเลขที่เหมือนเดิม)
       if (!rd) break;
@@ -662,7 +669,7 @@ export default {
           let ranking = null;
           if (s.mode === 'ranking') { const sn = await snapshot(env, me.pg); ranking = sn ? buildDisplay(sn).sum : null; }
           return J({ ranking, name: me.name, pgName: me.pgName, max: +s.max, round: rd ? UP(rd.name) : '', rev: (await env.DB.prepare('SELECT rev FROM pageants WHERE id=?').bind(me.pg).first()).rev,
-            current: ok ? { id: c.id, no: c.no, name: UP(c.name), country: UP(c.country), img: hasImg ? `/api/img/contestant/${c.id}?v=${hasImg.updated}` : null, revealed: !!(rs && rs.revealed) } : null, mine: mine ? mine.score : null, skip: !!rd && (nojOf(s)[rd.id] || []).map(Number).includes(me.jid) });
+            current: ok ? { id: c.id, no: c.no, name: UP(c.name), country: UP(c.country), img: hasImg ? `/api/img/contestant/${c.id}?v=${hasImg.updated}` : null, revealed: !!(rs && rs.revealed) } : null, mine: mine ? mine.score : null, skip: !!rd && (nojOf(s)[rd.id] || []).map(Number).includes(me.jid), closed: !!rd && (() => { try { return !!(((JSON.parse(s.qcfg) || {})[rd.id]) || {}).jc; } catch (e) { return false; } })() });
         }
         if (p === 'score' && m === 'POST') return judgeSubmit(env, me, await req.json());
         return J({ error: 'ไม่มีสิทธิ์' }, 403);
