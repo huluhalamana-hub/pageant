@@ -42,8 +42,8 @@ export function sumData(p, show, opts) {
       const vote = mr && hv ? vsRound(p, r.id, c) : null;
       return {scores: k.scores, avg: k.avg, vote, f: vote != null ? k.avg * p.jw / 100 + vote * (100 - p.jw) / 100 : k.avg, cnt: r.inTotal !== false};
     });
-    // กลุ่มสุดท้ายที่คนนี้ยังอยู่ (ใช้คิดคะแนนรวม/จัดอันดับ) ไม่แบ่งกลุ่ม = ทุกรอบรวมกัน เหมือนเดิม
-    let lg = 0; G.forEach((g, i) => { if (inR(p, g[0].id, c)) lg = i; });
+    // กลุ่มสุดท้ายที่คนนี้มีคะแนน (ใช้คิดคะแนนรวม/จัดอันดับ) ไม่แบ่งกลุ่ม = ทุกรอบรวมกัน เหมือนเดิม
+    let lg = 0; G.forEach((g, i) => { if (inR(p, g[0].id, c) && per.some((x, k) => x && x.cnt && gi(show[k]) === i)) lg = i; }); // กลุ่มที่เปิดคะแนนแล้วล่าสุด (คนที่ผ่านเข้ากลุ่มใหม่แต่ยังไม่เปิดคะแนน ใช้คะแนนกลุ่มก่อนหน้าไปก่อน ไม่งั้นจะหายจากตาราง)
     const inG = i => per.filter((x, k) => x && x.cnt && gi(show[k]) === i), cn = grouped ? inG(lg) : per.filter(x => x && x.cnt), nr = cn.length, jt = agg(cn.map(x => x.avg));
     let tot = null, vsc = null;
     if (hv && mr) tot = agg(cn.map(x => x.f));
@@ -118,7 +118,12 @@ function buildDisplay0(p, opts) {
   const vm = {col: p.col, L: LB(p), chip: p.showRound !== false && p.mode !== 'ranking' && rd.name ? rd.name : null, logo: null, bar: null, card: null, sum: null, rev: p.rev, t: {intro: tn(p.introSec, 4), hold: tn(p.holdSec, 0)}, z: {bar: tn(p.barScale, 100), card: tn(p.cardScale, 100), sum: tn(p.sumScale, 100)}};
   if (p.showLogo) vm.logo = p.logo || (force ? '' : null);
   if (p.hide && !force) return vm;
-  if (p.annOn && !force) { const ac = p.annId ? p.C.find(x => x.id === p.annId) : null; vm.chip = null; if (ac) vm.card = {c: {no: ac.no, name: ac.name, country: ac.country, img: ac.img}}; return vm; } // โหมดประกาศผู้เข้ารอบ: ขึ้นการ์ดชื่อของคนที่ประกาศอยู่ (ยังไม่กดถัดไป = จอว่าง)
+  if (p.annOn && !force) { const ac = p.annId ? p.C.find(x => x.id === p.annId) : null; vm.chip = null; if (ac) { const cc = {no: ac.no, name: ac.name, country: ac.country, img: ac.img};
+      // ประกาศเข้ารอบตามตั้งค่า "ก่อนเปิดคะแนน จอแสดง": รูปและชื่อ → แถบรูปและชื่อ (ไม่มีช่องคะแนน)
+      // รูปและชื่อ / ขีด / ไม่แสดง → แถบรูปและชื่อแบบไม่มีรูป / การ์ดชื่อ → การ์ดชื่อ
+      if (p.pre === 'card') vm.card = {c: cc};
+      else vm.bar = {c: {...cc, img: null}, judges: p.J.map(j => ({name: j.name, img: j.img})), R: null, cols: false}; }
+    return vm; } // โหมดประกาศผู้เข้ารอบ: ขึ้นการ์ดชื่อของคนที่ประกาศอยู่ (ยังไม่กดถัดไป = จอว่าง)
   if (p.mode === 'ranking') { vm.sum = summaryVM(p); return vm; }
   let c = p.C.find(x => x.id === p.cur);
   if (force && (!c || !inR(p, p.round, c))) c = {id: -1, no: 1, name: 'ชื่อผู้เข้าประกวด', country: '', img: null};
