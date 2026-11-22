@@ -153,5 +153,6 @@ export function buildDisplay(p, opts) {
   const vm = buildDisplay0(p, opts), big = p.big === 'name' ? 'name' : 'country';
   if (vm.bar) vm.bar.big = big;
   if (vm.card) vm.card.big = big;
+  if (vm.sum) vm.sum.big = big;
   return vm;
 }
