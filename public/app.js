@@ -102,8 +102,7 @@ function bulkBar(p) {
   if (!p.C.length) return '';
   const n = [...SEL].filter(i => p.C.some(c => c.id === i)).length;
   return `<div class="row noprint" style="margin:4px 0 8px;padding:8px;border:1px dashed var(--bd);border-radius:10px"><label style="margin:0;display:flex;gap:6px;align-items:center;color:var(--ink)"><input type="checkbox" id="selall" style="width:auto" ${n && n === p.C.length ? 'checked' : ''}> เลือกทั้งหมด</label><span class="mu" id="seln">เลือก ${n} คน</span>
-    <div class="btns"><button data-a="bulk" data-v="hide">ซ่อนคะแนน</button><button data-a="bulk" data-v="show">เปิดคะแนน</button><button class="p" data-a="bulk" data-v="qual">เข้ารอบ (ที่ไม่ติ๊กจะตกรอบ)</button><button data-a="bulk" data-v="in">ยกเลิกตกรอบ</button><button class="d" data-a="bulk" data-v="del">ลบ</button><button data-a="bulk" data-v="hideall">ซ่อนคะแนนทุกคน</button></div>
-    <div class="btns" style="margin-top:6px"><button class="p" data-a="ann" data-v="start">▶ เริ่มประกาศเข้ารอบ (สุ่มลำดับ)</button><button data-a="ann" data-v="stop">หยุดประกาศ</button>${p.annOn ? `<button data-a="prev">◀ ก่อนหน้า</button><button class="p" data-a="next">ถัดไป ▶</button>` : ''}</div>${p.annOn ? `<div style="margin-top:8px"><b>ลำดับประกาศ (สุ่มแล้ว)</b><ol style="margin:4px 0 0;padding-left:22px">${(p.annIds || []).map((id, i) => { const c = p.C.find(x => x.id === id); return c ? `<li style="${i === p.annI ? 'color:var(--gold);font-weight:700' : i < p.annI ? 'opacity:.5' : ''}">${esc(c.country ? c.country + ' · ' + c.name : c.name)}${i === p.annI ? ' ◀ กำลังขึ้นจอ' : i === p.annI + 1 ? ' (คนถัดไป)' : ''}</li>` : ''; }).join('')}</ol></div><div class="mu" style="margin-top:6px">กำลังประกาศเข้ารอบ: ขึ้นการ์ดแล้ว ${Math.max(0, p.annI + 1)}/${p.annN} คน · กด "ถัดไป" เพื่อขึ้นการ์ดคนต่อไป (การ์ดค้างตามเวลา "การ์ดชื่อ" ที่ตั้งไว้ แล้วเฟดหายเอง) · พอการ์ดคนสุดท้ายเฟดหาย ระบบจะซ่อนจอแล้วไปรอบถัดไปให้เอง (หรือกดถัดไปหลังคนสุดท้ายเพื่อจบทันที)</div>` : ''}</div>`;
+    <div class="btns"><button data-a="bulk" data-v="hide">ซ่อนคะแนน</button><button data-a="bulk" data-v="show">เปิดคะแนน</button><button class="p" data-a="bulk" data-v="qual">เข้ารอบ (ที่ไม่ติ๊กจะตกรอบ)</button><button data-a="bulk" data-v="in">ยกเลิกตกรอบ</button><button class="d" data-a="bulk" data-v="del">ลบ</button><button data-a="bulk" data-v="hideall">ซ่อนคะแนนทุกคน</button></div></div>`;
 }
 /* ---------- คัดผู้เข้ารอบ + ที่นั่ง Popular Vote ---------- */
 let QS = {round: 0, ids: null}; // ติ๊กที่แอดมินแก้เองก่อนกดประกาศ (null = ใช้ตามที่ระบบคำนวณ)
@@ -114,9 +113,13 @@ function qRoundCfg(p, x) {
   const c = qcfgOf(p, x.id);
   return `<div data-need="advance" style="margin-top:6px"><div class="row" style="align-items:center"><span class="mu">ผู้เข้ารอบ</span><input data-qn="${x.id}" type="number" min="0" max="1000" step="1" value="${c.n || ''}" placeholder="ว่าง = ไม่คัด" style="max-width:110px;flex:none"><span class="mu">คน</span><label style="margin:0;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" data-qp="${x.id}" ${c.pv ? 'checked' : ''} style="width:auto"> ที่นั่ง Popular Vote</label><button data-a="qset" data-id="${x.id}">บันทึก</button></div><label style="margin:6px 0 0;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" data-qm="${x.id}" ${c.nm ? 'checked' : ''} style="width:auto"> ไม่แสดงคะแนน</label><label style="margin:6px 0 0;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" data-qg="${x.id}" ${c.ge ? 'checked' : ''} style="width:auto"> จบกลุ่มที่รอบนี้ (รอบถัดไปไม่เอาคะแนนรอบนี้มารวม แม้ไม่ได้คัดคน)</label><p class="mu" style="margin:2px 0 0">รอบที่ตั้งจำนวนผู้เข้ารอบจะจบกลุ่มเอง · รอบที่ไม่คัดคน (ทุกคนผ่าน) คะแนนจะรวมกับรอบถัดไปในตารางสรุป</p>${c.nm ? '<p class="mu" style="margin:2px 0 0">กรรมการให้คะแนนปกติและเข้าตารางสรุปปกติ · คนสุดท้ายเฟดแล้ว ถ้ากรรมการส่งครบ จะซ่อนจอแล้วไปรอบถัดไปเอง (ถ้าตั้งจำนวนผู้เข้ารอบไว้ จะรอประกาศเข้ารอบก่อน) · ต้องตั้ง "การ์ดชื่อ" (วินาที) มากกว่า 0</p>' : ''}</div>`;
 }
+let ANN_ORD = false; // ติ๊ก "ประกาศชื่อเฉยๆ": ประกาศเรียงตามเลขที่ ไม่สุ่ม
+function annBar(p) {
+  return `<div class="noprint" style="margin:6px 0 10px;padding:8px;border:1px dashed var(--bd);border-radius:10px"><label style="margin:0 0 6px;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" id="annord" style="width:auto" ${ANN_ORD ? 'checked' : ''}> ประกาศชื่อเฉยๆ (เรียงตามเลขที่ ไม่สุ่ม)</label>    <div class="btns" style="margin-top:6px"><button class="p" data-a="ann" data-v="start">▶ เริ่มประกาศเข้ารอบ</button><button data-a="ann" data-v="stop">หยุดประกาศ</button>${p.annOn ? `<button data-a="prev">◀ ก่อนหน้า</button><button class="p" data-a="next">ถัดไป ▶</button>` : ''}</div>${p.annOn ? `<div style="margin-top:8px"><b>ลำดับประกาศ</b><ol style="margin:4px 0 0;padding-left:22px">${(p.annIds || []).map((id, i) => { const c = p.C.find(x => x.id === id); return c ? `<li style="${i === p.annI ? 'color:var(--gold);font-weight:700' : i < p.annI ? 'opacity:.5' : ''}">${esc(c.country ? c.country + ' · ' + c.name : c.name)}${i === p.annI ? ' ◀ กำลังขึ้นจอ' : i === p.annI + 1 ? ' (คนถัดไป)' : ''}</li>` : ''; }).join('')}</ol></div><div class="mu" style="margin-top:6px">กำลังประกาศเข้ารอบ: ขึ้นการ์ดแล้ว ${Math.max(0, p.annI + 1)}/${p.annN} คน · กด "ถัดไป" เพื่อขึ้นการ์ดคนต่อไป (การ์ดค้างตามเวลา "การ์ดชื่อ" ที่ตั้งไว้ แล้วเฟดหายเอง) · พอการ์ดคนสุดท้ายเฟดหาย ระบบจะซ่อนจอแล้วไปรอบถัดไปให้เอง (หรือกดถัดไปหลังคนสุดท้ายเพื่อจบทันที)</div>` : ''}</div>`;
+}
 function qualV(p) {
   const rd = p.rounds.find(x => x.id === p.round); if (!rd) return '';
-  const head = `<div class="box" data-need="advance"><h2>คัดผู้เข้ารอบ · ${esc(rd.name)}</h2>`;
+  const head = `<div class="box" data-need="advance"><h2>คัดผู้เข้ารอบ · ${esc(rd.name)}</h2>${annBar(p)}`;
   const cfg = qcfgOf(p, rd.id), pl = qualPlan(p, rd.id), sel = qualSel(p, pl), nm = id => { const c = p.C.find(x => x.id === id); return c ? esc(qdisp(c)) : ''; };
   let h = head + `<p class="mu" style="margin:0 0 8px">เรียงตามคะแนนกรรมการเฉลี่ยของรอบนี้ แล้วตัดที่จำนวนที่ตั้ง · คนที่โหวตสูงสุดมีสิทธิ์พิเศษ: ถ้าอยู่ในอันดับที่ผ่านอยู่แล้วไม่ต้องทำอะไร ถ้าไม่ถึงจะได้เป็นที่นั่งสุดท้าย และคนอันดับสุดท้ายของคะแนนตกรอบแทน (ไม่ส่งสิทธิ์ต่อให้โหวตอันดับ 2) · เสมอที่ขอบตัด ดูโหวตก่อน ถ้ายังเท่ากันให้แอดมินติ๊กเลือกเอง · ผลนี้เห็นเฉพาะหน้าแอดมิน ยังไม่ขึ้นจอจนกว่าจะกด "ประกาศเข้ารอบ"</p>
     <p class="mu" style="margin:0 0 6px">ค่าที่ตั้งไว้: ${cfg.n ? `เข้ารอบ <b>${cfg.n}</b> คน (รวมที่นั่ง Popular Vote) · ที่นั่ง Popular Vote <b>${cfg.pv ? 'เปิด' : 'ปิด'}</b>` : '<b>ไม่ได้ตั้งจำนวนผู้เข้ารอบ</b>'} · แก้ได้ที่กล่อง "รอบ" ด้านบน (ช่อง "ผู้เข้ารอบ" ของแต่ละรอบ)</p>`;
@@ -132,7 +135,7 @@ function qualV(p) {
   h += `<div style="margin-top:8px">${pl.pool.map((x, i) => { const c = x.c, t = pl.tag[c.id], on = sel.has(c.id), tie = pl.tie.includes(c.id);
     return `<div class="ci ${on ? '' : 'out'}"><div class="l"><input type="checkbox" data-q="${c.id}" ${on ? 'checked' : ''} style="width:auto;flex:none">${th(c.img, c.name)}<div style="min-width:0"><span class="mu">#${i + 1}</span> <b style="color:var(--gold)">${esc(c.no)}</b> ${esc(qdisp(c))}${t === 'pv' ? ' <span class="chip">ที่นั่ง Popular Vote</span>' : t === 'pvin' ? ' <span class="chip">โหวตสูงสุด (อยู่ในอันดับที่ผ่านอยู่แล้ว)</span>' : ''}${tie ? ' <span class="chip" style="color:var(--bad)">เสมอที่ขอบตัด</span>' : ''}<div class="mu">เฉลี่ย ${x.avg == null ? '–' : fmtn(x.avg)} · กรรมการให้แล้ว ${x.cnt}/${pl.nj} · โหวต ${x.votes == null ? '–' : x.votes}</div></div></div></div>`; }).join('')}</div>
     <div class="mu" id="qcnt" style="margin-top:6px">${qualCnt(p, pl, sel)}</div>
-    <div class="btns" style="margin-top:8px"><button class="p" data-a="qdo">▶ ประกาศเข้ารอบ (สุ่ม)</button><button data-a="qsave">บันทึกผลเข้า/ตกรอบ (ยังไม่ประกาศ)</button><button data-a="qreset">รีเซ็ตตามที่ระบบคำนวณ</button><button data-a="qreload">รีเฟรชคะแนนล่าสุด</button></div>
+    <div class="btns" style="margin-top:8px"><button class="p" data-a="qdo">▶ ประกาศเข้ารอบ</button><button data-a="qsave">บันทึกผลเข้า/ตกรอบ (ยังไม่ประกาศ)</button><button data-a="qreset">รีเซ็ตตามที่ระบบคำนวณ</button><button data-a="qreload">รีเฟรชคะแนนล่าสุด</button></div>
     <p class="mu">กด "ประกาศเข้ารอบ" ปุ่มเดียว: ระบบบันทึกว่าใครเข้า/ตกรอบ แล้วสุ่มลำดับและเริ่มประกาศบนจอเหมือนเดิม (กด "ถัดไป" ทีละคน) · หน้านี้ไม่รีเฟรชเอง ถ้ามีคะแนนเข้าเพิ่มให้กด "รีเฟรชคะแนนล่าสุด"</p></div>`;
   return h;
 }
@@ -143,10 +146,10 @@ async function qualRun(announce) {
   if (pl.need) return alert('ตั้งจำนวนผู้เข้ารอบก่อน แล้วกดบันทึก');
   if (!sel.size) return alert('ยังไม่ได้ติ๊กผู้เข้ารอบ');
   const out = pl.pool.filter(x => !sel.has(x.c.id));
-  if (!confirm(`เข้ารอบ ${sel.size} คน · ตกรอบ ${out.length} คน${out.length ? '\n(ตกรอบ: ' + out.map(x => qdisp(x.c)).join(', ') + ')' : ''}${announce ? '\nจากนั้นเริ่มประกาศเข้ารอบบนจอไลฟ์ทันที (สุ่มลำดับ)' : ''}\nตกลงไหม?`)) return render();
+  if (!confirm(`เข้ารอบ ${sel.size} คน · ตกรอบ ${out.length} คน${out.length ? '\n(ตกรอบ: ' + out.map(x => qdisp(x.c)).join(', ') + ')' : ''}${announce ? '\nจากนั้นเริ่มประกาศเข้ารอบบนจอไลฟ์ทันที' + (ANN_ORD ? ' (ตามเลขที่)' : ' (สุ่มลำดับ)') : ''}\nตกลงไหม?`)) return render();
   try { await api('admin/qualify', {ids: [...sel]}); } catch (e) { alert(e.message); try { await load(); } catch (er) {} return render(); }
   QS = {round: 0, ids: null};
-  if (announce) return act('annstart', {});
+  if (announce) return act('annstart', {ord: ANN_ORD});
   try { await load(); } catch (e) {} render();
 }
 /* ---------- แก้ไขผู้เข้าประกวดเป็นช่อง (หลายคนพร้อมกัน) ---------- */
@@ -226,7 +229,7 @@ function manageV(p) {
 /* ---------- กรรมการ (ปุ่มกดแบบเครื่องคิดเลข) ---------- */
 function adminV() {
   const p = ST.p;
-  app.innerHTML = topbar(esc(p.name) + ' · ' + (ST.co ? 'CO-ADMIN' : 'แอดมิน'), ST.fromSuper) + `<div class="tabs noprint"><button data-a="tab" data-v="d" class="${view === 'd' ? 'on' : ''}">จอไลฟ์</button><button data-a="tab" data-v="c" class="${view === 'c' ? 'on' : ''}">ควบคุมสด</button><button data-a="tab" data-v="r" class="${view === 'r' ? 'on' : ''}">สรุปผล</button><button data-a="tab" data-v="v" class="${view === 'v' ? 'on' : ''}">โหวต</button><button data-a="tab" data-v="h" class="${view === 'h' ? 'on' : ''}">ประวัติแก้ไข</button><button data-a="tab" data-v="m" class="${view === 'm' ? 'on' : ''}">จัดการ</button></div>` + (view === 'd' ? dHTMLp(p) + liveV(p) + linkBox(p) : view === 'c' ? controlV(p) : view === 'r' ? resultsV(p) : view === 'v' ? votesV(p) : view === 'h' ? historyV(p) : manageV(p));
+  app.innerHTML = '<div class="stk noprint">' + topbar(esc(p.name) + ' · ' + (ST.co ? 'CO-ADMIN' : 'แอดมิน'), ST.fromSuper) + `<div class="tabs noprint"><button data-a="tab" data-v="d" class="${view === 'd' ? 'on' : ''}">จอไลฟ์</button><button data-a="tab" data-v="c" class="${view === 'c' ? 'on' : ''}">ควบคุมสด</button><button data-a="tab" data-v="r" class="${view === 'r' ? 'on' : ''}">สรุปผล</button><button data-a="tab" data-v="v" class="${view === 'v' ? 'on' : ''}">โหวต</button><button data-a="tab" data-v="h" class="${view === 'h' ? 'on' : ''}">ประวัติแก้ไข</button><button data-a="tab" data-v="m" class="${view === 'm' ? 'on' : ''}">จัดการ</button></div></div>` + (view === 'd' ? dHTMLp(p) + liveV(p) + linkBox(p) : view === 'c' ? controlV(p) : view === 'r' ? resultsV(p) : view === 'v' ? votesV(p) : view === 'h' ? historyV(p) : manageV(p));
   if (ST.co) coFilter();
   foldInit(); fit();
 }
@@ -599,7 +602,7 @@ const onClick = async e => {
     if (v === 'del') { if (!confirm(`ลบผู้เข้าประกวด ${sel.length} คน และคะแนนทุกรอบ? (กู้คืนไม่ได้)`)) return; SEL.clear(); return act('delmany', {ids: sel}); }
     return;
   }
-  if (a === 'ann') return act(v === 'start' ? 'annstart' : 'annstop', {});
+  if (a === 'ann') return act(v === 'start' ? 'annstart' : 'annstop', v === 'start' ? {ord: ANN_ORD} : {});
   if (a === 'qset') { QS = {round: 0, ids: null}; return act('qset', qArgs(id)); }
   if (a === 'qreset') { QS = {round: 0, ids: null}; return render(); }
   if (a === 'qreload') { try { await load(); } catch (er) { alert(er.message); } return render(); }
@@ -688,6 +691,7 @@ const onChange = e => {
   if (t.dataset && t.dataset.qg) { QS = {round: 0, ids: null}; const rid = +t.dataset.qg; return act('qset', qArgs(rid, {ge: t.checked})); }
   if (t.dataset && t.dataset.qm) { QS = {round: 0, ids: null}; const rid = +t.dataset.qm; return act('qset', qArgs(rid, {nm: t.checked})); }
   if (t.dataset && t.dataset.q) { const p = ST.p, pl = qualPlan(p, p.round); if (!(QS.round === p.round && QS.ids)) QS = {round: p.round, ids: new Set(pl.sel)}; const i = +t.dataset.q; if (t.checked) QS.ids.add(i); else QS.ids.delete(i); const row = t.closest('.ci'); if (row) row.classList.toggle('out', !t.checked); const q = $('#qcnt'); if (q) q.innerHTML = qualCnt(p, pl, QS.ids); return; }
+  if (t.id === 'annord') { ANN_ORD = t.checked; return; }
   if (t.id === 'showlogo') return act('settings', {k: 'showLogo', v: t.checked ? '1' : '0'});
   if (t.id === 'preimg') return act('settings', {k: 'preImg', v: t.checked ? '1' : '0'});
   if (t.id === 'showjn') return act('settings', {k: 'showJN', v: t.checked ? '1' : '0'});
