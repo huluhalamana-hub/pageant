@@ -25,30 +25,41 @@ export function calc(p, r, c) {
 }
 export const colsCfg = (p, single, n) => { const hv = p.jw < 100, mr = p.vmode === 'round', gv = hv && mr ? 1 : 0; return {hv, mr, gv, g: n + 1 + gv, tail: single ? (gv ? 1 : 0) : hv && !mr ? 4 : 1}; };
 
+// แบ่งรอบเป็นกลุ่ม: รอบที่ไม่คัดคน = ทุกคนผ่าน → คะแนนต่อรวมกับรอบถัดไป กลุ่มจบที่รอบที่มีการคัดคน (ตั้งจำนวนผู้เข้ารอบ) หรือรอบที่ติ๊ก "จบกลุ่มที่รอบนี้"
+export function groupsOf(p, show) {
+  const G = []; let cur = [];
+  show.forEach((r, i) => { cur.push(r); const q = qcfgOf(p, r.id); if (i < show.length - 1 && (q.n > 0 || q.ge)) { G.push(cur); cur = []; } });
+  if (cur.length) G.push(cur);
+  return G;
+}
 export function sumData(p, show, opts) {
   const single = !!(opts && opts.single), hv = p.jw < 100, mr = p.vmode === 'round';
   const agg = a => { if (!a.length) return null; const t = a.reduce((x, y) => x + y, 0); return single || p.agg !== 'sum' ? t / a.length : t; };
+  const G = groupsOf(p, show), grouped = G.length > 1 && !single && !(opts && opts.flat), gi = r => G.findIndex(g => g.includes(r));
   const rows = p.C.map(c => {
     const per = show.map(r => {
       if (!inR(p, r.id, c)) return null; const k = calc(p, r.id, c); if (!k.rev) return null;
       const vote = mr && hv ? vsRound(p, r.id, c) : null;
       return {scores: k.scores, avg: k.avg, vote, f: vote != null ? k.avg * p.jw / 100 + vote * (100 - p.jw) / 100 : k.avg, cnt: r.inTotal !== false};
     });
-    const cn = per.filter(x => x && x.cnt), nr = cn.length, jt = agg(cn.map(x => x.avg));
+    // กลุ่มสุดท้ายที่คนนี้ยังอยู่ (ใช้คิดคะแนนรวม/จัดอันดับ) ไม่แบ่งกลุ่ม = ทุกรอบรวมกัน เหมือนเดิม
+    let lg = 0; G.forEach((g, i) => { if (inR(p, g[0].id, c)) lg = i; });
+    const inG = i => per.filter((x, k) => x && x.cnt && gi(show[k]) === i), cn = grouped ? inG(lg) : per.filter(x => x && x.cnt), nr = cn.length, jt = agg(cn.map(x => x.avg));
     let tot = null, vsc = null;
     if (hv && mr) tot = agg(cn.map(x => x.f));
     else if (jt != null) { const vs = hv && !single ? vscoreG(p, c) : null; vsc = vs == null ? null : vs * (p.agg === 'sum' ? nr : 1); tot = vsc != null ? jt * p.jw / 100 + vsc * (100 - p.jw) / 100 : jt; }
-    // gone[i] = ตกรอบไปก่อนถึงรอบนี้แล้ว (ให้ช่องว่าง) / lv = จำนวนรอบที่ "ผ่าน" (อยู่ในรอบและไม่ได้ถูกกดตกรอบ) ใช้จัดอันดับ: ผ่านรอบมากกว่าอยู่เหนือเสมอ ไม่ว่าคะแนนเฉลี่ยจะต่างกันแค่ไหน
+    // gt[i] = คะแนนรวมของกลุ่มที่ i (ใช้แสดงเฉพาะกลุ่มที่มีหลายรอบ) / gone[i] = ตกรอบไปก่อนถึงรอบนี้แล้ว (ให้ช่องว่าง) / lv = จำนวนรอบที่ "ผ่าน" ใช้จัดอันดับ: ผ่านรอบมากกว่าอยู่เหนือเสมอ
+    const gt = G.map((g, i) => { const a = inG(i); return a.length ? agg(a.map(x => x.f)) : null; });
     const gone = show.map(r => !inR(p, r.id, c)), lv = show.filter(r => inR(p, r.id, c) && !gr(p, r.id, c.id).out).length;
-    return {c, per, gone, lv, jt, votes: c.votes ?? null, vsc, tot};
+    return {c, per, gone, lv, jt, votes: c.votes ?? null, vsc, tot, gt};
   });
   const ranked = rows.filter(r => r.tot != null).sort((a, b) => b.lv - a.lv || b.tot - a.tot || a.c.no - b.c.no); ranked.forEach((r, i) => { r.rank = i + 1; });
-  return {rows, ranked};
+  return {rows, ranked, groups: G.map(g => g.length), grouped};
 }
 
 // ---------- คัดผู้เข้ารอบ + ที่นั่ง Popular Vote (wildcard) ----------
 // ค่าตั้งต่อรอบเก็บที่ p.qcfg = {รหัสรอบ: {n: จำนวนผู้เข้ารอบ "รวมที่นั่งโหวต" แล้ว, pv: ใช้ที่นั่งโหวตในรอบนี้ไหม (ไม่ตั้ง = เปิด)}}
-export const qcfgOf = (p, rid) => { const x = (p.qcfg || {})[rid] || {}; return {n: Math.max(0, Math.floor(+x.n || 0)), pv: x.pv !== false, nm: !!x.nm}; };
+export const qcfgOf = (p, rid) => { const x = (p.qcfg || {})[rid] || {}; return {n: Math.max(0, Math.floor(+x.n || 0)), pv: x.pv !== false, nm: !!x.nm, ge: !!x.ge}; };
 const rv4 = v => v == null ? null : Math.round(v * 1e4), nv = v => v == null ? -Infinity : v, cmpDesc = (x, y) => nv(y) > nv(x) ? 1 : nv(y) < nv(x) ? -1 : 0;
 // คำนวณว่าใครควรเข้ารอบ (ใช้แสดงในหน้าแอดมินเท่านั้น ไม่ขึ้นจอจนกว่าแอดมินจะกดประกาศ)
 // 1) เรียงตามคะแนนกรรมการเฉลี่ยของรอบนี้ (เสมอ → ดูโหวต → เลขที่) แล้วตัดที่ n คน
@@ -56,13 +67,18 @@ const rv4 = v => v == null ? null : Math.round(v * 1e4), nv = v => v == null ? -
 // 3) เสมอที่ขอบตัดทั้งคะแนนและโหวต → บอกใน tie ให้แอดมินเลือกเอง
 export function qualPlan(p, rid) {
   const cfg = qcfgOf(p, rid), nj = p.J.length;
-  const votesOf = c => p.vmode === 'round' ? gr(p, rid, c.id).votes : c.votes;
+  // รอบก่อนหน้าที่ไม่ได้คัดคน (ทุกคนผ่าน) ต้องเอาคะแนนมารวมคิดด้วย ย้อนไปจนถึงรอบที่มีการคัดคนแล้ว (หรือติ๊กจบกลุ่ม) ซึ่งไม่เอามาคิด
+  const ix = p.rounds.findIndex(x => x.id === rid), from = [];
+  for (let i = ix - 1; i >= 0; i--) { const q = qcfgOf(p, p.rounds[i].id); if (q.n > 0 || q.ge) break; if (p.rounds[i].inTotal !== false) from.unshift(p.rounds[i]); }
+  const rs = from.concat(ix >= 0 ? [p.rounds[ix]] : []);
+  const votesOf = c => { if (p.vmode !== 'round') return c.votes; const v = rs.map(x => gr(p, x.id, c.id).votes).filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) : null; };
   const pool = p.C.filter(c => inR(p, rid, c)).map(c => {
     const s = p.J.map(j => gs(p, rid, c.id, j.id)).filter(x => x != null);
-    return {c, cnt: s.length, avg: s.length ? s.reduce((a, b) => a + b, 0) / s.length : null, votes: votesOf(c) ?? null};
+    const avs = rs.map(x => { const t = p.J.map(j => gs(p, x.id, c.id, j.id)).filter(v => v != null); return t.length ? t.reduce((a, b) => a + b, 0) / t.length : null; }).filter(v => v != null);
+    return {c, cnt: s.length, avg: avs.length ? avs.reduce((a, b) => a + b, 0) / avs.length : null, votes: votesOf(c) ?? null};
   }).sort((a, b) => cmpDesc(rv4(a.avg), rv4(b.avg)) || cmpDesc(a.votes, b.votes) || a.c.no - b.c.no || a.c.id - b.c.id);
   const same = (a, b) => rv4(a.avg) === rv4(b.avg) && a.votes === b.votes;
-  const res = {cfg, pool, nj, sel: new Set(), tag: {}, tie: [], pvId: 0, pvIn: false, pvTie: [], pvNone: false, need: false, all: false, miss: pool.filter(x => x.cnt < nj).length};
+  const res = {cfg, from: from.map(x => x.name), pool, nj, sel: new Set(), tag: {}, tie: [], pvId: 0, pvIn: false, pvTie: [], pvNone: false, need: false, all: false, miss: pool.filter(x => x.cnt < nj).length};
   if (!pool.length) return res;
   if (!cfg.n) { res.need = true; pool.forEach(x => res.sel.add(x.c.id)); return res; }
   if (cfg.n >= pool.length) { res.all = true; pool.forEach(x => { res.sel.add(x.c.id); res.tag[x.c.id] = 'score'; }); return res; }
@@ -93,8 +109,8 @@ function summaryVM(p) {
   // POPULAR VOTE = จำนวนโหวตดิบ แสดงเฉยๆ ไม่นำไปคิดคะแนน (โหวตแยกรอบ = รวมโหวตของรอบที่แสดง)
   const pvOf = r => { if (p.vmode !== 'round') return r.c.votes ?? null; const v = show.map(x => gr(p, x.id, r.c.id).votes).filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) : null; };
   const CC = colsCfg(p, single, n);
-  const rows = d.ranked.map(r => ({rank: r.rank, gone: r.gone, c: {no: r.c.no, name: r.c.name, country: r.c.country, img: r.c.img}, per: r.per, jt: r.jt, votes: r.votes, vsc: r.vsc, tot: r.tot, pvv: pvOf(r)}));
-  return {title, show: show.map(x => ({id: x.id, name: x.name})), single, rows, C: CC, pv: p.showPV !== false && CC.tail <= 1, jn: p.showJN !== false, n, J: p.J.map(j => ({name: j.name, img: j.img})), agg: p.agg, jw: p.jw, per, sec};
+  const rows = d.ranked.map(r => ({rank: r.rank, gone: r.gone, c: {no: r.c.no, name: r.c.name, country: r.c.country, img: r.c.img}, per: r.per, jt: r.jt, votes: r.votes, vsc: r.vsc, tot: r.tot, gt: r.gt, pvv: pvOf(r)}));
+  return {title, show: show.map(x => ({id: x.id, name: x.name})), single, rows, grp: d.grouped ? d.groups : null, C: CC, pv: p.showPV !== false && CC.tail <= 1 && rows.some(r => r.pvv != null), jn: p.showJN !== false, n, J: p.J.map(j => ({name: j.name, img: j.img})), agg: p.agg, jw: p.jw, per, sec};
 }
 function buildDisplay0(p, opts) {
   const force = !!(opts && opts.force);

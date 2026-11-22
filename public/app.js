@@ -25,7 +25,7 @@ function controlV(p) {
   <p class="mu">ปุ่มลัดคีย์บอร์ด (ใช้ได้ในแท็บจอไลฟ์และควบคุมสด): เว้นวรรค = เปิด/ซ่อนคะแนน · H = ซ่อน/แสดงจอ · ลูกศรซ้าย/ขวา = คนก่อนหน้า/ถัดไป · R = สลับผู้เข้าประกวด/อันดับ</p>`;
 }
 function resultsV(p) {
-  const n = p.J.length, d = sumData(p, p.rounds), list = d.ranked.concat(d.rows.filter(r => r.tot == null)), C = colsCfg(p, false, n), cell0 = v => v == null ? '–' : fmtn(v); const cell = cell0;
+  const n = p.J.length, d = sumData(p, p.rounds, {flat: true}), list = d.ranked.concat(d.rows.filter(r => r.tot == null)), C = colsCfg(p, false, n), cell0 = v => v == null ? '–' : fmtn(v); const cell = cell0;
   const inc = p.rounds.filter(x => x.inTotal !== false);
   return `<div class="box"><h2>สรุปผลทุกรอบ</h2><p class="mu">คะแนนแต่ละรอบเฉลี่ยกรรมการก่อน แล้วรวมรอบที่ติ๊ก "นับในคะแนนรวม" (${inc.map(x => esc(x.name)).join(', ') || 'ยังไม่ได้เลือกรอบ'}) แบบ${p.agg === 'sum' ? 'บวกรวม' : 'เฉลี่ย'} ${p.jw < 100 ? `ถ้ามีโหวต จะนำมารวมตามสัดส่วนกรรมการ ${p.jw}% / โหวต ${100 - p.jw}%` : 'ตอนนี้ใช้คะแนนกรรมการ 100% (ไม่คิดโหวต)'} เครื่องหมาย * คือรอบที่ไม่ถูกนับ</p>
   <div style="overflow-x:auto"><table><thead><tr><th class="n" rowspan="2">อันดับ</th><th class="n" rowspan="2">เลขที่</th><th rowspan="2">ผู้เข้าประกวด</th>${p.rounds.map(r => `<th class="n" colspan="${C.g}">${esc(r.name)}${r.inTotal === false ? ' *' : ''}</th>`).join('')}<th class="n" colspan="${C.tail}">${C.tail > 1 ? 'คะแนนรวม' : 'รวม'}</th></tr><tr>${p.rounds.map(() => p.J.map(j => `<th class="n">${esc(j.name)}</th>`).join('') + '<th class="n">เฉลี่ย</th>' + (C.gv ? '<th class="n">โหวต</th>' : '')).join('')}${C.tail > 1 ? '<th class="n">คะแนนกรรมการ</th><th class="n">โหวต</th><th class="n">คะแนนโหวต</th><th class="n">รวม</th>' : ''}</tr></thead><tbody>${list.map(r => `<tr><td class="n">${r.rank || '–'}</td><td class="n">${esc(r.c.no)}</td><td>${esc(r.c.country ? r.c.country + ' · ' + r.c.name : r.c.name)}</td>${r.per.map((x, xi) => { const cell = r.gone[xi] ? () => '' : cell0; return p.J.map((j, k) => `<td class="n">${cell(x && x.scores[k])}</td>`).join('') + `<td class="n"><b>${cell(x && x.avg)}</b></td>` + (C.gv ? `<td class="n">${cell(x && x.vote)}</td>` : ''); }).join('')}${C.tail > 1 ? `<td class="n">${cell(r.jt)}</td><td class="n">${r.votes == null ? '–' : r.votes}</td><td class="n">${cell(r.vsc)}</td><td class="n"><b>${cell(r.tot)}</b></td>` : `<td class="n"><b>${cell(r.tot)}</b></td>`}</tr>`).join('')}</tbody></table></div>
@@ -112,7 +112,7 @@ const qualSel = (p, pl) => QS.round === p.round && QS.ids ? QS.ids : pl.sel;
 const qualCnt = (p, pl, sel) => { const ed = sel !== pl.sel && (sel.size !== pl.sel.size || [...sel].some(i => !pl.sel.has(i))); return `ติ๊กเข้ารอบ <b>${sel.size}</b> คน · ตกรอบ <b>${pl.pool.length - sel.size}</b> คน${ed ? ' · <span class="bad">แก้เองจากที่ระบบคำนวณ</span>' : ''}`; };
 function qRoundCfg(p, x) {
   const c = qcfgOf(p, x.id);
-  return `<div data-need="advance" style="margin-top:6px"><div class="row" style="align-items:center"><span class="mu">ผู้เข้ารอบ</span><input data-qn="${x.id}" type="number" min="0" max="1000" step="1" value="${c.n || ''}" placeholder="ว่าง = ไม่คัด" style="max-width:110px;flex:none"><span class="mu">คน</span><label style="margin:0;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" data-qp="${x.id}" ${c.pv ? 'checked' : ''} style="width:auto"> ที่นั่ง Popular Vote</label><button data-a="qset" data-id="${x.id}">บันทึก</button></div><label style="margin:6px 0 0;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" data-qm="${x.id}" ${c.nm ? 'checked' : ''} style="width:auto"> ไม่แสดงคะแนน</label>${c.nm ? '<p class="mu" style="margin:2px 0 0">กรรมการให้คะแนนปกติและเข้าตารางสรุปปกติ · คนสุดท้ายเฟดแล้ว ถ้ากรรมการส่งครบ จะซ่อนจอแล้วไปรอบถัดไปเอง (ถ้าตั้งจำนวนผู้เข้ารอบไว้ จะรอประกาศเข้ารอบก่อน) · ต้องตั้ง "การ์ดชื่อ" (วินาที) มากกว่า 0</p>' : ''}</div>`;
+  return `<div data-need="advance" style="margin-top:6px"><div class="row" style="align-items:center"><span class="mu">ผู้เข้ารอบ</span><input data-qn="${x.id}" type="number" min="0" max="1000" step="1" value="${c.n || ''}" placeholder="ว่าง = ไม่คัด" style="max-width:110px;flex:none"><span class="mu">คน</span><label style="margin:0;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" data-qp="${x.id}" ${c.pv ? 'checked' : ''} style="width:auto"> ที่นั่ง Popular Vote</label><button data-a="qset" data-id="${x.id}">บันทึก</button></div><label style="margin:6px 0 0;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" data-qm="${x.id}" ${c.nm ? 'checked' : ''} style="width:auto"> ไม่แสดงคะแนน</label><label style="margin:6px 0 0;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" data-qg="${x.id}" ${c.ge ? 'checked' : ''} style="width:auto"> จบกลุ่มที่รอบนี้ (รอบถัดไปไม่เอาคะแนนรอบนี้มารวม แม้ไม่ได้คัดคน)</label><p class="mu" style="margin:2px 0 0">รอบที่ตั้งจำนวนผู้เข้ารอบจะจบกลุ่มเอง · รอบที่ไม่คัดคน (ทุกคนผ่าน) คะแนนจะรวมกับรอบถัดไปในตารางสรุป</p>${c.nm ? '<p class="mu" style="margin:2px 0 0">กรรมการให้คะแนนปกติและเข้าตารางสรุปปกติ · คนสุดท้ายเฟดแล้ว ถ้ากรรมการส่งครบ จะซ่อนจอแล้วไปรอบถัดไปเอง (ถ้าตั้งจำนวนผู้เข้ารอบไว้ จะรอประกาศเข้ารอบก่อน) · ต้องตั้ง "การ์ดชื่อ" (วินาที) มากกว่า 0</p>' : ''}</div>`;
 }
 function qualV(p) {
   const rd = p.rounds.find(x => x.id === p.round); if (!rd) return '';
@@ -123,6 +123,7 @@ function qualV(p) {
   if (!pl.pool.length) return h + '<p class="mu">ไม่มีผู้เข้าประกวดเหลืออยู่ในรอบนี้</p></div>';
   if (pl.need) return h + '<p class="mu">รอบนี้ไม่ได้ตั้งจำนวนผู้เข้ารอบ = ไม่คัดคนออกอัตโนมัติ (รอบสุดท้ายก็ปล่อยว่างได้) ถ้าต้องการให้คัด ไปใส่จำนวนที่กล่อง "รอบ" ด้านบน</p></div>';
   const W = t => `<p class="bad" style="margin:6px 0 0">${t}</p>`;
+  if (pl.from && pl.from.length) h += `<p class="mu" style="margin:6px 0 0">คิดคะแนนรวมจากรอบ: <b>${pl.from.map(esc).join(' + ')} + ${esc(rd.name)}</b> (รอบก่อนหน้าไม่ได้คัดคน ทุกคนผ่านมา จึงนับคะแนนรวมกัน)</p>`;
   if (pl.miss) h += W(`กรรมการยังให้คะแนนไม่ครบ ${pl.miss} คน จากทั้งหมด ${pl.pool.length} คน ผลด้านล่างคิดจากคะแนนที่มีตอนนี้ (ถ้ากรรมการบางท่านไม่มา กดประกาศได้เมื่อพร้อม)`);
   if (cfg.pv && pl.pvNone) h += W('ยังไม่ได้กรอกโหวตของรอบนี้ (แท็บโหวต) จึงยังไม่มีที่นั่ง Popular Vote ตอนนี้คัดจากคะแนนกรรมการล้วน');
   if (pl.pvTie.length) h += W(`โหวตสูงสุดเท่ากัน ${pl.pvTie.length} คน (${pl.pvTie.map(nm).join(', ')}) ระบบให้คนที่คะแนนกรรมการสูงกว่าก่อน ปรับติ๊กเองได้`);
@@ -283,30 +284,35 @@ function barHTML(b, L, z) {
 const sumPages = s => Math.max(1, Math.ceil(s.rows.length / (s.per || 10)));
 const sumPage = (s, i) => { const per = s.per || 10, n = s.rows.length, np = sumPages(s); i = Math.min(Math.max(0, i | 0), np - 1); return {...s, rows: s.rows.slice(i * per, (i + 1) * per), cap: Math.min(per, n)}; };
 function sumVMHTML(s, L, z) {
-  const {n, single, show, C, J, rows} = s, nc = show.length * C.g + C.tail, pv = s.pv ? 1 : 0, pvW = 110;
+  const {n, single, show, C, J, rows} = s, grp = s.grp, tl2 = grp && C.tail === 1 ? 0 : C.tail, pv = s.pv ? 1 : 0, pvW = 110;
   // ไม่มีใครมีรูปเลย → ตัดคอลัมน์รูปออก (pc=0) ตารางจะแคบลงและยังอยู่กึ่งกลางจอ
-  const pc = rows.some(r => r.c.img) ? 1 : 0, lead = 2 + pc, fx = 56 + 56 * pc, gaps = (nc + lead - 1 + pv) * 6, avail = 1760 - fx - gaps - pv * pvW; let nameW = 300, cw = Math.floor((avail - nameW) / nc);
+  const pc = rows.some(r => r.c.img) ? 1 : 0, lead = 2 + pc, fx = 56 + 56 * pc, c0 = lead + 1, rc = [], tc = [], nc = (() => { let col = c0, i = 0; (grp || [show.length]).forEach((len, gx) => { for (let k = 0; k < len; k++) { rc[i++] = col; col += C.g; } tc[gx] = grp && (len > 1 || C.gv) ? col++ : 0; }); return col - c0 + tl2; })(), gaps = (nc + lead - 1 + pv) * 6, avail = 1760 - fx - gaps - pv * pvW; let nameW = 300, cw = Math.floor((avail - nameW) / nc);
   if (cw < 56) { nameW = 150; cw = Math.floor((avail - nameW) / nc); }
   cw = Math.max(30, Math.min(118, cw));
   const W = 80 + fx + nameW + nc * cw + gaps + pv * pvW, H = 178 + (pc ? 72 : 59) * (s.cap || rows.length), k = Math.min((z || 100) / 100, 1880 / W, 1040 / H), fs = Math.max(16, Math.min(32, Math.round(cw * .36))), hs = Math.max(10, Math.min(20, Math.round(cw * .17))), pw = Math.max(18, Math.min(40, cw - 6));
   const tpl = `56px ${pc ? '56px ' : ''}${nameW}px repeat(${nc}, ${cw}px)${pv ? ` ${pvW}px` : ''}`;
   // หัวตาราง 2 แถวอยู่ใน grid เดียว ช่องที่ผสาน 2 แถว (ชื่อตาราง, TOTAL, POPULAR VOTE) วางกึ่งกลางช่อง เส้นนอนใต้แถวบนจึงไม่ลากผ่านช่องที่ผสาน
   const leadW = fx + nameW + (lead - 1) * 6, tl = [...String(s.title)].length, tfs = Math.max(24, Math.min(54, Math.floor((leadW - 20) / (tl * .66))));
-  const c0 = lead + 1, ts = c0 + show.length * C.g, ps = ts + C.tail;
+  const ts = c0 + nc - tl2, ps = ts + tl2;
+  const BI = '<i class="bi"><b style="height:35%"></b><b style="height:65%"></b><b style="height:100%"></b></i>', GL = '<svg class="gl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9.5"/><ellipse cx="12" cy="12" rx="4" ry="9.5"/><path d="M2.5 12h19M4 7.5h16M4 16.5h16"/></svg>';
+  const last = []; if (grp) { let i = 0; grp.forEach((len, gx) => { i += len; last[i - 1] = gx; }); }
+  // ช่องคะแนนรวมของกลุ่ม (กลุ่มที่รวมหลายรอบ): ต่อท้ายรอบสุดท้ายของกลุ่ม
+  const gtc = (r, xi) => { const gx = last[xi]; if (gx == null || !tc[gx]) return ''; const v = r.gt && r.gt[gx]; return `<span class="sc bd av">${r.gone && r.gone[xi - grp[gx] + 1] ? '' : v == null ? '–' : fmtn(v)}</span>`; };
   const cell = (c, r, t, cls) => `<span class="${cls}" style="grid-column:${c}${t ? ` / span ${t}` : ''};grid-row:${r}">`;
   let h = `<span class="rk-t mg" style="grid-column:1 / span ${lead};grid-row:1 / span 2;font-size:${tfs}px">${esc(s.title)}</span>`;
   show.forEach((r, i) => {
-    const c = c0 + i * C.g;
-    h += `${cell(c, 1, C.g, 'rh g bd hb')}${esc(r.name)}</span>`;
+    const c = rc[i], hf = Math.max(11, Math.min(Math.round(hs * 1.15), Math.floor(C.g * (cw + 6) / (Math.max(4, [...String(r.name)].length) * .68))));
+    h += `<span class="rh g bd hb" style="grid-column:${c} / span ${C.g};grid-row:1;font-size:${hf}px;white-space:nowrap">${esc(r.name)}</span>`;
     J.forEach((j, k2) => { h += `<div class="jh ${k2 === 0 ? 'bd' : ''}" style="grid-column:${c + k2};grid-row:2"><div class="ph2">${ph(j.img, j.name)}</div>${s.jn === false ? '' : `<div class="nm">${esc(j.name)}</div>`}</div>`; });
     h += `${cell(c + n, 2, 0, 'rh g')}${esc(L.avg)}</span>`;
     if (C.gv) h += `${cell(c + n + 1, 2, 0, 'rh')}${esc(L.rv)}</span>`;
   });
-  if (C.tail > 1) h += `${cell(ts, 1, C.tail, 'rh g bd hb')}${esc(L.total)}</span>${cell(ts, 2, 0, 'rh bd')}${esc(L.jtot)}</span>${cell(ts + 1, 2, 0, 'rh')}${esc(L.votes)}</span>${cell(ts + 2, 2, 0, 'rh')}${esc(L.vsc)}</span>${cell(ts + 3, 2, 0, 'rh g')}${esc(L.tot)}</span>`;
-  else if (C.tail === 1) h += `<span class="rh g bd" style="grid-column:${ts};grid-row:1 / span 2">${esc(L.tot)}</span>`;
-  if (pv) h += `<span class="rh g bd" style="grid-column:${ps};grid-row:1 / span 2">${esc(L.votes)}</span>`;
+  (grp || []).forEach((len, gx) => { if (tc[gx]) h += `<span class="rh g bd ic" style="grid-column:${tc[gx]};grid-row:1 / span 2">${BI}${esc(L.tot)}</span>`; });
+  if (C.tail > 1) h += `${cell(ts, 1, C.tail, 'rh g bd hb')}${esc(L.total)}</span>${cell(ts, 2, 0, 'rh bd')}${esc(L.jtot)}</span>${cell(ts + 1, 2, 0, 'rh')}${esc(L.votes)}</span>${cell(ts + 2, 2, 0, 'rh')}${esc(L.vsc)}</span>${cell(ts + 3, 2, 0, 'rh g ic')}${BI}${esc(L.tot)}</span>`;
+  else if (tl2 === 1) h += `<span class="rh g bd ic" style="grid-column:${ts};grid-row:1 / span 2">${BI}${esc(L.tot)}</span>`;
+  if (pv) h += `<span class="rh g bd ic pvh" style="grid-column:${ps};grid-row:1 / span 2;font-size:${Math.max(12, Math.min(hs, 18))}px">${GL}${esc(L.votes)}</span>`;
   const head = `<div class="rrow hd h2 hg" style="grid-template-columns:${tpl}">${h}</div>`;
-  const body = rows.map((r, i) => `<div class="rrow" style="grid-template-columns:${tpl};--fs:${fs}px;animation-delay:${i * .1}s"><span class="rn">${r.rank}</span>${pc ? `<span class="rp">${ph(r.c.img, r.c.name)}</span>` : ''}<span class="rtn">${r.c.country ? esc(r.c.country) + `<small>${esc(r.c.name)}</small>` : esc(r.c.name)}</span>${r.per.map((x, xi) => r.gone && r.gone[xi] ? J.map((j, k2) => `<span class="sc ${k2 === 0 && !(xi > 0 && r.gone[xi - 1]) ? 'bd' : ''}"></span>`).join('') + '<span class="sc av"></span>' + (C.gv ? '<span class="sc"></span>' : '') : J.map((j, k2) => `<span class="sc ${k2 === 0 ? 'bd' : ''}">${x && x.scores[k2] != null ? fmtn(x.scores[k2]) : '–'}</span>`).join('') + `<span class="sc av">${x ? fmtn(x.avg) : '–'}</span>` + (C.gv ? `<span class="sc">${x && x.vote != null ? fmtn(x.vote) : '–'}</span>` : '')).join('')}${C.tail > 1 ? `<span class="sc bd av">${fmtn(r.jt)}</span><span class="sc">${r.votes == null ? '–' : r.votes.toLocaleString('en-US')}</span><span class="sc">${r.vsc == null ? '–' : fmtn(r.vsc)}</span><span class="sc av">${fmtn(r.tot)}</span>` : C.tail === 1 ? `<span class="sc bd av">${fmtn(r.tot)}</span>` : ''}${pv ? `<span class="sc bd" style="font-size:${Math.min(fs, 26)}px">${r.pvv == null ? '–' : r.pvv.toLocaleString('en-US')}</span>` : ''}</div>`).join('');
+  const body = rows.map((r, i) => `<div class="rrow" style="grid-template-columns:${tpl};--fs:${fs}px;animation-delay:${i * .1}s"><span class="rn">${r.rank}</span>${pc ? `<span class="rp">${ph(r.c.img, r.c.name)}</span>` : ''}<span class="rtn">${r.c.country ? esc(r.c.country) + `<small>${esc(r.c.name)}</small>` : esc(r.c.name)}</span>${r.per.map((x, xi) => (r.gone && r.gone[xi] ? J.map((j, k2) => `<span class="sc ${k2 === 0 && !(xi > 0 && r.gone[xi - 1]) ? 'bd' : ''}"></span>`).join('') + '<span class="sc av"></span>' + (C.gv ? '<span class="sc"></span>' : '') : J.map((j, k2) => `<span class="sc ${k2 === 0 ? 'bd' : ''}">${x && x.scores[k2] != null ? fmtn(x.scores[k2]) : '–'}</span>`).join('') + `<span class="sc av">${x ? fmtn(x.avg) : '–'}</span>` + (C.gv ? `<span class="sc">${x && x.vote != null ? fmtn(x.vote) : '–'}</span>` : '')) + gtc(r, xi)).join('')}${C.tail > 1 ? `<span class="sc bd av">${fmtn(r.jt)}</span><span class="sc">${r.votes == null ? '–' : r.votes.toLocaleString('en-US')}</span><span class="sc">${r.vsc == null ? '–' : fmtn(r.vsc)}</span><span class="sc av">${fmtn(r.tot)}</span>` : tl2 === 1 ? `<span class="sc bd av">${fmtn(r.tot)}</span>` : ''}${pv ? `<span class="sc bd" style="font-size:${Math.min(fs, 26)}px">${r.pvv == null ? '–' : r.pvv.toLocaleString('en-US')}</span>` : ''}</div>`).join('');
   return `<div class="rkw" style="left:${(1920 - W) / 2}px;width:${W}px;transform:translateY(-50%) scale(${+k.toFixed(4)})"><div class="rkp" style="width:${W}px;--hs:${hs}px;--pw:${pw}px">${head}${body}</div></div>`;
 }
 function cardHTML(d, z) {
@@ -454,7 +460,7 @@ function fadeKind(a, b) {
 // รวมค่าตั้งคัดผู้เข้ารอบ/แสดงแค่ชื่อของรอบหนึ่งจากหน้าจอ (over = ค่าที่เพิ่งเปลี่ยน)
 function qArgs(id, over) {
   const q = s => document.querySelector(`[data-${s}="${id}"]`);
-  return {id, n: q('qn').value, pv: q('qp').checked, nm: q('qm').checked, ...(over || {})};
+  return {id, n: q('qn').value, pv: q('qp').checked, nm: q('qm').checked, ge: q('qg').checked, ...(over || {})};
 }
 async function act(a, body) {
   const fk = fadeKind(a, body), pv = fk ? document.querySelector('.sw .cv') : null;
@@ -464,7 +470,7 @@ function linkBox(p) {
   return `<div class="box noprint" style="margin-top:12px"><h2>ลิงก์จอไลฟ์สำหรับ OBS</h2><p class="mu">ใน OBS เพิ่มแหล่งภาพแบบ Browser ใส่ลิงก์นี้ ขนาด 1920 x 1080 พื้นหลังโปร่งใสให้อัตโนมัติ ซ้อนบนภาพกล้องได้เลย</p><input readonly value="${esc(u)}" onclick="this.select()"><p class="mu" style="margin-top:8px">เปิดในเบราว์เซอร์ธรรมดาจะเห็นพื้นหลังเป็นสีขาว ซึ่งปกติ ถ้าอยากดูบนพื้นเข้มตอนทดสอบ ต่อท้ายลิงก์ด้วย &amp;bg=1</p></div>`;
 }
 function tableData(p) {
-  const n = p.J.length, d = sumData(p, p.rounds), list = d.ranked.concat(d.rows.filter(r => r.tot == null)), C = colsCfg(p, false, n), c = v => v == null ? '' : fmtn(v);
+  const n = p.J.length, d = sumData(p, p.rounds, {flat: true}), list = d.ranked.concat(d.rows.filter(r => r.tot == null)), C = colsCfg(p, false, n), c = v => v == null ? '' : fmtn(v);
   const hdr = ['อันดับ', 'เลขที่', 'ผู้เข้าประกวด'].concat(...p.rounds.map(r => p.J.map(j => r.name + ' ' + j.name).concat(r.name + ' เฉลี่ย', C.gv ? [r.name + ' โหวต'] : [])), C.tail > 1 ? ['คะแนนกรรมการ', 'โหวต', 'คะแนนโหวต', 'รวม'] : ['รวม']);
   const rows = list.map(r => [r.rank || '', r.c.no, r.c.country ? r.c.country + ' ' + r.c.name : r.c.name].concat(...r.per.map(x => p.J.map((j, k) => c(x && x.scores[k])).concat(c(x && x.avg), C.gv ? [c(x && x.vote)] : [])), C.tail > 1 ? [c(r.jt), r.votes ?? '', c(r.vsc), c(r.tot)] : [c(r.tot)]));
   return [hdr].concat(rows);
@@ -677,6 +683,7 @@ const onChange = e => {
   if (t.id === 'selall') { ST.p.C.forEach(c => { if (t.checked) SEL.add(c.id); else SEL.delete(c.id); }); document.querySelectorAll('input[data-s]').forEach(x => { x.checked = t.checked; }); return selUpd(); }
   if (['c1', 'c2', 'c3'].includes(t.id)) return act('settings', {k: 'colors', v: ['c1', 'c2', 'c3'].map(i => $('#' + i).value).join(',')});
   if (t.dataset && t.dataset.qp) { QS = {round: 0, ids: null}; const rid = +t.dataset.qp; return act('qset', qArgs(rid, {pv: t.checked})); }
+  if (t.dataset && t.dataset.qg) { QS = {round: 0, ids: null}; const rid = +t.dataset.qg; return act('qset', qArgs(rid, {ge: t.checked})); }
   if (t.dataset && t.dataset.qm) { QS = {round: 0, ids: null}; const rid = +t.dataset.qm; return act('qset', qArgs(rid, {nm: t.checked})); }
   if (t.dataset && t.dataset.q) { const p = ST.p, pl = qualPlan(p, p.round); if (!(QS.round === p.round && QS.ids)) QS = {round: p.round, ids: new Set(pl.sel)}; const i = +t.dataset.q; if (t.checked) QS.ids.add(i); else QS.ids.delete(i); const row = t.closest('.ci'); if (row) row.classList.toggle('out', !t.checked); const q = $('#qcnt'); if (q) q.innerHTML = qualCnt(p, pl, QS.ids); return; }
   if (t.id === 'showlogo') return act('settings', {k: 'showLogo', v: t.checked ? '1' : '0'});
