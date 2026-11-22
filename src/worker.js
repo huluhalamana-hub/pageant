@@ -7,7 +7,7 @@ const txt = (s, n = 100) => String(s ?? '').trim().slice(0, n);
 const nm = (s, n = 100) => txt(s, n).toUpperCase();
 const UP = s => String(s ?? '').toUpperCase();
 const r2 = n => Math.round(n * 100) / 100;
-const DEF = { max: '10', jw: '100', vm: 'share', agg: 'avg', vmode: 'all', rank: '0', mode: 'current', hide: '0', pre: 'dash', big: 'country', preImg: '1', introSec: '4', holdSec: '0', sumPer: '10', sumSec: '8', showPV: '1', showJN: '1', sumScale: '100', barScale: '100', cardScale: '100', lang: 'th', showLogo: '0', showRound: '1', auto: '0', c1: '#e3b95a', c2: '#1c1006', c3: '#f4e9d3', round: '0', cur: '0', ann: '[]', annAt: '0', annI: '-1', annEnd: '0', qcfg: '{}' };
+const DEF = { max: '10', jw: '100', vm: 'share', agg: 'avg', vmode: 'all', rank: '0', mode: 'current', hide: '0', pre: 'dash', big: 'country', preImg: '1', introSec: '4', holdSec: '0', sumPer: '10', sumSec: '8', showPV: '1', showJN: '1', sumScale: '100', barScale: '100', cardScale: '100', annScale: '100', lang: 'th', showLogo: '0', showRound: '1', auto: '0', c1: '#e3b95a', c2: '#1c1006', c3: '#f4e9d3', round: '0', cur: '0', ann: '[]', annAt: '0', annI: '-1', annEnd: '0', qcfg: '{}' };
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
 // ---------- CO-ADMIN: รหัสผู้ช่วยแอดมินของแต่ละเวที ติ๊กสิทธิ์ได้ (edit=แก้ไขข้อมูล/ตั้งค่า, scores=แก้คะแนน, advance=จัดการผู้เข้ารอบ, screen=สั่งขึ้นจอ) ----------
@@ -54,7 +54,7 @@ async function snapshot(env, pgId, opt = {}) {
   const iu = (k, id) => (im[k + id] ? `/api/img/${k}/${id}?v=${im[k + id]}` : null);
   let round = +s.round; if (!rounds.some(r => r.id === round)) round = rounds[0] ? rounds[0].id : 0;
   const p = {
-    id: P.id, name: UP(P.name), rev: P.rev, max: +s.max, jw: +s.jw, vm: s.vm, agg: s.agg, vmode: s.vmode, rank: +s.rank, mode: s.mode, hide: s.hide === '1', pre: s.pre, big: s.big === 'name' ? 'name' : 'country', preImg: s.preImg !== '0', introSec: +s.introSec, holdSec: +s.holdSec, sumPer: +s.sumPer, sumSec: +s.sumSec, showPV: s.showPV === '1', showJN: s.showJN === '1', sumScale: +s.sumScale, barScale: +s.barScale, cardScale: +s.cardScale, lang: s.lang,
+    id: P.id, name: UP(P.name), rev: P.rev, max: +s.max, jw: +s.jw, vm: s.vm, agg: s.agg, vmode: s.vmode, rank: +s.rank, mode: s.mode, hide: s.hide === '1', pre: s.pre, big: s.big === 'name' ? 'name' : 'country', preImg: s.preImg !== '0', introSec: +s.introSec, holdSec: +s.holdSec, sumPer: +s.sumPer, sumSec: +s.sumSec, showPV: s.showPV === '1', showJN: s.showJN === '1', sumScale: +s.sumScale, barScale: +s.barScale, cardScale: +s.cardScale, annScale: +s.annScale, lang: s.lang,
     showLogo: s.showLogo === '1', showRound: s.showRound === '1', auto: s.auto === '1', col: { c1: s.c1, c2: s.c2, c3: s.c3 }, logo: iu('logo', pgId), round, cur: +s.cur,
     annOn: +s.annAt > 0, annIds: +s.annAt > 0 ? (() => { try { return JSON.parse(s.ann); } catch (e) { return []; } })() : [], annN: (() => { try { return JSON.parse(s.ann).length; } catch (e) { return 0; } })(), annI: +s.annI,
     annId: +s.annAt > 0 ? ((() => { try { return JSON.parse(s.ann); } catch (e) { return []; } })()[+s.annI] || 0) : 0,
@@ -482,6 +482,7 @@ async function adminAction(env, a, b, pg, role, me) {
       else if (k === 'big' && ['country', 'name'].includes(v)) await setS(env, pg, k, v);
       else if (k === 'sumPer' && v !== '' && Number(v) >= 1 && Number(v) <= 20) await setS(env, pg, k, Math.round(Number(v)));
       else if (['introSec', 'holdSec', 'sumSec'].includes(k) && v !== '' && Number(v) >= 0 && Number(v) <= 600) await setS(env, pg, k, Math.round(Number(v) * 10) / 10);
+      else if (k === 'annScale' && v !== '' && Number(v) >= 30 && Number(v) <= 200) await setS(env, pg, k, Math.round(Number(v)));
       else if (['barScale', 'cardScale', 'sumScale'].includes(k) && v !== '' && Number(v) >= 30 && Number(v) <= 150) await setS(env, pg, k, Math.round(Number(v)));
       else if (k === 'lang' && ['th', 'en'].includes(v)) await setS(env, pg, k, v);
       else if (['auto', 'hide', 'showLogo', 'showRound', 'showPV', 'showJN', 'preImg'].includes(k)) await setS(env, pg, k, bool(v));
