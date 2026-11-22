@@ -261,17 +261,22 @@ const pub = async path => (await fetch('/api/' + path)).json();
 /* ---------- วาดจอไลฟ์จากข้อมูลที่เซิร์ฟเวอร์ส่งมา ---------- */
 /* ชื่อบรรทัดใหญ่/เล็ก: [ใหญ่, เล็ก] ตามตั้งค่า big (ไม่มีประเทศ = ชื่อบรรทัดเดียว) */
 const nm2 = d => { const c = d.c; return !c.country ? [c.name, ''] : d.big === 'name' ? [c.name, c.country] : [c.country, c.name]; };
+/* ขนาดช่องกรรมการ: ถึง 8 คนช่องหดตามจำนวนในพื้นที่ 920px (เหมือนเดิม) เกิน 8 คนคงขนาดช่องไว้ที่ ~102px แล้วขยายแถบยาวออกไปแทน (extra) ส่วนเกินจอให้ตัวย่ออัตโนมัติใน barHTML จัดการ */
+function barDims(b) {
+  const n = b.judges.length, col = Math.min(190, Math.max(102, Math.floor(920 / (n + 1)))), extra = b.cols ? Math.max(0, (n + 1) * col - 920) : 0;
+  const ni = !b.c.img, W = (b.cols ? 1680 : 760) - (ni ? 120 : 0) + extra, left = ni ? (1920 - W) / 2 : 150 - extra / 2;
+  return {n, col, extra, ni, W, left};
+}
 function barCore(b, L) {
-  const n = b.judges.length, R = b.R, col = Math.min(190, Math.floor(920 / (n + 1)));
+  const {n, col, ni, W, left} = barDims(b), R = b.R;
   const jp = Math.max(40, Math.min(92, col - 14)), jn = Math.max(13, Math.min(22, Math.round(col * .15))), jsz = Math.max(22, Math.min(48, Math.round(col * .36))), t0 = n * .3 + .2;
   const jc = b.judges.map((j, i) => { const v = R ? R.scores[i] : null; return `<div class="jc" style="width:${col}px"><div class="jp">${ph(j.img, j.name)}</div><div class="jn">${esc(j.name)}</div><div class="js ${v == null ? 'dim' : ''}" ${v != null ? `style="animation-delay:${i * .3}s"` : ''}>${v == null ? '–' : fmtn(v)}</div></div>`; }).join('');
   const av = `<div class="jc av" style="width:${col}px"><div class="jp ic bars"><b style="height:30%"></b><b style="height:60%"></b><b style="height:90%"></b></div><div class="jn">${esc(L.avg)}</div><div class="js ${R ? '' : 'dim'}" ${R ? `style="animation-delay:${t0}s"` : ''}>${R ? fmtn(R.avg) : '–'}</div></div>`;
   // ไม่มีรูป: ไม่วาดวงกลมรูป ย่อแถบลง แล้วจัดทั้งแถบให้อยู่กึ่งกลางจอ (มีรูป: ตำแหน่งเดิม ซึ่งรวมวงกลมรูปแล้วก็อยู่กึ่งกลางพอดี)
-  const ni = !b.c.img, W = (b.cols ? 1680 : 760) - (ni ? 120 : 0), left = ni ? (1920 - W) / 2 : 150;
   return `<div class="bar${ni ? ' ni' : ''}${b.cols ? '' : ' nc'}" style="left:${left}px;width:${W}px;--jp:${jp}px;--jn:${jn}px;--js:${jsz}px">${ni ? '' : `<div class="cph"><img src="${b.c.img}" alt=""></div>`}<div class="info"><div class="cn2">${esc(nm2(b)[0])}</div>${nm2(b)[1] ? `<div class="cc">${esc(nm2(b)[1])}</div>` : ''}</div>${b.cols ? `<div class="jrow">${jc}${av}</div>` : ''}</div>`;
 }
 function barHTML(b, L, z) {
-  const ni = !b.c.img, W = (b.cols ? 1680 : 760) - (ni ? 120 : 0), s = Math.min((z || 100) / 100, 1880 / W);
+  const W = barDims(b).W, s = Math.min((z || 100) / 100, 1880 / W);
   return `<div class="scl" style="transform:scale(${+s.toFixed(3)});transform-origin:50% 1000px">${barCore(b, L)}</div>`;
 }
 /* แบ่งตารางคะแนนรวมเป็นหน้าต่างละ per คน (หน้าละกี่คนตั้งได้ที่แท็บจัดการ) */
@@ -473,14 +478,54 @@ function csvTable() {
   const csv = '\ufeff' + tableData(ST.p).map(r => r.map(q).join(',')).join('\r\n');
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type: 'text/csv;charset=utf-8'})); a.download = `สรุปคะแนน-${ST.p.name}.csv`; document.body.appendChild(a); a.click(); a.remove();
 }
+/* หน้าต่างครอบรูป (สี่เหลี่ยมจัตุรัส): ลากเลื่อน ซูมด้วยแถบเลื่อน/ล้อเมาส์/บีบนิ้ว เริ่มต้นอยู่ตรงกลางเหมือนที่ระบบเคยตัดให้เอง ได้ null ถ้ายกเลิก */
+function cropDialog(bmp) {
+  return new Promise(res => {
+    const S = Math.max(200, Math.min(340, innerWidth - 64, innerHeight - 300)), OUT = 240, w = bmp.width, h = bmp.height, base = S / Math.min(w, h);
+    let z = 1, ox = (S - w * base) / 2, oy = (S - h * base) / 2, lastD = 0;
+    const ov = document.createElement('div'); ov.tabIndex = -1;
+    ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;padding:16px;outline:none';
+    ov.innerHTML = `<div style="background:#111;border:1px solid #333;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px;align-items:center;max-width:100%">
+      <div style="color:#fff;font-size:16px;text-align:center">ลากรูปเพื่อเลือกส่วนที่ต้องการ · ซูมด้วยแถบเลื่อนหรือบีบนิ้ว</div>
+      <div style="position:relative;width:${S}px;height:${S}px"><canvas width="${S}" height="${S}" style="width:${S}px;height:${S}px;display:block;border-radius:8px;touch-action:none;cursor:grab"></canvas><div style="position:absolute;inset:0;border-radius:50%;box-shadow:0 0 0 2px rgba(255,255,255,.8);pointer-events:none"></div></div>
+      <div style="color:#aaa;font-size:13px;text-align:center">วงกลม = ส่วนที่ขึ้นบนแถบผู้เข้าประกวด · สี่เหลี่ยม = รูปกรรมการ</div>
+      <input type="range" min="100" max="400" value="100" style="width:100%">
+      <div class="row" style="justify-content:center"><button data-cx="0">ยกเลิก</button><button class="p" data-cx="1">ตกลง</button></div></div>`;
+    document.body.appendChild(ov);
+    const cv = ov.querySelector('canvas'), ctx = cv.getContext('2d'), rg = ov.querySelector('input');
+    const clamp = () => { const sc = base * z; ox = Math.min(0, Math.max(S - w * sc, ox)); oy = Math.min(0, Math.max(S - h * sc, oy)); };
+    const draw = () => { clamp(); const sc = base * z; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, S, S); ctx.drawImage(bmp, ox, oy, w * sc, h * sc); };
+    const setZ = nz => { nz = Math.min(4, Math.max(1, nz)); const sc = base * z, cx = (S / 2 - ox) / sc, cy = (S / 2 - oy) / sc; z = nz; const s2 = base * z; ox = S / 2 - cx * s2; oy = S / 2 - cy * s2; rg.value = Math.round(z * 100); draw(); };
+    const pts = new Map(), dist = () => { const [a, b] = [...pts.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
+    cv.onpointerdown = e => { cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, {x: e.clientX, y: e.clientY}); if (pts.size === 2) lastD = dist(); cv.style.cursor = 'grabbing'; };
+    cv.onpointermove = e => {
+      const pr = pts.get(e.pointerId); if (!pr) return;
+      const dx = e.clientX - pr.x, dy = e.clientY - pr.y; pr.x = e.clientX; pr.y = e.clientY;
+      if (pts.size === 1) { ox += dx; oy += dy; draw(); }
+      else if (pts.size === 2) { const d = dist(); if (lastD > 0) setZ(z * d / lastD); lastD = d; }
+    };
+    const up = e => { pts.delete(e.pointerId); lastD = 0; cv.style.cursor = 'grab'; };
+    cv.onpointerup = up; cv.onpointercancel = up;
+    cv.addEventListener('wheel', e => { e.preventDefault(); setZ(z * (e.deltaY < 0 ? 1.1 : 1 / 1.1)); }, {passive: false});
+    rg.oninput = () => setZ(rg.value / 100);
+    const done = ok => {
+      let d = null;
+      if (ok) { const sc = base * z, ss = S / sc, c = document.createElement('canvas'); c.width = c.height = OUT; c.getContext('2d').drawImage(bmp, Math.min(Math.max(0, -ox / sc), w - ss), Math.min(Math.max(0, -oy / sc), h - ss), ss, ss, 0, 0, OUT, OUT); d = c.toDataURL('image/jpeg', .8); }
+      ov.remove(); res(d);
+    };
+    ov.addEventListener('click', e => { const b = e.target.closest('[data-cx]'); if (b) done(b.dataset.cx === '1'); });
+    ov.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Escape') done(false); });
+    draw(); ov.focus();
+  });
+}
 function pick(logo, cb) {
   const f = document.createElement('input'); f.type = 'file'; f.accept = 'image/*';
   f.onchange = async () => {
     const file = f.files[0]; if (!file) return;
     try {
-      const b = await createImageBitmap(file), c = document.createElement('canvas'); let data;
-      if (logo) { const s = Math.min(1, 400 / b.width); c.width = Math.round(b.width * s); c.height = Math.round(b.height * s); c.getContext('2d').drawImage(b, 0, 0, c.width, c.height); data = c.toDataURL('image/png'); }
-      else { const s = Math.min(b.width, b.height); c.width = c.height = 240; c.getContext('2d').drawImage(b, (b.width - s) / 2, (b.height - s) / 2, s, s, 0, 0, 240, 240); data = c.toDataURL('image/jpeg', .8); }
+      const b = await createImageBitmap(file); let data;
+      if (logo) { const c = document.createElement('canvas'), s = Math.min(1, 400 / b.width); c.width = Math.round(b.width * s); c.height = Math.round(b.height * s); c.getContext('2d').drawImage(b, 0, 0, c.width, c.height); data = c.toDataURL('image/png'); }
+      else { data = await cropDialog(b); if (!data) return; }
       await cb(data);
     } catch (e) { alert('ใส่รูปไม่สำเร็จ'); }
   };
