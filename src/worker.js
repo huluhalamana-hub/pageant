@@ -1,4 +1,4 @@
-import { buildDisplay, qualPlan, summaryVM } from '../public/core.js';
+import { buildDisplay, qualPlan, summaryVM, inR } from '../public/core.js';
 
 const J = (d, s = 200) => new Response(JSON.stringify(d), { status: s, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 const eq = (a, b) => { if (!a || !b || a.length !== b.length) return false; let r = 0; for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i); return r === 0; };
@@ -7,7 +7,7 @@ const txt = (s, n = 100) => String(s ?? '').trim().slice(0, n);
 const nm = (s, n = 100) => txt(s, n).toUpperCase();
 const UP = s => String(s ?? '').toUpperCase();
 const r2 = n => Math.round(n * 100) / 100;
-const DEF = { max: '10', jw: '100', vm: 'share', agg: 'avg', vmode: 'all', rank: '0', mode: 'current', hide: '0', pre: 'dash', big: 'country', preImg: '1', noj: '{}', annWin: '0', annLbl: '[]', introSec: '4', holdSec: '0', sumPer: '10', sumSec: '8', showPV: '1', showJN: '1', sumScale: '100', barScale: '100', cardScale: '100', annScale: '100', lang: 'th', showLogo: '0', showRound: '1', auto: '0', c1: '#e3b95a', c2: '#1c1006', c3: '#f4e9d3', round: '0', cur: '0', ann: '[]', annAt: '0', annI: '-1', annEnd: '0', qcfg: '{}' };
+const DEF = { max: '10', jw: '100', vm: 'share', agg: 'avg', vmode: 'all', rank: '0', mode: 'current', hide: '0', pre: 'dash', big: 'country', preImg: '1', noj: '{}', annWin: '0', annLbl: '[]', lblW: '', lbl1: '', lbl2: '', introSec: '4', holdSec: '0', sumPer: '10', sumSec: '8', showPV: '1', showJN: '1', sumScale: '100', barScale: '100', cardScale: '100', annScale: '100', lang: 'th', showLogo: '0', showRound: '1', auto: '0', c1: '#e3b95a', c2: '#1c1006', c3: '#f4e9d3', round: '0', cur: '0', ann: '[]', annAt: '0', annI: '-1', annEnd: '0', qcfg: '{}' };
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
 // ---------- CO-ADMIN: รหัสผู้ช่วยแอดมินของแต่ละเวที ติ๊กสิทธิ์ได้ (edit=แก้ไขข้อมูล/ตั้งค่า, scores=แก้คะแนน, advance=จัดการผู้เข้ารอบ, screen=สั่งขึ้นจอ) ----------
@@ -64,6 +64,7 @@ async function snapshot(env, pgId, opt = {}) {
     id: P.id, name: UP(P.name), rev: P.rev, max: +s.max, jw: +s.jw, vm: s.vm, agg: s.agg, vmode: s.vmode, rank: +s.rank, mode: s.mode, hide: s.hide === '1', pre: s.pre, big: s.big === 'name' ? 'name' : 'country', preImg: s.preImg !== '0', introSec: +s.introSec, holdSec: +s.holdSec, sumPer: +s.sumPer, sumSec: +s.sumSec, showPV: s.showPV === '1', showJN: s.showJN === '1', sumScale: +s.sumScale, barScale: +s.barScale, cardScale: +s.cardScale, annScale: +s.annScale, lang: s.lang,
     showLogo: s.showLogo === '1', showRound: s.showRound === '1', auto: s.auto === '1', col: { c1: s.c1, c2: s.c2, c3: s.c3 }, logo: iu('logo', pgId), round, cur: +s.cur,
     annOn: +s.annAt > 0, annIds: +s.annAt > 0 ? (() => { try { return JSON.parse(s.ann); } catch (e) { return []; } })() : [], annN: (() => { try { return JSON.parse(s.ann).length; } catch (e) { return 0; } })(), annI: +s.annI,
+    lblW: s.lblW, lbl1: s.lbl1, lbl2: s.lbl2,
     annL: +s.annAt > 0 && s.annWin === '1' ? ((() => { try { return JSON.parse(s.annLbl); } catch (e) { return []; } })()[+s.annI] || '') : '',
     annId: +s.annAt > 0 ? ((() => { try { return JSON.parse(s.ann); } catch (e) { return []; } })()[+s.annI] || 0) : 0,
     qcfg: (() => { try { const o = JSON.parse(s.qcfg); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; } })(),
@@ -344,8 +345,10 @@ async function adminAction(env, a, b, pg, role, me) {
     }
     case 'rjskip': {
       if (!(await ownRound(env, id, pg))) return bad('ไม่พบรอบ');
+      const o = nojOf(s);
+      if (b.all) { const ids = (await db.prepare('SELECT id FROM judges WHERE pg=?').bind(pg).all()).results.map(x => x.id); if (b.on && ids.length) o[id] = ids; else delete o[id]; await setS(env, pg, 'noj', JSON.stringify(o)); break; }
       const jid = +b.jid; if (!(await own(env, 'judges', jid, pg))) return bad('ไม่พบกรรมการ');
-      const o = nojOf(s); const l = (o[id] || []).map(Number).filter(x => x !== jid); if (b.on) l.push(jid);
+      const l = (o[id] || []).map(Number).filter(x => x !== jid); if (b.on) l.push(jid);
       if (l.length) o[id] = l; else delete o[id];
       await setS(env, pg, 'noj', JSON.stringify(o)); break;
     }
@@ -409,8 +412,8 @@ async function adminAction(env, a, b, pg, role, me) {
     }
     case 'annwin': {
       const snap = await snapshot(env, pg), sm = snap && summaryVM({ ...snap, rank: 0 });
-      const top = sm ? sm.rows.slice(0, 3) : []; if (!top.length) return bad('ยังไม่มีคะแนนให้จัดอันดับ');
-      const en = s.lang === 'en', T = en ? ['WINNER', '1ST RUNNER-UP', '2ND RUNNER-UP'] : ['ผู้ชนะ', 'รองชนะเลิศอันดับ 1', 'รองชนะเลิศอันดับ 2'];
+      const top = sm ? sm.rows.filter(r => !snap.round || inR(snap, snap.round, r.c)).slice(0, 3) : []; if (!top.length) return bad('ยังไม่มีคะแนนให้จัดอันดับ');
+      const en = s.lang === 'en', T = (en ? ['WINNER', '1ST RUNNER-UP', '2ND RUNNER-UP'] : ['ผู้ชนะ', 'รองชนะเลิศอันดับ 1', 'รองชนะเลิศอันดับ 2']).map((d, i) => s[['lblW', 'lbl1', 'lbl2'][i]] || d);
       const seq = top.map((r, i) => ({ id: r.c.id, l: T[i] })).reverse();
       await setS(env, pg, 'ann', JSON.stringify(seq.map(x => x.id))); await setS(env, pg, 'annLbl', JSON.stringify(seq.map(x => x.l))); await setS(env, pg, 'annWin', '1');
       await setS(env, pg, 'annI', -1); await setS(env, pg, 'annAt', Date.now()); await setS(env, pg, 'annEnd', 0);
@@ -509,6 +512,7 @@ async function adminAction(env, a, b, pg, role, me) {
       else if (['introSec', 'holdSec', 'sumSec'].includes(k) && v !== '' && Number(v) >= 0 && Number(v) <= 600) await setS(env, pg, k, Math.round(Number(v) * 10) / 10);
       else if (k === 'annScale' && v !== '' && Number(v) >= 30 && Number(v) <= 200) await setS(env, pg, k, Math.round(Number(v)));
       else if (['barScale', 'cardScale', 'sumScale'].includes(k) && v !== '' && Number(v) >= 30 && Number(v) <= 150) await setS(env, pg, k, Math.round(Number(v)));
+      else if (['lblW', 'lbl1', 'lbl2'].includes(k)) await setS(env, pg, k, String(v ?? '').trim().slice(0, 40));
       else if (k === 'lang' && ['th', 'en'].includes(v)) await setS(env, pg, k, v);
       else if (['auto', 'hide', 'showLogo', 'showRound', 'showPV', 'showJN', 'preImg'].includes(k)) await setS(env, pg, k, bool(v));
       else if (k === 'max' && Number(v) >= 1 && Number(v) <= 1000) await setS(env, pg, k, Number(v));
