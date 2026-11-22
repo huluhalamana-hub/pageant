@@ -109,8 +109,11 @@ function summaryVM(p) {
   // POPULAR VOTE = จำนวนโหวตดิบ แสดงเฉยๆ ไม่นำไปคิดคะแนน (โหวตแยกรอบ = รวมโหวตของรอบที่แสดง)
   const pvOf = r => { if (p.vmode !== 'round') return r.c.votes ?? null; const v = show.map(x => gr(p, x.id, r.c.id).votes).filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) : null; };
   const CC = colsCfg(p, single, n);
-  const rows = d.ranked.map(r => ({rank: r.rank, gone: r.gone, c: {no: r.c.no, name: r.c.name, country: r.c.country, img: r.c.img}, per: r.per, jt: r.jt, votes: r.votes, vsc: r.vsc, tot: r.tot, gt: r.gt, pvv: pvOf(r)}));
-  return {title, show: show.map(x => ({id: x.id, name: x.name})), single, rows, grp: d.grouped ? d.groups : null, C: CC, pv: p.showPV !== false && CC.tail <= 1 && rows.some(r => r.pvv != null), jn: p.showJN !== false, n, J: p.J.map(j => ({name: j.name, img: j.img})), agg: p.agg, jw: p.jw, per, sec};
+  // โหวตแยกรอบ + ตารางแบ่งกลุ่ม: คอลัมน์ POPULAR VOTE ต่อท้าย TOTAL ของแต่ละกลุ่ม (โหวตรวมของรอบในกลุ่ม) กลุ่มที่ไม่มีใครมีโหวตเลย = ไม่ขึ้น
+  const gl = groupsOf(p, show), multi = p.vmode === 'round' && !single && d.grouped;
+  const pgOf = r => gl.map(g => { const v = g.map(x => gr(p, x.id, r.c.id).votes).filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) : null; });
+  const rows = d.ranked.map(r => ({rank: r.rank, pg: multi ? pgOf(r) : null, gone: r.gone, c: {no: r.c.no, name: r.c.name, country: r.c.country, img: r.c.img}, per: r.per, jt: r.jt, votes: r.votes, vsc: r.vsc, tot: r.tot, gt: r.gt, pvv: pvOf(r)}));
+  return {title, show: show.map(x => ({id: x.id, name: x.name})), single, rows, grp: d.grouped ? d.groups : null, pgv: multi ? gl.map((g, i) => rows.some(r => r.pg[i] != null)) : null, C: CC, pv: !multi && CC.tail <= 1 && rows.some(r => r.pvv != null), jn: p.showJN !== false, n, J: p.J.map(j => ({name: j.name, img: j.img})), agg: p.agg, jw: p.jw, per, sec};
 }
 function buildDisplay0(p, opts) {
   const force = !!(opts && opts.force);

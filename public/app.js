@@ -196,7 +196,6 @@ function manageV(p) {
     <label>ขนาดแถบคะแนนบนจอ (% · 100 = ปกติ)</label><div class="row"><input id="barScale" type="number" min="30" max="150" value="${p.barScale}" style="max-width:120px;flex:none"><button data-a="barScale">บันทึก</button></div>
     <label>ตารางคะแนนรวม: แสดงทีละกี่คน (ต่อ 1 หน้าต่าง)</label><div class="row"><input id="sumPer" type="number" min="1" max="20" value="${p.sumPer}" style="max-width:120px;flex:none"><button data-a="sumPer">บันทึก</button></div>
     <label>ตารางคะแนนรวม: แต่ละหน้าต่างแสดงกี่วินาที (0 = ค้างหน้าแรกไว้ ไม่เปลี่ยนหน้า ไม่เฟดเอง)</label><div class="row"><input id="sumSec" type="number" min="0" max="600" step="0.5" value="${p.sumSec}" style="max-width:120px;flex:none"><button data-a="sumSec">บันทึก</button></div>
-    <label><input type="checkbox" id="showpv" style="width:auto" ${p.showPV !== false ? 'checked' : ''}> แสดงคอลัมน์ POPULAR VOTE ต่อจาก TOTAL (จำนวนโหวตดิบ แสดงเฉยๆ ไม่นำไปคิดคะแนน)</label>
     <p class="mu">เรียงจากคะแนนรวมมาก→น้อย เช่น มี 24 คน ตั้ง 10 คน = หน้าต่าง 1 (อันดับ 1-10) → 2 (11-20) → 3 (21-24) พอหน้าต่างสุดท้ายครบเวลาจะเฟดหายไปเลย ตัวอย่างในหน้าแอดมินแสดงเฉพาะหน้าต่างแรก</p>
     <p class="mu">เวลาทั้งสองค่าทำงานบนจอไลฟ์จริง (ตัวอย่างในหน้าแอดมินแสดงค้างไว้ไม่เฟดเอง) การ์ดชื่อใช้เฉพาะเมื่อเลือกโหมด "การ์ดชื่อ" ด้านบน</p>
     <label>คะแนนรวม คิดแบบ</label><div class="row">${B('agg', 'avg', 'เฉลี่ยทุกรอบ', p.agg === 'avg')}${B('agg', 'sum', 'บวกรวมทุกรอบ', p.agg === 'sum')}</div>
@@ -286,7 +285,7 @@ const sumPage = (s, i) => { const per = s.per || 10, n = s.rows.length, np = sum
 function sumVMHTML(s, L, z) {
   const {n, single, show, C, J, rows} = s, grp = s.grp, tl2 = grp && C.tail === 1 ? 0 : C.tail, pv = s.pv ? 1 : 0, pvW = 110;
   // ไม่มีใครมีรูปเลย → ตัดคอลัมน์รูปออก (pc=0) ตารางจะแคบลงและยังอยู่กึ่งกลางจอ
-  const pc = rows.some(r => r.c.img) ? 1 : 0, lead = 2 + pc, fx = 56 + 56 * pc, c0 = lead + 1, rc = [], tc = [], nc = (() => { let col = c0, i = 0; (grp || [show.length]).forEach((len, gx) => { for (let k = 0; k < len; k++) { rc[i++] = col; col += C.g; } tc[gx] = grp && (len > 1 || C.gv) ? col++ : 0; }); return col - c0 + tl2; })(), gaps = (nc + lead - 1 + pv) * 6, avail = 1760 - fx - gaps - pv * pvW; let nameW = 300, cw = Math.floor((avail - nameW) / nc);
+  const pc = rows.some(r => r.c.img) ? 1 : 0, lead = 2 + pc, fx = 56 + 56 * pc, c0 = lead + 1, rc = [], tc = [], pq = [], nc = (() => { let col = c0, i = 0; (grp || [show.length]).forEach((len, gx) => { for (let k = 0; k < len; k++) { rc[i++] = col; col += C.g; } tc[gx] = grp && (len > 1 || C.gv) ? col++ : 0; pq[gx] = grp && s.pgv && s.pgv[gx] ? col++ : 0; }); return col - c0 + tl2; })(), gaps = (nc + lead - 1 + pv) * 6, avail = 1760 - fx - gaps - pv * pvW; let nameW = 300, cw = Math.floor((avail - nameW) / nc);
   if (cw < 56) { nameW = 150; cw = Math.floor((avail - nameW) / nc); }
   cw = Math.max(30, Math.min(118, cw));
   const W = 80 + fx + nameW + nc * cw + gaps + pv * pvW, H = 178 + (pc ? 72 : 59) * (s.cap || rows.length), k = Math.min((z || 100) / 100, 1880 / W, 1040 / H), fs = Math.max(16, Math.min(32, Math.round(cw * .36))), hs = Math.max(10, Math.min(20, Math.round(cw * .17))), pw = Math.max(18, Math.min(40, cw - 6));
@@ -297,7 +296,10 @@ function sumVMHTML(s, L, z) {
   const BI = '<i class="bi"><b style="height:35%"></b><b style="height:65%"></b><b style="height:100%"></b></i>', GL = '<svg class="gl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9.5"/><ellipse cx="12" cy="12" rx="4" ry="9.5"/><path d="M2.5 12h19M4 7.5h16M4 16.5h16"/></svg>';
   const last = []; if (grp) { let i = 0; grp.forEach((len, gx) => { i += len; last[i - 1] = gx; }); }
   // ช่องคะแนนรวมของกลุ่ม (กลุ่มที่รวมหลายรอบ): ต่อท้ายรอบสุดท้ายของกลุ่ม
-  const gtc = (r, xi) => { const gx = last[xi]; if (gx == null || !tc[gx]) return ''; const v = r.gt && r.gt[gx]; return `<span class="sc bd av">${r.gone && r.gone[xi - grp[gx] + 1] ? '' : v == null ? '–' : fmtn(v)}</span>`; };
+  const gtc = (r, xi) => { const gx = last[xi]; if (gx == null) return ''; const gn = r.gone && r.gone[xi - grp[gx] + 1]; let o = '';
+    if (tc[gx]) { const v = r.gt && r.gt[gx]; o += `<span class="sc bd av">${gn ? '' : v == null ? '–' : fmtn(v)}</span>`; }
+    if (pq[gx]) { const v = r.pg && r.pg[gx]; o += `<span class="sc bd" style="font-size:${Math.min(fs, 26)}px">${gn ? '' : v == null ? '–' : v.toLocaleString('en-US')}</span>`; }
+    return o; };
   const cell = (c, r, t, cls) => `<span class="${cls}" style="grid-column:${c}${t ? ` / span ${t}` : ''};grid-row:${r}">`;
   let h = `<span class="rk-t mg" style="grid-column:1 / span ${lead};grid-row:1 / span 2;font-size:${tfs}px">${esc(s.title)}</span>`;
   show.forEach((r, i) => {
@@ -307,7 +309,7 @@ function sumVMHTML(s, L, z) {
     h += `${cell(c + n, 2, 0, 'rh g')}${esc(L.avg)}</span>`;
     if (C.gv) h += `${cell(c + n + 1, 2, 0, 'rh')}${esc(L.rv)}</span>`;
   });
-  (grp || []).forEach((len, gx) => { if (tc[gx]) h += `<span class="rh g bd ic" style="grid-column:${tc[gx]};grid-row:1 / span 2">${BI}${esc(L.tot)}</span>`; });
+  (grp || []).forEach((len, gx) => { if (tc[gx]) h += `<span class="rh g bd ic" style="grid-column:${tc[gx]};grid-row:1 / span 2">${BI}${esc(L.tot)}</span>`; if (pq[gx]) h += `<span class="rh g bd ic pvh" style="grid-column:${pq[gx]};grid-row:1 / span 2;font-size:${Math.max(11, Math.min(hs, 16))}px">${GL}${esc(L.votes)}</span>`; });
   if (C.tail > 1) h += `${cell(ts, 1, C.tail, 'rh g bd hb')}${esc(L.total)}</span>${cell(ts, 2, 0, 'rh bd')}${esc(L.jtot)}</span>${cell(ts + 1, 2, 0, 'rh')}${esc(L.votes)}</span>${cell(ts + 2, 2, 0, 'rh')}${esc(L.vsc)}</span>${cell(ts + 3, 2, 0, 'rh g ic')}${BI}${esc(L.tot)}</span>`;
   else if (tl2 === 1) h += `<span class="rh g bd ic" style="grid-column:${ts};grid-row:1 / span 2">${BI}${esc(L.tot)}</span>`;
   if (pv) h += `<span class="rh g bd ic pvh" style="grid-column:${ps};grid-row:1 / span 2;font-size:${Math.max(12, Math.min(hs, 18))}px">${GL}${esc(L.votes)}</span>`;
@@ -689,7 +691,6 @@ const onChange = e => {
   if (t.id === 'showlogo') return act('settings', {k: 'showLogo', v: t.checked ? '1' : '0'});
   if (t.id === 'preimg') return act('settings', {k: 'preImg', v: t.checked ? '1' : '0'});
   if (t.id === 'showjn') return act('settings', {k: 'showJN', v: t.checked ? '1' : '0'});
-  if (t.id === 'showpv') return act('settings', {k: 'showPV', v: t.checked ? '1' : '0'});
   if (t.id === 'showround') return act('settings', {k: 'showRound', v: t.checked ? '1' : '0'});
   if (t.id === 'auto') return act('settings', {k: 'auto', v: t.checked ? '1' : '0'});
   if (t.dataset && t.dataset.t) return act('intotal', {id: +t.dataset.t, on: t.checked});
