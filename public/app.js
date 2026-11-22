@@ -114,7 +114,7 @@ function qRoundCfg(p, x) {
   return `<div data-need="advance" style="margin-top:6px"><div class="row" style="align-items:center"><span class="mu">ผู้เข้ารอบ</span><input data-qn="${x.id}" type="number" min="0" max="1000" step="1" value="${c.n || ''}" placeholder="ว่าง = ไม่คัด" style="max-width:110px;flex:none"><span class="mu">คน</span><label style="margin:0;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" data-qp="${x.id}" ${c.pv ? 'checked' : ''} style="width:auto"> ที่นั่ง Popular Vote</label><button data-a="qset" data-id="${x.id}">บันทึก</button></div><label style="margin:6px 0 0;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" data-qm="${x.id}" ${c.nm ? 'checked' : ''} style="width:auto"> ไม่แสดงคะแนน</label><label style="margin:6px 0 0;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" data-qg="${x.id}" ${c.ge ? 'checked' : ''} style="width:auto"> จบกลุ่มที่รอบนี้ (รอบถัดไปไม่เอาคะแนนรอบนี้มารวม แม้ไม่ได้คัดคน)</label><p class="mu" style="margin:2px 0 0">รอบที่ตั้งจำนวนผู้เข้ารอบจะจบกลุ่มเอง · รอบที่ไม่คัดคน (ทุกคนผ่าน) คะแนนจะรวมกับรอบถัดไปในตารางสรุป</p>${c.nm ? '<p class="mu" style="margin:2px 0 0">กรรมการให้คะแนนปกติและเข้าตารางสรุปปกติ · คนสุดท้ายเฟดแล้ว ถ้ากรรมการส่งครบ จะซ่อนจอแล้วไปรอบถัดไปเอง (ถ้าตั้งจำนวนผู้เข้ารอบไว้ จะรอประกาศเข้ารอบก่อน) · ต้องตั้ง "การ์ดชื่อ" (วินาที) มากกว่า 0</p>' : ''}</div>`;
 }
 function annBar(p) {
-  return `<div class="noprint" style="margin:6px 0 10px;padding:8px;border:1px dashed var(--bd);border-radius:10px"><div class="row" style="align-items:center;margin-bottom:4px"><span class="mu">ขนาดการ์ดประกาศบนจอ (% · 100 = ปกติ)</span><input id="annScale" type="number" min="30" max="200" value="${p.annScale || 100}" style="max-width:90px;flex:none"><button data-a="annScale">บันทึก</button></div><div class="btns" style="margin-top:6px"><button class="p" data-a="ann" data-v="start">▶ เริ่มประกาศเข้ารอบ</button><button data-a="ann" data-v="stop">หยุดประกาศ</button>${p.annOn ? `<button data-a="prev">◀ ก่อนหน้า</button><button class="p" data-a="next">ถัดไป ▶</button>` : ''}</div>${p.annOn ? `<div style="margin-top:8px"><b>ลำดับประกาศ</b><ol style="margin:4px 0 0;padding-left:22px">${(p.annIds || []).map((id, i) => { const c = p.C.find(x => x.id === id); return c ? `<li style="${i === p.annI ? 'color:var(--gold);font-weight:700' : i < p.annI ? 'opacity:.5' : ''}">${esc(c.country ? c.country + ' · ' + c.name : c.name)}${i === p.annI ? ' ◀ กำลังขึ้นจอ' : i === p.annI + 1 ? ' (คนถัดไป)' : ''}</li>` : ''; }).join('')}</ol></div><div class="mu" style="margin-top:6px">กำลังประกาศเข้ารอบ: ขึ้นการ์ดแล้ว ${Math.max(0, p.annI + 1)}/${p.annN} คน · กด "ถัดไป" เพื่อขึ้นการ์ดคนต่อไป (การ์ดค้างตามเวลา "การ์ดชื่อ" ที่ตั้งไว้ แล้วเฟดหายเอง) · พอการ์ดคนสุดท้ายเฟดหาย ระบบจะซ่อนจอแล้วไปรอบถัดไปให้เอง (หรือกดถัดไปหลังคนสุดท้ายเพื่อจบทันที)</div>` : ''}</div>`;
+  return `<div class="noprint" style="margin:6px 0 10px;padding:8px;border:1px dashed var(--bd);border-radius:10px"><div class="row" style="align-items:center;margin-bottom:4px"><span class="mu">ขนาดการ์ดประกาศบนจอ (% · 100 = ปกติ)</span><input id="annScale" type="number" min="30" max="200" value="${p.annScale || 100}" style="max-width:90px;flex:none"><button data-a="annScale">บันทึก</button></div><div class="btns" style="margin-top:6px"><button data-a="annwin">🏆 ประกาศผู้ชนะ (รอง 2 → รอง 1 → Winner)</button><button class="p" data-a="ann" data-v="start">▶ เริ่มประกาศเข้ารอบ</button><button data-a="ann" data-v="stop">หยุดประกาศ</button>${p.annOn ? `<button data-a="prev">◀ ก่อนหน้า</button><button class="p" data-a="next">ถัดไป ▶</button>` : ''}</div>${p.annOn ? `<div style="margin-top:8px"><b>ลำดับประกาศ</b><ol style="margin:4px 0 0;padding-left:22px">${(p.annIds || []).map((id, i) => { const c = p.C.find(x => x.id === id); return c ? `<li style="${i === p.annI ? 'color:var(--gold);font-weight:700' : i < p.annI ? 'opacity:.5' : ''}">${esc(c.country ? c.country + ' · ' + c.name : c.name)}${i === p.annI ? ' ◀ กำลังขึ้นจอ' : i === p.annI + 1 ? ' (คนถัดไป)' : ''}</li>` : ''; }).join('')}</ol></div><div class="mu" style="margin-top:6px">กำลังประกาศเข้ารอบ: ขึ้นการ์ดแล้ว ${Math.max(0, p.annI + 1)}/${p.annN} คน · กด "ถัดไป" เพื่อขึ้นการ์ดคนต่อไป (การ์ดค้างตามเวลา "การ์ดชื่อ" ที่ตั้งไว้ แล้วเฟดหายเอง) · พอการ์ดคนสุดท้ายเฟดหาย ระบบจะซ่อนจอแล้วไปรอบถัดไปให้เอง (หรือกดถัดไปหลังคนสุดท้ายเพื่อจบทันที)</div>` : ''}</div>`;
 }
 function qualV(p) {
   const rd = p.rounds.find(x => x.id === p.round); if (!rd) return '';
@@ -207,7 +207,7 @@ function manageV(p) {
     <label>การนับโหวต</label><div class="row">${B('vmode', 'all', 'โหวตรวมครั้งเดียวทุกรอบ', (p.vmode || 'all') === 'all')}${B('vmode', 'round', 'โหวตแยกแต่ละรอบ', p.vmode === 'round')}</div>
     <label>แปลงจำนวนโหวตเป็นคะแนน</label><div class="row">${B('vm', 'share', 'สัดส่วนจากโหวตรวม', p.vm === 'share')}${B('vm', 'top', 'อิงคนโหวตสูงสุด', p.vm === 'top')}</div>
     <p class="mu">${p.vm === 'share' ? `สัดส่วนจากโหวตรวม: คะแนนโหวต = โหวตของคนนั้น ÷ โหวตรวมของทุกคน x ${p.max} เช่น โหวตรวม 1600 ได้ 1000 → ${fmtn(1000 / 1600 * p.max)}, 500 → ${fmtn(500 / 1600 * p.max)}, 100 → ${fmtn(100 / 1600 * p.max)}` : `อิงคนโหวตสูงสุด: คนโหวตมากสุดได้เต็ม ${p.max} คนอื่นตามสัดส่วน เช่น 1000 → ${p.max}, 500 → ${fmtn(p.max / 2)}, 100 → ${fmtn(p.max / 10)}`}</p></div>
-  <div class="box" data-need-any="edit,advance"><h2>รอบ</h2><p class="mu" style="margin:0 0 8px">กด "ใช้รอบนี้" แล้วจอจะถูกซ่อนไว้ก่อน (เหมือนกด "ซ่อนจอทั้งหมด") กด "แสดงจอ" เมื่อพร้อมให้คนแรกขึ้น</p>${p.rounds.map(x => `<div class="ci"><div>${esc(x.name)} ${x.id === p.round ? '<span class="ok">· กำลังใช้</span>' : ''}<label data-need="edit" style="margin:4px 0 0;color:var(--ink)"><input type="checkbox" data-t="${x.id}" ${x.inTotal !== false ? 'checked' : ''} style="width:auto"> นับในคะแนนรวม</label>${qRoundCfg(p, x)}</div><div class="btns">${x.id === p.round ? '' : `<button data-a="rd" data-id="${x.id}">ใช้รอบนี้</button>`}<button data-a="rdren" data-id="${x.id}">เปลี่ยนชื่อ</button><button class="d" data-a="rddel" data-id="${x.id}">ลบ</button></div></div>`).join('')}
+  <div class="box" data-need-any="edit,advance"><h2>รอบ</h2><p class="mu" style="margin:0 0 8px">กด "ใช้รอบนี้" แล้วจอจะถูกซ่อนไว้ก่อน (เหมือนกด "ซ่อนจอทั้งหมด") กด "แสดงจอ" เมื่อพร้อมให้คนแรกขึ้น</p>${p.rounds.map(x => `<div class="ci"><div>${esc(x.name)} ${x.id === p.round ? '<span class="ok">· กำลังใช้</span>' : ''}<label data-need="edit" style="margin:4px 0 0;color:var(--ink)"><input type="checkbox" data-t="${x.id}" ${x.inTotal !== false ? 'checked' : ''} style="width:auto"> นับในคะแนนรวม</label>${p.J.length ? `<div data-need="edit" style="margin-top:6px"><span class="mu">กรรมการที่ไม่ให้คะแนนรอบนี้:</span> ${p.J.map(j => `<label style="display:inline-flex;gap:4px;align-items:center;margin:2px 10px 0 0;color:var(--ink)"><input type="checkbox" data-sk="${x.id}:${j.id}" ${(x.noJ || []).includes(j.id) ? 'checked' : ''} style="width:auto"> ${esc(j.name)}</label>`).join('')}</div>` : ''}${qRoundCfg(p, x)}</div><div class="btns">${x.id === p.round ? '' : `<button data-a="rd" data-id="${x.id}">ใช้รอบนี้</button>`}<button data-a="rdren" data-id="${x.id}">เปลี่ยนชื่อ</button><button class="d" data-a="rddel" data-id="${x.id}">ลบ</button></div></div>`).join('')}
     <div class="row" data-need="edit" style="margin-top:10px"><input id="rn" placeholder="ชื่อรอบ เช่น รอบชุดราตรี"><button class="p" data-a="rdadd">เพิ่มรอบ</button></div></div>
   ${qualV(p)}<div class="box"><h2>ผู้เข้าประกวด · รอบ: ${esc(rd.name)}</h2>${edActive(p) ? editBoxV(p) : '<div class="row noprint" data-need="edit" style="margin:0 0 8px"><button data-a="edall">✎ แก้ไขชื่อ/เลขที่/รูป เป็นช่อง (หลายคนพร้อมกัน)</button></div>' + bulkBar(p) + (p.C.map(c => {
     const rs = gr(p, p.round, c.id), k = calc(p, p.round, c), got = p.J.filter(j => gs(p, p.round, c.id, j.id) != null).length, cu = c.id === p.cur, gone = !inR(p, p.round, c), er = gone ? elimRound(p, c) : null;
@@ -327,7 +327,7 @@ function sumVMHTML(s, L, z) {
 }
 function cardHTML(d, z) {
   const c = d.c, big = nm2(d)[0], len = [...big].length, fs = len > 22 ? 46 : len > 16 ? 58 : len > 11 ? 70 : 86, s = (z || 100) / 100;
-  return `<div class="scl" style="transform:scale(${s});transform-origin:50% 990px"><div class="ncard"><div class="n1" style="font-size:${fs}px">${esc(big)}</div>${nm2(d)[1] ? `<i></i><div class="n2">${esc(nm2(d)[1])}</div>` : ''}</div></div>`;
+  return `<div class="scl" style="transform:scale(${s});transform-origin:50% 990px"><div class="ncard">${d.lbl ? `<div class="nlbl">${esc(d.lbl)}</div>` : ''}<div class="n1" style="font-size:${fs}px">${esc(big)}</div>${nm2(d)[1] ? `<i></i><div class="n2">${esc(nm2(d)[1])}</div>` : ''}</div></div>`;
 }
 const partOf = vm => vm.bar ? barHTML(vm.bar, vm.L, (vm.z || {}).bar) : vm.card ? cardHTML(vm.card, (vm.z || {}).card) : vm.sum ? sumVMHTML(sumPage(vm.sum, vm.pg || 0), vm.L, (vm.z || {}).sum) : '';
 function innerVM(vm) {
@@ -462,7 +462,7 @@ async function sact(a, body) { try { await api('super/' + a, body); await superL
 /* ---------- แอดมินเวที ---------- */
 async function load() { ST.p = await api('admin'); }
 function fadeKind(a, b) {
-  if (a === 'step' || a === 'cur' || a === 'rd' || a === 'annstart' || a === 'annstop') return 'all';
+  if (a === 'step' || a === 'cur' || a === 'rd' || a === 'annstart' || a === 'annwin' || a === 'annstop') return 'all';
   if (a === 'settings' && b && b.k === 'hide' && b.v === '1') return 'all';
   if ((a === 'reveal' || a === 'revmany') && b && b.on === false) return 'scores';
   return null;
@@ -607,6 +607,7 @@ const onClick = async e => {
     if (v === 'del') { if (!confirm(`ลบผู้เข้าประกวด ${sel.length} คน และคะแนนทุกรอบ? (กู้คืนไม่ได้)`)) return; SEL.clear(); return act('delmany', {ids: sel}); }
     return;
   }
+  if (a === 'annwin') { if (!confirm('เริ่มประกาศผู้ชนะ 3 อันดับแรก ไล่จากรองอันดับ 2 → รองอันดับ 1 → Winner ?')) return; return act('annwin', {}); }
   if (a === 'ann') return act(v === 'start' ? 'annstart' : 'annstop', {});
   if (a === 'qset') { QS = {round: 0, ids: null}; return act('qset', qArgs(id)); }
   if (a === 'qreset') { QS = {round: 0, ids: null}; return render(); }
@@ -701,6 +702,7 @@ const onChange = e => {
   if (t.id === 'showjn') return act('settings', {k: 'showJN', v: t.checked ? '1' : '0'});
   if (t.id === 'showround') return act('settings', {k: 'showRound', v: t.checked ? '1' : '0'});
   if (t.id === 'auto') return act('settings', {k: 'auto', v: t.checked ? '1' : '0'});
+  if (t.dataset && t.dataset.sk) { const [rr, jj] = t.dataset.sk.split(':'); return act('rjskip', {id: +rr, jid: +jj, on: t.checked}); }
   if (t.dataset && t.dataset.t) return act('intotal', {id: +t.dataset.t, on: t.checked});
 };
 
@@ -715,12 +717,13 @@ function rankV(s, d) {
 function judgeRender() {
   const d = JD, c = d.current, mine = d.mine, k2 = d.round + ':' + (c ? c.id : 0);
   if (jkey !== k2) { jkey = k2; kv = mine == null ? '' : String(mine); jmsg = ''; }
+  if (d.skip && !d.ranking) { app.innerHTML = topbar('กรรมการ: ' + esc(d.name)) + `<div class="box" style="text-align:center"><div class="mu">${esc(d.pgName)} · ${esc(d.round)}</div><p class="mu" style="margin-top:14px">รอบนี้คุณไม่ต้องให้คะแนน</p></div>`; return; }
   if (d.ranking) { app.innerHTML = topbar('กรรมการ: ' + esc(d.name)) + rankV(d.ranking, d); return; }
   app.innerHTML = topbar('กรรมการ: ' + esc(d.name)) + `<div class="box" style="text-align:center"><div class="mu">${esc(d.pgName)} · ${esc(d.round)}</div>` + (!c ? '<p class="mu">รอผู้ดูแลเลือกผู้เข้าประกวด…</p>' : `${c.img ? `<div class="jph" style="margin-top:8px">${ph(c.img)}</div>` : ''}<div style="font-size:2.2rem;font-weight:700;line-height:1.2;text-transform:uppercase;margin-top:${c.img ? 0 : 14}px">${esc(c.country || c.name)}</div>${c.country ? `<div style="font-size:1.4rem;font-weight:500;line-height:1.25;margin-top:2px;text-transform:uppercase">${esc(c.name)}</div>` : ''}`
     + (c.revealed ? `<p class="mu">เปิดคะแนนแล้ว แก้ไขไม่ได้ คะแนนที่คุณให้: ${mine ?? '-'}</p>` : mine != null ? `<div class="val">${fmtn(mine)}</div><p class="ok" style="margin:6px 0">ส่งคะแนนแล้ว ล็อกเรียบร้อย แก้ไขไม่ได้</p><p class="mu">ถ้าต้องแก้ไข ให้แจ้งผู้ดูแล</p>` : `<div class="val">${kv === '' ? '<span class="mu">–</span>' : esc(kv)}</div><div class="mu">คะแนนเต็ม ${d.max}</div><div class="kp">${'123456789'.split('').map(k => `<button data-k="${k}">${k}</button>`).join('')}<button data-k="max">${d.max}</button><button data-k=".">.</button><button data-k="0">0</button><button data-k="del">⌫</button><button class="cf" data-k="ok">ยืนยัน</button></div><p class="bad" style="margin:8px 0 0">${esc(jmsg)}</p>`)) + '</div>';
 }
 async function press(k) {
-  const d = JD, c = d.current; if (!c || c.revealed || d.mine != null || jbusy) return;
+  const d = JD, c = d.current; if (d.skip || !c || c.revealed || d.mine != null || jbusy) return;
   jmsg = '';
   if (k === 'del') kv = kv.slice(0, -1);
   else if (k === 'max') kv = String(d.max);

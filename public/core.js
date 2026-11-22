@@ -19,9 +19,10 @@ export const vsRound = (p, r, c) => {
   const m = gr(p, r, c.id).votes; if (m == null) return null;
   return toScore(p, m, p.C.filter(x => inR(p, r, x)).map(x => gr(p, r, x.id).votes).filter(v => v != null));
 };
+export const actJ = (p, r) => { const sk = (p.rounds.find(x => x.id === r) || {}).noJ || []; return p.J.filter(j => !sk.includes(j.id)); };
 export function calc(p, r, c) {
-  const scores = p.J.map(j => gs(p, r, c.id, j.id) ?? null);
-  return {scores, avg: p.J.length ? scores.reduce((a, x) => a + (x || 0), 0) / p.J.length : 0, rev: gr(p, r, c.id).rev};
+  const aj = actJ(p, r), scores = p.J.map(j => aj.includes(j) ? gs(p, r, c.id, j.id) ?? null : null);
+  return {scores, avg: aj.length ? scores.reduce((a, x) => a + (x || 0), 0) / aj.length : 0, rev: gr(p, r, c.id).rev};
 }
 export const colsCfg = (p, single, n) => { const hv = p.jw < 100, mr = p.vmode === 'round', gv = hv && mr ? 1 : 0; return {hv, mr, gv, g: n + 1 + gv, tail: single ? (gv ? 1 : 0) : hv && !mr ? 4 : 1}; };
 
@@ -66,15 +67,15 @@ const rv4 = v => v == null ? null : Math.round(v * 1e4), nv = v => v == null ? -
 // 2) คนโหวตสูงสุดมีสิทธิ์พิเศษ: อยู่ใน n อันดับแรกอยู่แล้ว = ไม่ทำอะไรพิเศษ / ไม่ถึง = ได้ที่นั่งสุดท้าย แล้วคนอันดับ n ตามคะแนนตกรอบแทน (ไม่ส่งสิทธิ์ต่อให้โหวตอันดับ 2)
 // 3) เสมอที่ขอบตัดทั้งคะแนนและโหวต → บอกใน tie ให้แอดมินเลือกเอง
 export function qualPlan(p, rid) {
-  const cfg = qcfgOf(p, rid), nj = p.J.length;
+  const cfg = qcfgOf(p, rid), nj = actJ(p, rid).length;
   // รอบก่อนหน้าที่ไม่ได้คัดคน (ทุกคนผ่าน) ต้องเอาคะแนนมารวมคิดด้วย ย้อนไปจนถึงรอบที่มีการคัดคนแล้ว (หรือติ๊กจบกลุ่ม) ซึ่งไม่เอามาคิด
   const ix = p.rounds.findIndex(x => x.id === rid), from = [];
   for (let i = ix - 1; i >= 0; i--) { const q = qcfgOf(p, p.rounds[i].id); if (q.n > 0 || q.ge) break; if (p.rounds[i].inTotal !== false) from.unshift(p.rounds[i]); }
   const rs = from.concat(ix >= 0 ? [p.rounds[ix]] : []);
   const votesOf = c => { if (p.vmode !== 'round') return c.votes; const v = rs.map(x => gr(p, x.id, c.id).votes).filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) : null; };
   const pool = p.C.filter(c => inR(p, rid, c)).map(c => {
-    const s = p.J.map(j => gs(p, rid, c.id, j.id)).filter(x => x != null);
-    const avs = rs.map(x => { const t = p.J.map(j => gs(p, x.id, c.id, j.id)).filter(v => v != null); return t.length ? t.reduce((a, b) => a + b, 0) / t.length : null; }).filter(v => v != null);
+    const s = actJ(p, rid).map(j => gs(p, rid, c.id, j.id)).filter(x => x != null);
+    const avs = rs.map(x => { const t = actJ(p, x.id).map(j => gs(p, x.id, c.id, j.id)).filter(v => v != null); return t.length ? t.reduce((a, b) => a + b, 0) / t.length : null; }).filter(v => v != null);
     return {c, cnt: s.length, avg: avs.length ? avs.reduce((a, b) => a + b, 0) / avs.length : null, votes: votesOf(c) ?? null};
   }).sort((a, b) => cmpDesc(rv4(a.avg), rv4(b.avg)) || cmpDesc(a.votes, b.votes) || a.c.no - b.c.no || a.c.id - b.c.id);
   const same = (a, b) => rv4(a.avg) === rv4(b.avg) && a.votes === b.votes;
@@ -99,11 +100,11 @@ export function qualPlan(p, rid) {
 
 const tn = (v, d) => (v === '' || v == null || !Number.isFinite(+v) ? d : +v);
 // ข้อมูลสำหรับวาดจอไลฟ์ (view model) เซิร์ฟเวอร์ส่งเฉพาะสิ่งที่เปิดคะแนนแล้วให้หน้าจอสาธารณะ
-function summaryVM(p) {
+export function summaryVM(p) {
   const n = p.J.length, single = !!p.rank, L = LB(p); let show, title;
   if (single) { const r = p.rounds.find(x => x.id === p.rank); show = r ? [r] : []; title = L.rank + (r ? r.name : ''); }
   else { show = p.rounds.filter(x => x.inTotal !== false); title = L.sum;
-    const sc = show.filter(x => p.C.some(c => inR(p, x.id, c) && calc(p, x.id, c).rev)); if (sc.length) show = sc; }
+    const sc = show.filter(x => actJ(p, x.id).length && p.C.some(c => inR(p, x.id, c) && calc(p, x.id, c).rev)); if (sc.length) show = sc; }
   const d = sumData(p, show, {single}); if (!d.ranked.length) return null;
   // ส่งทุกคนเรียงจากคะแนนรวมมาก→น้อย ฝั่งหน้าจอเป็นคนแบ่งหน้าต่างตาม per (คนต่อหน้าต่าง) และ sec (วินาทีต่อหน้าต่าง)
   const per = Math.max(1, Math.min(20, Math.round(tn(p.sumPer, 10)))), sec = Math.max(0, tn(p.sumSec, 8));
@@ -113,7 +114,7 @@ function summaryVM(p) {
   // โหวตแยกรอบ + ตารางแบ่งกลุ่ม: คอลัมน์ POPULAR VOTE ต่อท้าย TOTAL ของแต่ละกลุ่ม (โหวตรวมของรอบในกลุ่ม) กลุ่มที่ไม่มีใครมีโหวตเลย = ไม่ขึ้น
   const gl = groupsOf(p, show), multi = p.vmode === 'round' && !single && d.grouped;
   const pgOf = r => gl.map(g => { const v = g.map(x => gr(p, x.id, r.c.id).votes).filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) : null; });
-  const rows = d.ranked.map(r => ({rank: r.rank, pg: multi ? pgOf(r) : null, gone: r.gone, c: {no: r.c.no, name: r.c.name, country: r.c.country, img: r.c.img}, per: r.per, jt: r.jt, votes: r.votes, vsc: r.vsc, tot: r.tot, gt: r.gt, pvv: pvOf(r)}));
+  const rows = d.ranked.map(r => ({rank: r.rank, pg: multi ? pgOf(r) : null, gone: r.gone, c: {id: r.c.id, no: r.c.no, name: r.c.name, country: r.c.country, img: r.c.img}, per: r.per, jt: r.jt, votes: r.votes, vsc: r.vsc, tot: r.tot, gt: r.gt, pvv: pvOf(r)}));
   return {title, show: show.map(x => ({id: x.id, name: x.name})), single, rows, grp: d.grouped ? d.groups : null, pgv: multi ? gl.map((g, i) => rows.some(r => r.pg[i] != null)) : null, C: CC, pv: !multi && CC.tail <= 1 && rows.some(r => r.pvv != null), jn: p.showJN !== false, n, J: p.J.map(j => ({name: j.name, img: j.img})), agg: p.agg, jw: p.jw, per, sec};
 }
 function buildDisplay0(p, opts) {
@@ -125,7 +126,7 @@ function buildDisplay0(p, opts) {
   if (p.annOn && !force) { const ac = p.annId ? p.C.find(x => x.id === p.annId) : null; vm.chip = null; if (ac) { const cc = {no: ac.no, name: ac.name, country: ac.country, img: ac.img};
       // ประกาศเข้ารอบตามตั้งค่า "ก่อนเปิดคะแนน จอแสดง": รูปและชื่อ → แถบรูปและชื่อ (ไม่มีช่องคะแนน)
       // รูปและชื่อ / ขีด / ไม่แสดง → แถบรูปและชื่อแบบไม่มีรูป / การ์ดชื่อ → การ์ดชื่อ
-      if (p.pre === 'card') vm.card = {c: cc};
+      if (p.pre === 'card' || p.annL) vm.card = {c: cc, lbl: p.annL || ''};
       else vm.bar = {c: {...cc, img: null}, judges: p.J.map(j => ({name: j.name, img: j.img})), R: null, cols: false};
       const as = tn(p.annScale, 100); vm.z.card = Math.round(vm.z.card * as / 100); vm.z.bar = Math.round(vm.z.bar * as / 100); }
     return vm; } // โหมดประกาศผู้เข้ารอบ: ขึ้นการ์ดชื่อของคนที่ประกาศอยู่ (ยังไม่กดถัดไป = จอว่าง)
