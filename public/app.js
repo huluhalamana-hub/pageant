@@ -297,8 +297,8 @@ function sumVMHTML(s, L, z) {
   const last = []; if (grp) { let i = 0; grp.forEach((len, gx) => { i += len; last[i - 1] = gx; }); }
   // ช่องคะแนนรวมของกลุ่ม (กลุ่มที่รวมหลายรอบ): ต่อท้ายรอบสุดท้ายของกลุ่ม
   const gtc = (r, xi) => { const gx = last[xi]; if (gx == null) return ''; const gn = r.gone && r.gone[xi - grp[gx] + 1]; let o = '';
-    if (tc[gx]) { const v = r.gt && r.gt[gx]; o += `<span class="sc bd av">${gn ? '' : v == null ? '–' : fmtn(v)}</span>`; }
-    if (pq[gx]) { const v = r.pg && r.pg[gx]; o += `<span class="sc bd" style="font-size:${Math.min(fs, 26)}px">${gn ? '' : v == null ? '–' : v.toLocaleString('en-US')}</span>`; }
+    if (tc[gx]) { const v = r.gt && r.gt[gx]; o += `<span class="sc${gn ? '' : ' bd'} av">${gn ? '' : v == null ? '–' : fmtn(v)}</span>`; }
+    if (pq[gx]) { const v = r.pg && r.pg[gx]; o += `<span class="sc${gn ? '' : ' bd'}" style="font-size:${Math.min(fs, 26)}px">${gn ? '' : v == null ? '–' : v.toLocaleString('en-US')}</span>`; }
     return o; };
   const cell = (c, r, t, cls) => `<span class="${cls}" style="grid-column:${c}${t ? ` / span ${t}` : ''};grid-row:${r}">`;
   let h = `<span class="rk-t mg" style="grid-column:1 / span ${lead};grid-row:1 / span 2;font-size:${tfs}px">${esc(s.title)}</span>`;
