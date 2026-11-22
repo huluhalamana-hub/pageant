@@ -125,7 +125,8 @@ function buildDisplay0(p, opts) {
       // ประกาศเข้ารอบตามตั้งค่า "ก่อนเปิดคะแนน จอแสดง": รูปและชื่อ → แถบรูปและชื่อ (ไม่มีช่องคะแนน)
       // รูปและชื่อ / ขีด / ไม่แสดง → แถบรูปและชื่อแบบไม่มีรูป / การ์ดชื่อ → การ์ดชื่อ
       if (p.pre === 'card') vm.card = {c: cc};
-      else vm.bar = {c: {...cc, img: null}, judges: p.J.map(j => ({name: j.name, img: j.img})), R: null, cols: false}; }
+      else vm.bar = {c: {...cc, img: null}, judges: p.J.map(j => ({name: j.name, img: j.img})), R: null, cols: false};
+      const as = tn(p.annScale, 100); vm.z.card = Math.round(vm.z.card * as / 100); vm.z.bar = Math.round(vm.z.bar * as / 100); }
     return vm; } // โหมดประกาศผู้เข้ารอบ: ขึ้นการ์ดชื่อของคนที่ประกาศอยู่ (ยังไม่กดถัดไป = จอว่าง)
   if (p.mode === 'ranking') { vm.sum = summaryVM(p); return vm; }
   let c = p.C.find(x => x.id === p.cur);
