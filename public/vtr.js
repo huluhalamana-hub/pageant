@@ -10,7 +10,7 @@ const CSS = `
 #qv .ql img.z{animation:qzoom var(--zs,8s) linear forwards}
 @keyframes qrow{from{opacity:0;transform:translateY(-18px)}to{opacity:1;transform:none}}
 #qv .lw{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;font-family:"Prompt",system-ui,sans-serif;color:var(--c3,#f4e9d3)}
-#qv .lr{display:flex;align-items:baseline;gap:.5em;width:1360px;border-bottom:1px solid rgba(255,255,255,.14);box-sizing:border-box;padding:0 8px;opacity:0;animation:qrow .5s ease-out forwards;white-space:nowrap;text-transform:uppercase;letter-spacing:.04em;align-items:center}
+#qv .lr{display:flex;align-items:baseline;gap:.5em;width:1360px;justify-content:flex-start;border-bottom:1px solid rgba(255,255,255,.14);box-sizing:border-box;padding:0 8px;opacity:0;animation:qrow .5s ease-out forwards;white-space:nowrap;text-transform:uppercase;letter-spacing:.04em;align-items:center}
 #qv .lr b{color:var(--c1,#e3b95a);min-width:2.4em;text-align:right;font-weight:600;margin-right:.5em}
 #qv .lr span{font-weight:500;overflow:hidden;text-overflow:ellipsis}
 #qv .lr i{font-style:normal;opacity:.72;font-size:.62em;margin-left:auto;overflow:hidden;text-overflow:ellipsis}
@@ -52,8 +52,10 @@ export function qScreen(host) {
     const n = qq.list.length, rh = Math.max(34, Math.min(88, Math.floor(920 / Math.max(1, n)))), fs = Math.round(rh * 0.58);
     const bg = qq.bg ? `<img class="bgi" src="${esc(qq.bg)}" alt=""><div style="position:absolute;inset:0;background:rgba(0,0,0,.45)"></div>` : '';
     const rows = qq.list.map((r, i) => {
-      const a = qq.big === 'name' ? r.name : (r.country || r.name), b = qq.big === 'name' ? r.country : (r.country ? r.name : '');
-      return `<div class="lr" style="height:${rh}px;font-size:${fs}px;animation-delay:${(i * 0.13).toFixed(2)}s"><b>${esc(r.no)}</b><span>${esc(a)}</span>${b ? `<i>${esc(b)}</i>` : ''}</div>`;
+      const ll = qq.cfg.ll; // both = ใหญ่+เล็กตามตั้งค่า big / country = ประเทศอย่างเดียว / name = ชื่อผู้เข้าประกวดอย่างเดียว
+      const a = ll === 'country' ? (r.country || r.name) : ll === 'name' ? r.name : qq.big === 'name' ? r.name : (r.country || r.name);
+      const b = ll === 'country' || ll === 'name' ? '' : qq.big === 'name' ? r.country : (r.country ? r.name : '');
+      return `<div class="lr" style="height:${rh}px;font-size:${fs}px;animation-delay:${(i * 0.13).toFixed(2)}s"><span>${esc(a)}</span>${b ? `<i>${esc(b)}</i>` : ''}</div>`;
     }).join('');
     return `${bg}<div class="lw" style="--c1:${esc(qq.col.c1)};--c3:${esc(qq.col.c3)}">${rows}</div>`;
   };

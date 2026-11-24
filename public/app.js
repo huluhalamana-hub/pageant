@@ -127,6 +127,7 @@ function vtrV(p) {
       <label style="${lbl}"><input type="checkbox" data-vc="rv" ${c.rv ? 'checked' : ''} style="width:auto"> ประกาศเข้ารอบด้วยรูป (วิ่งสุ่มทุกประเทศ แล้วค้างรูปคนที่ประกาศ)</label>
       <div class="row" style="align-items:center;margin-top:6px"><span class="mu">รูปคนเข้ารอบค้าง</span>${num('hold')}<span class="mu">วินาที แล้วกลับไปวิ่งสุ่มคนที่เหลือ</span></div>
       <div class="row" style="align-items:center;margin-top:6px"><span class="mu">ประกาศครบแล้วขึ้นรายชื่อ เรียงตาม</span><select data-vc="lo"><option value="ann" ${c.lo !== 'az' ? 'selected' : ''}>ลำดับเข้ารอบ</option><option value="az" ${c.lo === 'az' ? 'selected' : ''}>ตัวอักษร</option></select></div>
+      <div class="row" style="align-items:center;margin-top:6px"><span class="mu">แต่ละบรรทัดในรายชื่อแสดง</span><select data-vc="ll"><option value="both" ${c.ll !== 'country' && c.ll !== 'name' ? 'selected' : ''}>ประเทศ (ตัวใหญ่) + ชื่อผู้เข้าประกวด (ตัวเล็กชิดขวา)</option><option value="country" ${c.ll === 'country' ? 'selected' : ''}>ประเทศอย่างเดียว</option><option value="name" ${c.ll === 'name' ? 'selected' : ''}>ชื่อผู้เข้าประกวดอย่างเดียว</option></select></div>
       <div class="row" style="align-items:center;margin-top:6px"><span class="mu">รายชื่อค้าง</span>${num('ls')}<span class="mu">วินาที (0 = ค้างจนกว่าจะสั่ง)</span></div>
       <label style="${lbl}"><input type="checkbox" data-vc="au" ${c.au ? 'checked' : ''} style="width:auto"> เข้า VTR อัตโนมัติหลังรายชื่อขึ้น</label>
       <div class="row" style="align-items:center;margin-top:6px"><span class="mu">รูปใน VTR ค้างชิ้นละ</span>${num('is')}<span class="mu">วินาที (วิดีโอเล่นจนจบ)</span></div>
@@ -147,19 +148,24 @@ async function imgToJpeg(f) {
 let vBusy = false;
 async function vtrUpload(files) {
   if (vBusy || !files.length) return; vBusy = true;
-  const rid = ST.p.round, say = t => { const el = $('#vst'); if (el) el.textContent = t; }, CH = 600000;
+  const rid = ST.p.round, say = t => { const el = $('#vst'); if (el) el.textContent = t; }, CH = 600000, bad = [], n = files.length; let ok = 0;
   try {
-    for (const f of files) {
+    for (let k = 0; k < n; k++) {
+      const f = files[k], tag = `[${k + 1}/${n}] ${f.name}`;
       try {
         let kind, blob = f, mime = '';
-        if ((f.type || '').startsWith('image/')) { kind = 'img'; say(f.name + ': กำลังย่อรูป…'); blob = await imgToJpeg(f); }
-        else if ((f.type || '').startsWith('video/') || /\.(mp4|mov|m4v|webm)$/i.test(f.name)) { kind = 'vid'; mime = f.type === 'video/webm' ? 'video/webm' : 'video/mp4'; if (f.size > 6e7) throw new Error(f.name + ': วิดีโอใหญ่เกิน 60 MB'); }
-        else throw new Error('ไฟล์ไม่รองรับ: ' + f.name);
+        if ((f.type || '').startsWith('image/')) { kind = 'img'; say(tag + ': กำลังย่อรูป…'); blob = await imgToJpeg(f); }
+        else if ((f.type || '').startsWith('video/') || /\.(mp4|mov|m4v|webm)$/i.test(f.name)) { kind = 'vid'; mime = f.type === 'video/webm' ? 'video/webm' : 'video/mp4'; if (f.size > 6e7) throw new Error('วิดีโอใหญ่เกิน 60 MB'); }
+        else throw new Error('ไฟล์ไม่รองรับ');
         const total = Math.max(1, Math.ceil(blob.size / CH)), r = await api('admin/vnew', {rid, kind, mime, size: blob.size, name: f.name});
-        for (let i = 0; i < total; i++) { say(`${f.name}: ${i + 1}/${total}`); await api('admin/vput', {id: r.id, idx: i, total, data: await b64(blob.slice(i * CH, (i + 1) * CH))}); }
-      } catch (e) { alert(e.message); }
+        for (let i = 0; i < total; i++) { say(`${tag}: ${i + 1}/${total}`); await api('admin/vput', {id: r.id, idx: i, total, data: await b64(blob.slice(i * CH, (i + 1) * CH))}); }
+        ok++; try { await load(); } catch (e) {} render(); // ให้เห็นรูปที่อัปเสร็จแล้วทีละไฟล์
+      } catch (e) { bad.push(f.name + ': ' + e.message); }
     }
-  } finally { vBusy = false; say(''); try { await load(); } catch (e) {} render(); }
+  } finally {
+    vBusy = false; say(''); try { await load(); } catch (e) {} render();
+    if (bad.length) alert(`อัปสำเร็จ ${ok}/${n} ไฟล์\nไม่สำเร็จ:\n` + bad.join('\n'));
+  }
 }
 function qRoundCfg(p, x) {
   const c = qcfgOf(p, x.id);
