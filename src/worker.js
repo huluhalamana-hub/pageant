@@ -7,12 +7,26 @@ const txt = (s, n = 100) => String(s ?? '').trim().slice(0, n);
 const nm = (s, n = 100) => txt(s, n).toUpperCase();
 const UP = s => String(s ?? '').toUpperCase();
 const r2 = n => Math.round(n * 100) / 100;
-const DEF = { max: '10', jw: '100', vm: 'share', agg: 'avg', vmode: 'all', rank: '0', mode: 'current', hide: '0', pre: 'dash', big: 'country', preImg: '1', noj: '{}', annWin: '0', annLbl: '[]', lblW: '', winN: '3', introSec: '4', holdSec: '0', sumPer: '10', sumSec: '8', showPV: '1', showJN: '1', sumScale: '100', barScale: '100', cardScale: '100', annScale: '100', lang: 'th', showLogo: '0', showRound: '1', auto: '0', c1: '#e3b95a', c2: '#1c1006', c3: '#f4e9d3', round: '0', cur: '0', ann: '[]', annAt: '0', annI: '-1', annEnd: '0', qcfg: '{}', ord: '{}' };
+const DEF = { max: '10', jw: '100', vm: 'share', agg: 'avg', vmode: 'all', rank: '0', mode: 'current', hide: '0', pre: 'dash', big: 'country', preImg: '1', noj: '{}', annWin: '0', annLbl: '[]', lblW: '', winN: '3', introSec: '4', holdSec: '0', sumPer: '10', sumSec: '8', showPV: '1', showJN: '1', sumScale: '100', barScale: '100', cardScale: '100', annScale: '100', lang: 'th', showLogo: '0', showRound: '1', auto: '0', c1: '#e3b95a', c2: '#1c1006', c3: '#f4e9d3', round: '0', cur: '0', ann: '[]', annAt: '0', annI: '-1', annEnd: '0', qcfg: '{}', ord: '{}', vx: '{}', qv: '{}' };
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
 // ---------- CO-ADMIN: รหัสผู้ช่วยแอดมินของแต่ละเวที ติ๊กสิทธิ์ได้ (edit=แก้ไขข้อมูล/ตั้งค่า, scores=แก้คะแนน, advance=จัดการผู้เข้ารอบ, screen=สั่งขึ้นจอ) ----------
 let coReady = null;
 const ensureCo = env => (coReady = coReady || env.DB.prepare('CREATE TABLE IF NOT EXISTS coadmins (id INTEGER PRIMARY KEY AUTOINCREMENT, pg INTEGER NOT NULL, name TEXT NOT NULL, code TEXT NOT NULL, perms TEXT NOT NULL DEFAULT \'{}\')').run().catch(e => { coReady = null; throw e; }));
+// VTR / รูปประกาศเข้ารอบ: ไฟล์เก็บใน D1 เป็นก้อนๆ (รูปและวิดีโอเกิน 2 MB ต่อแถวไม่ได้) สร้างตารางตอนใช้ครั้งแรก
+const VCH = 600000; // ไบต์ต่อก้อน (ฝั่งแอดมินแบ่งไฟล์ตามค่านี้ ห้ามเปลี่ยนโดยไม่แก้ฝั่งแอดมิน)
+let vtrReady = null;
+const ensureVtr = env => (vtrReady = vtrReady || env.DB.batch([
+  env.DB.prepare('CREATE TABLE IF NOT EXISTS vtr_items (id INTEGER PRIMARY KEY AUTOINCREMENT, pg INTEGER NOT NULL, rid INTEGER NOT NULL, kind TEXT NOT NULL, mime TEXT NOT NULL, name TEXT NOT NULL DEFAULT \'\', size INTEGER NOT NULL DEFAULT 0, cid INTEGER NOT NULL DEFAULT 0, sec REAL NOT NULL DEFAULT 0, pos INTEGER NOT NULL DEFAULT 0, ready INTEGER NOT NULL DEFAULT 0, updated INTEGER NOT NULL DEFAULT 0)'),
+  env.DB.prepare('CREATE TABLE IF NOT EXISTS vtr_blobs (item INTEGER NOT NULL, idx INTEGER NOT NULL, data TEXT NOT NULL, PRIMARY KEY (item, idx))'),
+]).catch(e => { vtrReady = null; throw e; }));
+const jparse = (t, d) => { try { const o = JSON.parse(t); return o && typeof o === 'object' ? o : d; } catch (e) { return d; } };
+const VXD = { rv: 0, hold: 5, lo: 'ann', ls: 8, au: 1, is: 5, fi: 0.6, fo: 0.6, fx: 0.5, zm: 1 };
+const vxClean = c => {
+  const n = (v, lo, hi, d) => { v = +v; return Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v * 10) / 10)) : d; };
+  c = c || {};
+  return { rv: c.rv ? 1 : 0, hold: n(c.hold, 1, 60, VXD.hold), lo: c.lo === 'az' ? 'az' : 'ann', ls: n(c.ls, 0, 120, VXD.ls), au: c.au ? 1 : 0, is: n(c.is, 1, 120, VXD.is), fi: n(c.fi, 0, 5, VXD.fi), fo: n(c.fo, 0, 5, VXD.fo), fx: n(c.fx, 0, 5, VXD.fx), zm: c.zm ? 1 : 0 };
+};
 const PKEYS = ['edit', 'scores', 'advance', 'screen'];
 const parsePerms = s => { let o = {}; try { o = JSON.parse(s || '{}') || {}; } catch (e) {} const r = {}; PKEYS.forEach(k => (r[k] = !!o[k])); return r; };
 const cleanPerms = o => { const r = {}; PKEYS.forEach(k => (r[k] = !!(o && o[k]))); return JSON.stringify(r); };
@@ -21,6 +35,7 @@ const PERM = {
   addc: 'edit', addcs: 'edit', editc: 'edit', editcs: 'edit', delc: 'edit', delmany: 'edit', addj: 'edit', editj: 'edit', jcode: 'edit', delj: 'edit', rdadd: 'edit', rdren: 'edit', rddel: 'edit', intotal: 'edit', rjskip: 'edit', img: 'edit',
   setscores: 'scores', clearscores: 'scores', savevotes: 'scores',
   out: 'advance', outmany: 'advance', rd: 'advance', qualify: 'advance', qset: 'advance', qord: 'advance',
+  vnew: 'edit', vput: 'edit', vedit: 'edit', vmove: 'edit', vdel: 'edit', vset: 'edit', vopen: 'screen', vclose: 'screen',
   cur: 'screen', annwin: 'screen', step: 'screen', reveal: 'screen', revmany: 'screen', annstart: 'screen', annstop: 'screen', jopen: 'screen',
   coadd: 'admin', coedit: 'admin', cocode: 'admin', codel: 'admin',
 };
@@ -47,6 +62,16 @@ const bump = (env, pg) => env.DB.prepare('UPDATE pageants SET rev=rev+1 WHERE id
 const logE = (env, pg, who, round, c, what, from, to) => env.DB.prepare('INSERT INTO log(pg,t,who,round,c,what,from_v,to_v) VALUES(?,?,?,?,?,?,?,?)').bind(pg, Date.now(), who, round, c, what, from == null ? null : String(from), to == null ? null : String(to)).run();
 
 // ภาพรวมข้อมูลของเวที (รูปแบบเดียวกับหน้าเว็บ) ใช้เฉพาะฝั่งเซิร์ฟเวอร์ ห้ามส่งออกตรง ๆ ให้หน้าจอสาธารณะ
+async function vtrSnap(env, pg, s) {
+  const cfg = jparse(s.vx, {}), qv = jparse(s.qv, {});
+  let items = [];
+  try {
+    await ensureVtr(env);
+    items = (await env.DB.prepare('SELECT id,rid,kind,mime,name,cid,sec,pos,updated FROM vtr_items WHERE pg=? AND ready=1 ORDER BY pos,id').bind(pg).all()).results.map(x => ({ id: x.id, rid: x.rid, k: x.kind === 'vid' ? 'v' : 'i', cid: x.cid, sec: x.sec, name: x.name, u: `/api/vtr/${x.id}?v=${x.updated}` }));
+  } catch (e) {}
+  const out = {}; for (const k of Object.keys(cfg)) out[k] = vxClean(cfg[k]);
+  return { cfg: out, items, qv: qv.m ? qv : {} };
+}
 async function snapshot(env, pgId, opt = {}) {
   const db = env.DB, P = await db.prepare('SELECT id,name,adm,rev FROM pageants WHERE id=?').bind(pgId).first();
   if (!P) return null;
@@ -67,6 +92,7 @@ async function snapshot(env, pgId, opt = {}) {
     lblW: s.lblW, winN: Math.min(10, Math.max(1, +s.winN || 3)),
     annL: +s.annAt > 0 && s.annWin === '1' ? ((() => { try { return JSON.parse(s.annLbl); } catch (e) { return []; } })()[+s.annI] || '') : '',
     annId: +s.annAt > 0 ? ((() => { try { return JSON.parse(s.ann); } catch (e) { return []; } })()[+s.annI] || 0) : 0,
+    vx: await vtrSnap(env, pgId, s),
     ordR: (() => { try { return Object.keys(JSON.parse(s.ord) || {}).map(Number); } catch (e) { return []; } })(),
     qcfg: (() => { try { const o = JSON.parse(s.qcfg); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; } })(),
     rounds: rounds.map(r => ({ id: r.id, name: UP(r.name), inTotal: !!r.in_total, noJ: nojOf(s)[r.id] || [] })),
@@ -221,7 +247,7 @@ async function adminAction(env, a, b, pg, role, me) {
     const need = a === 'settings' ? (SCREEN_KEYS.includes(b.k) ? 'screen' : 'edit') : PERM[a];
     if (!need || need === 'admin' || !(me && me.perms && me.perms[need])) return J({ error: 'CO-ADMIN นี้ไม่ได้รับอนุญาตให้ทำคำสั่งนี้' }, 403);
   }
-  if (['rd', 'cur'].includes(a) && +s.annAt > 0) { await setS(env, pg, 'annAt', 0); await setS(env, pg, 'annEnd', 0); }
+  if (['rd', 'cur'].includes(a) && +s.annAt > 0) { await setS(env, pg, 'annAt', 0); await setS(env, pg, 'annEnd', 0); await setS(env, pg, 'qv', '{}'); }
   switch (a) {
     case 'coadd': {
       await ensureCo(env);
@@ -336,6 +362,7 @@ async function adminAction(env, a, b, pg, role, me) {
       if ((await db.prepare('SELECT COUNT(*) n FROM rounds WHERE pg=?').bind(pg).first()).n < 2) return bad('ต้องมีอย่างน้อย 1 รอบ');
       await db.prepare('DELETE FROM scores WHERE round_id=?').bind(id).run();
       await db.prepare('DELETE FROM results WHERE round_id=?').bind(id).run();
+      try { await ensureVtr(env); await db.prepare('DELETE FROM vtr_blobs WHERE item IN (SELECT id FROM vtr_items WHERE rid=? AND pg=?)').bind(id, pg).run(); await db.prepare('DELETE FROM vtr_items WHERE rid=? AND pg=?').bind(id, pg).run(); } catch (e) {}
       await db.prepare('DELETE FROM rounds WHERE id=?').bind(id).run();
       if (+s.rank === id) await setS(env, pg, 'rank', 0);
       if (rd && rd.id === id) { const f = await db.prepare('SELECT id FROM rounds WHERE pg=? ORDER BY id LIMIT 1').bind(pg).first(); await setS(env, pg, 'round', f.id); await setS(env, pg, 'cur', await firstContestant(env, pg, f.id)); }
@@ -366,7 +393,16 @@ async function adminAction(env, a, b, pg, role, me) {
     case 'step': {
       if (+s.annAt > 0) { // กำลังประกาศเข้ารอบ: ถัดไป/ก่อนหน้า = เลื่อนการ์ดชื่อ (ถัดไปหลังคนสุดท้าย = จบการประกาศ)
         let ids = []; try { ids = JSON.parse(s.ann); } catch (e) {}
-        const i = +s.annI, ni = b.dir === 'prev' ? Math.max(-1, i - 1) : i + 1;
+        const i = +s.annI, ni = b.dir === 'prev' ? Math.max(-1, i - 1) : i + 1, qv = jparse(s.qv, {});
+        if (qv.m) { // โหมดรูปประกาศเข้ารอบ: วิ่งสุ่ม → ประกาศทีละคน → รายชื่อ → VTR (ถัดไป = ข้ามไปขั้นต่อไป ก่อนหน้า = ย้อนกลับมาวิ่งสุ่ม)
+          const now = Date.now();
+          if (b.dir === 'prev') { await setS(env, pg, 'annI', ni); await setS(env, pg, 'qv', JSON.stringify({ m: 'draw', rid: qv.rid, ts: now })); }
+          else if (qv.m === 'draw') {
+            if (ni >= ids.length) await setS(env, pg, 'qv', JSON.stringify({ m: 'list', rid: qv.rid, ts: now }));
+            else { await setS(env, pg, 'annI', ni); await setS(env, pg, 'qv', JSON.stringify({ m: 'draw', rid: qv.rid, ts: now })); }
+          } else if (qv.m === 'list') await setS(env, pg, 'qv', JSON.stringify({ m: 'vtr', rid: qv.rid, ts: now }));
+          await setS(env, pg, 'annEnd', 0); break;
+        }
         if (ni >= ids.length) await finishAnn(env, pg); else { await setS(env, pg, 'annI', ni); await setS(env, pg, 'annEnd', ni === ids.length - 1 ? Date.now() : 0); }
         break;
       }
@@ -412,6 +448,64 @@ async function adminAction(env, a, b, pg, role, me) {
       q[id] = { ...(q[id] || {}), ob: b.ob === 'n' ? 'n' : 'a' };
       await setS(env, pg, 'qcfg', JSON.stringify(q)); break;
     }
+    case 'vset': { // ตั้งค่า VTR / รูปประกาศเข้ารอบ ของรอบนี้
+      if (!(await ownRound(env, id, pg))) return bad('ไม่พบรอบ');
+      const o = jparse(s.vx, {}); o[id] = vxClean(b.cfg);
+      const live = new Set((await db.prepare('SELECT id FROM rounds WHERE pg=?').bind(pg).all()).results.map(x => String(x.id)));
+      for (const k of Object.keys(o)) if (!live.has(k)) delete o[k];
+      await setS(env, pg, 'vx', JSON.stringify(o)); break;
+    }
+    case 'vnew': { // เริ่มอัปโหลดไฟล์ 1 ไฟล์ (รูปแปลงเป็น JPEG แล้วจากหน้าแอดมิน) ได้เลขไฟล์กลับไป แล้วส่งก้อนด้วย vput
+      await ensureVtr(env);
+      const rid = +b.rid; if (!(await ownRound(env, rid, pg))) return bad('ไม่พบรอบ');
+      const kind = b.kind === 'vid' ? 'vid' : 'img', size = Math.floor(+b.size);
+      const mime = kind === 'img' ? 'image/jpeg' : b.mime === 'video/webm' ? 'video/webm' : 'video/mp4';
+      if (!(size > 0) || size > (kind === 'img' ? 4e6 : 6e7)) return bad(kind === 'img' ? 'รูปใหญ่เกิน 4 MB' : 'วิดีโอใหญ่เกิน 60 MB');
+      const cnt = (await db.prepare('SELECT COUNT(*) n FROM vtr_items WHERE pg=?').bind(pg).first()).n; if (cnt >= 200) return bad('ไฟล์ VTR เต็มแล้ว (200 ไฟล์ต่อเวที)');
+      const mp = (await db.prepare('SELECT COALESCE(MAX(pos),0) m FROM vtr_items WHERE pg=? AND rid=?').bind(pg, rid).first()).m;
+      const r = await db.prepare('INSERT INTO vtr_items(pg,rid,kind,mime,name,size,pos,ready,updated) VALUES(?,?,?,?,?,?,?,0,?)').bind(pg, rid, kind, mime, txt(b.name, 80), size, mp + 1, Date.now()).run();
+      return J({ ok: true, id: r.meta.last_row_id });
+    }
+    case 'vput': { // ส่งไฟล์ทีละก้อน (ก้อนละไม่เกิน VCH ไบต์ เป็น base64) ก้อนสุดท้ายเสร็จ = พร้อมใช้
+      await ensureVtr(env);
+      const it = await db.prepare('SELECT id,size,ready FROM vtr_items WHERE id=? AND pg=?').bind(id, pg).first(); if (!it) return bad('ไม่พบไฟล์');
+      const idx = Math.floor(+b.idx), total = Math.floor(+b.total), want = Math.ceil(it.size / VCH);
+      if (it.ready || total !== want || !(idx >= 0 && idx < total)) return bad('ก้อนไฟล์ไม่ถูกต้อง');
+      if (typeof b.data !== 'string' || b.data.length > 830000 || !/^[A-Za-z0-9+/=]+$/.test(b.data)) return bad('ก้อนไฟล์ไม่ถูกต้อง');
+      await db.prepare('INSERT OR REPLACE INTO vtr_blobs(item,idx,data) VALUES(?,?,?)').bind(id, idx, b.data).run();
+      if (idx < total - 1) return J({ ok: true });
+      const have = (await db.prepare('SELECT COUNT(*) n FROM vtr_blobs WHERE item=?').bind(id).first()).n;
+      if (have !== total) return bad('อัปโหลดไม่ครบ ลองใหม่อีกครั้ง');
+      await db.prepare('UPDATE vtr_items SET ready=1, updated=? WHERE id=?').bind(Date.now(), id).run(); break;
+    }
+    case 'vedit': { // เปลี่ยนผู้เข้าประกวดที่ผูก (0 = ทั่วไป, -1 = พื้นหลังรายชื่อ) และเวลาค้างของรูปชิ้นนี้
+      await ensureVtr(env);
+      const it = await db.prepare('SELECT id FROM vtr_items WHERE id=? AND pg=?').bind(id, pg).first(); if (!it) return bad('ไม่พบไฟล์');
+      if ('cid' in b) { const c = Math.floor(+b.cid) || 0; if (c > 0 && !(await own(env, 'contestants', c, pg))) return bad('ไม่พบผู้เข้าประกวด'); await db.prepare('UPDATE vtr_items SET cid=? WHERE id=?').bind(c < 0 ? -1 : c, id).run(); }
+      if ('sec' in b) { const v = +b.sec; await db.prepare('UPDATE vtr_items SET sec=? WHERE id=?').bind(Number.isFinite(v) ? Math.min(120, Math.max(0, v)) : 0, id).run(); }
+      break;
+    }
+    case 'vmove': {
+      await ensureVtr(env);
+      const it = await db.prepare('SELECT id,rid FROM vtr_items WHERE id=? AND pg=?').bind(id, pg).first(); if (!it) return bad('ไม่พบไฟล์');
+      const l = (await db.prepare('SELECT id FROM vtr_items WHERE pg=? AND rid=? ORDER BY pos,id').bind(pg, it.rid).all()).results.map(x => x.id);
+      const i = l.indexOf(id), j = b.dir === 'up' ? i - 1 : i + 1; if (j < 0 || j >= l.length) break;
+      [l[i], l[j]] = [l[j], l[i]];
+      await db.batch(l.map((x, k) => db.prepare('UPDATE vtr_items SET pos=? WHERE id=?').bind(k + 1, x))); break;
+    }
+    case 'vdel': {
+      await ensureVtr(env);
+      const it = await db.prepare('SELECT id FROM vtr_items WHERE id=? AND pg=?').bind(id, pg).first(); if (!it) return bad('ไม่พบไฟล์');
+      await db.prepare('DELETE FROM vtr_blobs WHERE item=?').bind(id).run(); await db.prepare('DELETE FROM vtr_items WHERE id=?').bind(id).run(); break;
+    }
+    case 'vopen': { // เปิด VTR ของรอบนี้ทันที (ค้างจนกว่าจะกดปิด)
+      if (!rd) break;
+      await setS(env, pg, 'qv', JSON.stringify({ m: 'vtr', rid: rd.id, ts: Date.now() })); break;
+    }
+    case 'vclose': { // ปิด VTR/จอรูป ถ้ากำลังประกาศเข้ารอบอยู่ ถือว่าจบการประกาศ (ไปรอบถัดไปเหมือนกดถัดไปหลังคนสุดท้าย)
+      await setS(env, pg, 'qv', '{}');
+      if (+s.annAt > 0) await finishAnn(env, pg); break;
+    }
     case 'jopen': { // เปิด/ปิดให้กรรมการลงคะแนนเป็นรอบ (ปิด = กรรมการกดส่งคะแนนไม่ได้จนกว่าจะเปิด) เก็บรวมใน qcfg ของรอบนั้น
       if (!(await ownRound(env, id, pg))) return bad('ไม่พบรอบ');
       let q = {}; try { q = JSON.parse(s.qcfg) || {}; } catch (e) {}
@@ -435,7 +529,16 @@ async function adminAction(env, a, b, pg, role, me) {
         on[nx.id] = ids.slice(); await setS(env, pg, 'ord', JSON.stringify(on));
       }
       await setS(env, pg, 'annWin', '0'); await setS(env, pg, 'ann', JSON.stringify(ids)); await setS(env, pg, 'annI', -1); await setS(env, pg, 'annAt', Date.now());
-      await setS(env, pg, 'hide', '0'); await setS(env, pg, 'mode', 'current'); break;
+      await setS(env, pg, 'hide', '0'); await setS(env, pg, 'mode', 'current');
+      // เปิดโหมดรูปประกาศเข้ารอบ ถ้ารอบนี้ติ๊กไว้และมีรูปที่ผูกกับผู้เข้าประกวดอย่างน้อย 1 รูป
+      let qvOn = {};
+      try {
+        await ensureVtr(env);
+        const cf = vxClean(jparse(s.vx, {})[rd.id]);
+        const n = (await db.prepare("SELECT COUNT(*) n FROM vtr_items WHERE pg=? AND rid=? AND ready=1 AND kind='img' AND cid>0").bind(pg, rd.id).first()).n;
+        if (cf.rv && n > 0) qvOn = { m: 'draw', rid: rd.id, ts: Date.now() };
+      } catch (e) {}
+      await setS(env, pg, 'qv', JSON.stringify(qvOn)); break;
     }
     case 'annwin': {
       const snap = await snapshot(env, pg), sm = snap && summaryVM({ ...snap, rank: 0 });
@@ -447,10 +550,10 @@ async function adminAction(env, a, b, pg, role, me) {
       const T = Array.from({ length: 10 }, (_, i) => i === 0 ? (s.lblW || (en ? 'WINNER' : 'ผู้ชนะ')) : en ? ORD[i] + ' RUNNER-UP' : 'รองชนะเลิศอันดับ ' + i);
       const seq = top.map((r, i) => ({ id: r.c.id, l: T[i] })).reverse();
       await setS(env, pg, 'ann', JSON.stringify(seq.map(x => x.id))); await setS(env, pg, 'annLbl', JSON.stringify(seq.map(x => x.l))); await setS(env, pg, 'annWin', '1');
-      await setS(env, pg, 'annI', -1); await setS(env, pg, 'annAt', Date.now()); await setS(env, pg, 'annEnd', 0);
+      await setS(env, pg, 'annI', -1); await setS(env, pg, 'annAt', Date.now()); await setS(env, pg, 'annEnd', 0); await setS(env, pg, 'qv', '{}');
       await setS(env, pg, 'hide', '0'); await setS(env, pg, 'mode', 'current'); break;
     }
-    case 'annstop': { await setS(env, pg, 'annAt', 0); await setS(env, pg, 'annEnd', 0); await setS(env, pg, 'hide', '1'); break; }
+    case 'annstop': { await setS(env, pg, 'qv', '{}'); await setS(env, pg, 'annAt', 0); await setS(env, pg, 'annEnd', 0); await setS(env, pg, 'hide', '1'); break; }
     case 'reset': { // ล้างข้อมูลซ้อม (เฉพาะแอดมินเวที/ผู้ดูแลหลัก — ไม่อยู่ใน PERM จึง CO-ADMIN สั่งไม่ได้) ไม่แตะรายชื่อ กรรมการ รหัส รูป ค่าตั้ง
       if (String(b.confirm || '').trim() !== 'ล้าง') return bad('พิมพ์คำว่า ล้าง เพื่อยืนยัน');
       const sc = !!b.scores, st = !!b.status, vt = !!b.votes;
@@ -580,6 +683,7 @@ async function deletePageant(env, id) {
   await db.prepare('DELETE FROM results WHERE round_id IN (SELECT id FROM rounds WHERE pg=?)').bind(id).run();
   await db.prepare("DELETE FROM images WHERE (kind='contestant' AND id IN (SELECT id FROM contestants WHERE pg=?)) OR (kind='judge' AND id IN (SELECT id FROM judges WHERE pg=?)) OR (kind='logo' AND id=?)").bind(id, id, id).run();
   for (const t of ['rounds', 'contestants', 'judges', 'log', 'coadmins']) await db.prepare(`DELETE FROM ${t} WHERE pg=?`).bind(id).run();
+  try { await ensureVtr(env); await db.prepare('DELETE FROM vtr_blobs WHERE item IN (SELECT id FROM vtr_items WHERE pg=?)').bind(id).run(); await db.prepare('DELETE FROM vtr_items WHERE pg=?').bind(id).run(); } catch (e) {}
   await db.prepare('DELETE FROM settings WHERE pg=?').bind(id).run();
   await db.prepare('DELETE FROM pageants WHERE id=?').bind(id).run();
 }
@@ -587,7 +691,7 @@ async function deletePageant(env, id) {
 // คัดลอกข้อมูลจากเวทีเดิมไปเวทีใหม่ตามที่ติ๊ก: settings=การตั้งค่าไลฟ์/คะแนน colors=สี logo=โลโก้ contestants=ผู้เข้าประกวด(+รูป) judges=กรรมการ(+รหัส+รูป) rounds=ทำที่ผู้เรียกแล้ว
 // ไม่คัดลอก: คะแนน ผลการเปิดคะแนน/ตกรอบ ประวัติ CO-ADMIN และสถานะหน้าจอขณะนั้น (รอบที่ใช้ คนปัจจุบัน ซ่อนจอ โหมด)
 async function copyParts(env, from, to, parts) {
-  const db = env.DB, now = Date.now(), RUNTIME = new Set(['round', 'cur', 'hide', 'mode', 'rank', 'ahAt', 'qcfg', 'curAt']), COL = new Set(['c1', 'c2', 'c3']);
+  const db = env.DB, now = Date.now(), RUNTIME = new Set(['round', 'cur', 'hide', 'mode', 'rank', 'ahAt', 'qcfg', 'curAt', 'vx', 'qv', 'ord']), COL = new Set(['c1', 'c2', 'c3']);
   const st = (await db.prepare('SELECT key,value FROM settings WHERE pg=?').bind(from).all()).results.filter(x => !RUNTIME.has(x.key) && (COL.has(x.key) ? parts.colors : x.key === 'showLogo' ? parts.logo : parts.settings));
   for (let i = 0; i < st.length; i += 40) await db.batch(st.slice(i, i + 40).map(x => db.prepare('INSERT INTO settings(pg,key,value) VALUES(?,?,?) ON CONFLICT(pg,key) DO UPDATE SET value=excluded.value').bind(to, x.key, x.value)));
   if (parts.settings && parts.rounds) { // ค่าคัดผู้เข้ารอบผูกกับรหัสรอบ: รอบใหม่ได้รหัสใหม่ จึงจับคู่ตามลำดับรอบแล้วแปลงรหัสให้
@@ -669,7 +773,24 @@ export default {
       }
       if (p === 'display' && m === 'GET') {
         const sn = await snapshot(env, +url.searchParams.get('pg') || 0); if (!sn) return J({ error: 'ไม่พบเวที' }, 404);
-        return J(buildDisplay(sn));
+        return J({ ...buildDisplay(sn), sn: Date.now() });
+      }
+      const vm = p.match(/^vtr\/(\d+)$/);
+      if (vm && m === 'GET') { // รูป/วิดีโอ VTR: รองรับ Range เพื่อให้วิดีโอกรอได้ ส่งทีละไม่เกิน ~3 MB
+        await ensureVtr(env);
+        const it = await env.DB.prepare('SELECT id,mime,size FROM vtr_items WHERE id=? AND ready=1').bind(+vm[1]).first();
+        if (!it) return new Response('', { status: 404 });
+        let s0 = 0, e0 = it.size - 1, part = false; const rg = /^bytes=(\d*)-(\d*)$/.exec(req.headers.get('range') || '');
+        if (rg && (rg[1] !== '' || rg[2] !== '')) { part = true; if (rg[1] === '') { s0 = Math.max(0, it.size - +rg[2]); } else { s0 = +rg[1]; if (rg[2] !== '') e0 = Math.min(e0, +rg[2]); } }
+        if (s0 > e0 || s0 >= it.size) return new Response('', { status: 416, headers: { 'content-range': `bytes */${it.size}` } });
+        const CAP = VCH; if (e0 - s0 + 1 > CAP && (part || it.size > 2 * VCH)) { e0 = s0 + CAP - 1; part = true; } // ส่งทีละก้อนเดียว (Worker แพ็กเกจฟรีมีเวลาประมวลผลต่อคำขอน้อย)
+        const c0 = Math.floor(s0 / VCH), c1 = Math.floor(e0 / VCH);
+        const rows = (await env.DB.prepare('SELECT idx,data FROM vtr_blobs WHERE item=? AND idx BETWEEN ? AND ? ORDER BY idx').bind(it.id, c0, c1).all()).results;
+        const out = new Uint8Array(e0 - s0 + 1); let w = 0;
+        for (const r of rows) { const bin = atob(r.data), base = r.idx * VCH, a = Math.max(0, s0 - base), z = Math.min(bin.length, e0 - base + 1); for (let k = a; k < z; k++) out[w++] = bin.charCodeAt(k); }
+        const h = { 'content-type': it.mime, 'accept-ranges': 'bytes', 'cache-control': 'public, max-age=31536000, immutable', 'content-length': String(out.length) };
+        if (part) { h['content-range'] = `bytes ${s0}-${e0}/${it.size}`; return new Response(out, { status: 206, headers: h }); }
+        return new Response(out, { headers: h });
       }
       const im = p.match(/^img\/(contestant|judge|logo)\/(\d+)$/);
       if (im && m === 'GET') {
