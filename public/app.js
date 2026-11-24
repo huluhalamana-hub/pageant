@@ -1,4 +1,5 @@
-import { fmtn, key, gs, gr, inR, vscoreG, vsRound, calc, colsCfg, sumData, buildDisplay, qcfgOf, qualPlan } from './core.js';
+import { fmtn, key, gs, gr, inR, vscoreG, vsRound, calc, colsCfg, sumData, buildDisplay, qcfgOf, qualPlan, vxCfg } from './core.js';
+import { qScreen } from './vtr.js';
 
 const $ = s => document.querySelector(s), app = $('#app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -110,6 +111,56 @@ let QS = {round: 0, ids: null}; // ติ๊กที่แอดมินแก
 const qdisp = c => c.country ? c.country + ' · ' + c.name : c.name;
 const qualSel = (p, pl) => QS.round === p.round && QS.ids ? QS.ids : pl.sel;
 const qualCnt = (p, pl, sel) => { const ed = sel !== pl.sel && (sel.size !== pl.sel.size || [...sel].some(i => !pl.sel.has(i))); return `ติ๊กเข้ารอบ <b>${sel.size}</b> คน · ตกรอบ <b>${pl.pool.length - sel.size}</b> คน${ed ? ' · <span class="bad">แก้เองจากที่ระบบคำนวณ</span>' : ''}`; };
+/* ---------- VTR / รูปประกาศเข้ารอบ ---------- */
+const VQ = {draw: 'กำลังวิ่งสุ่ม/ประกาศเข้ารอบ', list: 'กำลังแสดงรายชื่อผู้เข้ารอบ', vtr: 'กำลังเล่น VTR'};
+function vtrV(p) {
+  const rd = p.rounds.find(x => x.id === p.round); if (!rd) return '';
+  const vx = p.vx || {cfg: {}, items: [], qv: {}}, c = vxCfg(p, rd.id), items = (vx.items || []).filter(x => x.rid === rd.id), qm = (vx.qv || {}).m;
+  const opts = sel => `<option value="0" ${sel === 0 ? 'selected' : ''}>ทั่วไป (ไม่ผูกกับคน · เล่นเฉพาะ VTR)</option><option value="-1" ${sel === -1 ? 'selected' : ''}>พื้นหลังหน้ารายชื่อ</option>` + p.C.map(cc => `<option value="${cc.id}" ${sel === cc.id ? 'selected' : ''}>${esc(cc.no)} ${esc(cc.country || cc.name)}</option>`).join('');
+  const num = (k, w) => `<input type="number" data-vc="${k}" min="0" step="0.1" value="${c[k]}" style="width:${w || 74}px">`;
+  const lbl = 'display:flex;gap:6px;align-items:center;margin:6px 0 0;color:var(--ink)';
+  return `<div class="box" data-need-any="edit,screen,advance"><h2>VTR และรูปประกาศเข้ารอบ · รอบ: ${esc(rd.name)}</h2>
+    <p class="mu" style="margin:0 0 8px">อัปรูป 16:9 ที่มีชื่ออยู่ในรูปแล้ว แล้วเลือกว่าเป็นของใคร รูปชุดเดียวใช้ทั้งตอนประกาศเข้ารอบ (วิ่งสุ่ม → ค้างรูปคนที่ประกาศ) และใน VTR (คนที่ไม่เข้ารอบจะถูกตัดออก) วิดีโอและรูปทั่วไปเล่นเฉพาะใน VTR</p>
+    <div data-need="edit"><label class="btn" style="display:inline-block;cursor:pointer;padding:8px 14px;border:1px solid var(--bd);border-radius:10px">＋ เพิ่มรูป / วิดีโอ<input type="file" id="vf" accept="image/*,video/*,.mov,.mp4,.webm" multiple hidden></label> <span id="vst" class="mu"></span></div>
+    ${items.length ? items.map((x, i) => `<div class="ci" style="align-items:center;margin-top:8px"><div class="l" style="gap:10px;min-width:0">${x.k === 'i' ? `<img src="${esc(x.u)}" alt="" style="width:96px;height:54px;object-fit:cover;border-radius:6px;background:#000;flex:none">` : '<div style="width:96px;height:54px;border-radius:6px;background:#000;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;flex:none">วิดีโอ</div>'}<div style="min-width:0"><div class="mu" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${i + 1}. ${esc(x.name)}</div><div data-need="edit" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px"><select data-vi="cid" data-id="${x.id}" style="max-width:210px">${opts(x.cid)}</select>${x.k === 'i' ? `<input type="number" data-vi="sec" data-id="${x.id}" min="0" step="0.5" placeholder="วินาที" value="${x.sec || ''}" style="width:84px" title="เวลาค้างของรูปนี้ใน VTR ว่าง = ใช้ค่ากลาง">` : ''}</div></div></div><div class="btns" data-need="edit"><button data-a="vmv" data-id="${x.id}" data-v="up">↑</button><button data-a="vmv" data-id="${x.id}" data-v="down">↓</button><button class="d" data-a="vdl" data-id="${x.id}">ลบ</button></div></div>`).join('') : '<p class="mu" style="margin:8px 0 0">ยังไม่มีไฟล์ในรอบนี้</p>'}
+    <div data-need="edit" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bd)">
+      <label style="${lbl}"><input type="checkbox" data-vc="rv" ${c.rv ? 'checked' : ''} style="width:auto"> ประกาศเข้ารอบด้วยรูป (วิ่งสุ่มทุกประเทศ แล้วค้างรูปคนที่ประกาศ)</label>
+      <div class="row" style="align-items:center;margin-top:6px"><span class="mu">รูปคนเข้ารอบค้าง</span>${num('hold')}<span class="mu">วินาที แล้วกลับไปวิ่งสุ่มคนที่เหลือ</span></div>
+      <div class="row" style="align-items:center;margin-top:6px"><span class="mu">ประกาศครบแล้วขึ้นรายชื่อ เรียงตาม</span><select data-vc="lo"><option value="ann" ${c.lo !== 'az' ? 'selected' : ''}>ลำดับเข้ารอบ</option><option value="az" ${c.lo === 'az' ? 'selected' : ''}>ตัวอักษร</option></select></div>
+      <div class="row" style="align-items:center;margin-top:6px"><span class="mu">รายชื่อค้าง</span>${num('ls')}<span class="mu">วินาที (0 = ค้างจนกว่าจะสั่ง)</span></div>
+      <label style="${lbl}"><input type="checkbox" data-vc="au" ${c.au ? 'checked' : ''} style="width:auto"> เข้า VTR อัตโนมัติหลังรายชื่อขึ้น</label>
+      <div class="row" style="align-items:center;margin-top:6px"><span class="mu">รูปใน VTR ค้างชิ้นละ</span>${num('is')}<span class="mu">วินาที (วิดีโอเล่นจนจบ)</span></div>
+      <div class="row" style="align-items:center;margin-top:6px"><span class="mu">เฟดดำเข้า</span>${num('fi', 60)}<span class="mu">ออก</span>${num('fo', 60)}<span class="mu">เฟดข้ามชิ้น</span>${num('fx', 60)}<span class="mu">วินาที</span></div>
+      <label style="${lbl}"><input type="checkbox" data-vc="zm" ${c.zm ? 'checked' : ''} style="width:auto"> รูปใน VTR ซูมเข้าช้าๆ</label>
+    </div>
+    <div class="btns" data-need-any="screen,advance" style="margin-top:12px"><button class="p" data-a="vopen">▶ เปิด VTR</button><button class="d" data-a="vclose">■ ปิด VTR</button>${qm ? `<span class="ok">· ${VQ[qm] || ''}</span>` : ''}</div>
+  </div>`;
+}
+const b64 = blob => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1] || ''); r.onerror = () => rej(new Error('อ่านไฟล์ไม่ได้')); r.readAsDataURL(blob); });
+async function imgToJpeg(f) {
+  const bmp = await createImageBitmap(f), s = Math.min(1, 1920 / bmp.width), c = document.createElement('canvas');
+  c.width = Math.round(bmp.width * s); c.height = Math.round(bmp.height * s);
+  const x = c.getContext('2d'); x.fillStyle = '#000'; x.fillRect(0, 0, c.width, c.height); x.drawImage(bmp, 0, 0, c.width, c.height);
+  for (const q of [.9, .82, .72, .62, .5, .4]) { const b = await new Promise(r => c.toBlob(r, 'image/jpeg', q)); if (b && b.size <= 1.2e6) return b; }
+  throw new Error('รูปใหญ่เกินไป ลดขนาดรูปแล้วลองใหม่');
+}
+let vBusy = false;
+async function vtrUpload(files) {
+  if (vBusy || !files.length) return; vBusy = true;
+  const rid = ST.p.round, say = t => { const el = $('#vst'); if (el) el.textContent = t; }, CH = 600000;
+  try {
+    for (const f of files) {
+      try {
+        let kind, blob = f, mime = '';
+        if ((f.type || '').startsWith('image/')) { kind = 'img'; say(f.name + ': กำลังย่อรูป…'); blob = await imgToJpeg(f); }
+        else if ((f.type || '').startsWith('video/') || /\.(mp4|mov|m4v|webm)$/i.test(f.name)) { kind = 'vid'; mime = f.type === 'video/webm' ? 'video/webm' : 'video/mp4'; if (f.size > 6e7) throw new Error(f.name + ': วิดีโอใหญ่เกิน 60 MB'); }
+        else throw new Error('ไฟล์ไม่รองรับ: ' + f.name);
+        const total = Math.max(1, Math.ceil(blob.size / CH)), r = await api('admin/vnew', {rid, kind, mime, size: blob.size, name: f.name});
+        for (let i = 0; i < total; i++) { say(`${f.name}: ${i + 1}/${total}`); await api('admin/vput', {id: r.id, idx: i, total, data: await b64(blob.slice(i * CH, (i + 1) * CH))}); }
+      } catch (e) { alert(e.message); }
+    }
+  } finally { vBusy = false; say(''); try { await load(); } catch (e) {} render(); }
+}
 function qRoundCfg(p, x) {
   const c = qcfgOf(p, x.id);
   return `<div data-need="advance" style="margin-top:6px"><div class="row" style="align-items:center"><span class="mu">ผู้เข้ารอบ</span><input data-qn="${x.id}" type="number" min="0" max="1000" step="1" value="${c.n || ''}" placeholder="ว่าง = ไม่คัด" style="max-width:110px;flex:none"><span class="mu">คน</span><label style="margin:0;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" data-qp="${x.id}" ${c.pv ? 'checked' : ''} style="width:auto"> ที่นั่ง Popular Vote</label><button data-a="qset" data-id="${x.id}">บันทึก</button></div><label style="margin:6px 0 0;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" data-qm="${x.id}" ${c.nm ? 'checked' : ''} style="width:auto"> ไม่แสดงคะแนน</label><label style="margin:6px 0 0;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" data-qg="${x.id}" ${c.ge ? 'checked' : ''} style="width:auto"> จบกลุ่มที่รอบนี้ (รอบถัดไปไม่เอาคะแนนรอบนี้มารวม แม้ไม่ได้คัดคน)</label><label style="margin:6px 0 0;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" data-qj="${x.id}" ${c.jc ? 'checked' : ''} style="width:auto"> ปิดรับคะแนนกรรมการรอบนี้ (กรรมการลงไม่ได้ จนกว่าจะเปิดรับ)</label>${p.rounds[0] && p.rounds[0].id !== x.id ? `<div style="margin:8px 0 0;padding:8px;border:1px solid var(--bd);border-radius:10px"><div class="mu" style="margin-bottom:6px">ลำดับให้คะแนนรอบนี้</div><div class="btns" style="margin:0"><button data-a="qord" data-id="${x.id}" data-v="n" class="${c.ob === 'n' ? 'p' : ''}">${c.ob === 'n' ? '● ' : '○ '}ให้คะแนนเรียงตามเลขที่</button><button data-a="qord" data-id="${x.id}" data-v="a" class="${c.ob !== 'n' ? 'p' : ''}">${c.ob !== 'n' ? '● ' : '○ '}ให้คะแนนเรียงลำดับเข้ารอบก่อนหน้า</button></div>${c.ob !== 'n' && !(p.ordR || []).includes(x.id) ? '<p class="mu" style="margin:6px 0 0">ยังไม่มีลำดับประกาศจากรอบก่อน → ตอนนี้เรียงตามเลขที่ไปก่อน</p>' : ''}</div>` : ''}<p class="mu" style="margin:2px 0 0">รอบที่ตั้งจำนวนผู้เข้ารอบจะจบกลุ่มเอง · รอบที่ไม่คัดคน (ทุกคนผ่าน) คะแนนจะรวมกับรอบถัดไปในตารางสรุป</p>${c.nm ? '<p class="mu" style="margin:2px 0 0">กรรมการให้คะแนนปกติและเข้าตารางสรุปปกติ · คนสุดท้ายเฟดแล้ว ถ้ากรรมการส่งครบ จะซ่อนจอแล้วไปรอบถัดไปเอง (ถ้าตั้งจำนวนผู้เข้ารอบไว้ จะรอประกาศเข้ารอบก่อน) · ต้องตั้ง "การ์ดชื่อ" (วินาที) มากกว่า 0</p>' : ''}</div>`;
@@ -210,7 +261,7 @@ function manageV(p) {
     <p class="mu">${p.vm === 'share' ? `สัดส่วนจากโหวตรวม: คะแนนโหวต = โหวตของคนนั้น ÷ โหวตรวมของทุกคน x ${p.max} เช่น โหวตรวม 1600 ได้ 1000 → ${fmtn(1000 / 1600 * p.max)}, 500 → ${fmtn(500 / 1600 * p.max)}, 100 → ${fmtn(100 / 1600 * p.max)}` : `อิงคนโหวตสูงสุด: คนโหวตมากสุดได้เต็ม ${p.max} คนอื่นตามสัดส่วน เช่น 1000 → ${p.max}, 500 → ${fmtn(p.max / 2)}, 100 → ${fmtn(p.max / 10)}`}</p></div>
   <div class="box" data-need-any="edit,advance"><h2>รอบ</h2><p class="mu" style="margin:0 0 8px">กด "ใช้รอบนี้" แล้วจอจะถูกซ่อนไว้ก่อน (เหมือนกด "ซ่อนจอทั้งหมด") กด "แสดงจอ" เมื่อพร้อมให้คนแรกขึ้น</p>${p.rounds.map(x => `<div class="ci"><div>${esc(x.name)} ${x.id === p.round ? '<span class="ok">· กำลังใช้</span>' : ''}<label data-need="edit" style="margin:4px 0 0;color:var(--ink)"><input type="checkbox" data-t="${x.id}" ${x.inTotal !== false ? 'checked' : ''} style="width:auto"> นับในคะแนนรวม</label>${p.J.length ? `<div data-need="edit" style="margin-top:6px"><label style="margin:0 0 4px;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" data-skall="${x.id}" ${p.J.every(j => (x.noJ || []).includes(j.id)) ? 'checked' : ''} style="width:auto"> รอบนี้ไม่มีการให้คะแนน (เดินโชว์ · ใช้คะแนนรอบก่อน)</label><span class="mu">หรือเลือกเป็นรายคน — ไม่ให้คะแนนรอบนี้:</span> ${p.J.map(j => `<label style="display:inline-flex;gap:4px;align-items:center;margin:2px 10px 0 0;color:var(--ink)"><input type="checkbox" data-sk="${x.id}:${j.id}" ${(x.noJ || []).includes(j.id) ? 'checked' : ''} style="width:auto"> ${esc(j.name)}</label>`).join('')}</div>` : ''}${qRoundCfg(p, x)}</div><div class="btns">${x.id === p.round ? '' : `<button data-a="rd" data-id="${x.id}">ใช้รอบนี้</button>`}<button data-a="rdren" data-id="${x.id}">เปลี่ยนชื่อ</button><button class="d" data-a="rddel" data-id="${x.id}">ลบ</button></div></div>`).join('')}
     <div class="row" data-need="edit" style="margin-top:10px"><input id="rn" placeholder="ชื่อรอบ เช่น รอบชุดราตรี"><button class="p" data-a="rdadd">เพิ่มรอบ</button></div></div>
-  ${qualV(p)}<div class="box"><h2>ผู้เข้าประกวด · รอบ: ${esc(rd.name)}</h2>${edActive(p) ? editBoxV(p) : '<div class="row noprint" data-need="edit" style="margin:0 0 8px"><button data-a="edall">✎ แก้ไขชื่อ/เลขที่/รูป เป็นช่อง (หลายคนพร้อมกัน)</button></div>' + bulkBar(p) + (p.C.map(c => {
+  ${qualV(p)}${vtrV(p)}<div class="box"><h2>ผู้เข้าประกวด · รอบ: ${esc(rd.name)}</h2>${edActive(p) ? editBoxV(p) : '<div class="row noprint" data-need="edit" style="margin:0 0 8px"><button data-a="edall">✎ แก้ไขชื่อ/เลขที่/รูป เป็นช่อง (หลายคนพร้อมกัน)</button></div>' + bulkBar(p) + (p.C.map(c => {
     const rs = gr(p, p.round, c.id), k = calc(p, p.round, c), got = p.J.filter(j => gs(p, p.round, c.id, j.id) != null).length, cu = c.id === p.cur, gone = !inR(p, p.round, c), er = gone ? elimRound(p, c) : null;
     const ed = editing === c.id ? `<div class="box" style="margin:8px 0"><div class="mu">แก้คะแนนรอบ ${esc(rd.name)} ของ ${esc(c.name)} (เต็ม ${p.max}) เว้นว่าง = ยังไม่ให้</div><div class="row" style="margin-top:6px">${p.J.map(j => `<label style="flex:1;min-width:100px">${esc(j.name)}<input id="se-${j.id}" type="number" step="0.01" value="${gs(p, p.round, c.id, j.id) ?? ''}"></label>`).join('')}</div><div class="row" style="margin-top:8px"><button class="p" data-a="savesc" data-id="${c.id}">บันทึกคะแนน</button><button data-a="edsc" data-id="0">ปิด</button></div></div>` : '';
     return `<div class="ci ${gone ? 'out' : ''}"><div class="l"><input type="checkbox" data-s="${c.id}" ${SEL.has(c.id) ? 'checked' : ''} style="width:auto;flex:none">${th(c.img, c.name)}<div style="min-width:0"><b style="color:var(--gold)">${esc(c.no)}</b> ${esc(c.country || c.name)}${c.country ? ` <span class="mu">· ${esc(c.name)}</span>` : ''}${rs.rev ? ' <span class="ok">· เปิดแล้ว</span>' : ''}${gone ? ` <span class="chip">ตกรอบแล้ว (${esc(er.name)})</span>` : rs.out ? ' <span class="chip" style="color:var(--bad)">ตกรอบ · ไม่ไปรอบถัดไป</span>' : ''}<div class="mu">กรรมการให้แล้ว ${got}/${n}${got ? ' · เฉลี่ยรอบนี้ ' + fmtn(k.avg) : ''}${cu && !gone ? ' · กำลังให้คะแนน' : ''}</div></div></div>
@@ -380,7 +431,8 @@ async function fadeOut(cv, scoresOnly) {
 /* ---------- หน้าจอไลฟ์สาธารณะ (/?display=1&pg=เลขเวที พื้นหลังโปร่งใสเสมอ) ---------- */
 function displayMode() {
   document.body.classList.add('disp'); if (!Q.get('bg')) document.body.classList.add('tr');
-  app.innerHTML = '<div class="cv" id="cv"></div>';
+  app.innerHTML = '<div class="cv" id="cv"></div><div id="qv"></div>';
+  const qs = qScreen($('#qv'));
   const cv = $('#cv'), pg = +Q.get('pg') || 0; let last = -1, lastKey = '';
   const fitD = () => { cv.style.transform = `scale(${Math.min(innerWidth / 1920, innerHeight / 1080)})`; };
   fitD(); addEventListener('resize', fitD);
@@ -423,6 +475,7 @@ function displayMode() {
     try {
       const r = await pub('rev?pg=' + pg); if (r.rev === undefined || r.rev === last) return;
       const vm = await pub('display?pg=' + pg); last = r.rev; latest = vm;
+      qs.update(vm.q || null, vm.sn);
       await apply(vm);
     } catch (e) {} finally { busy = false; }
   };
@@ -611,6 +664,10 @@ const onClick = async e => {
   if (a === 'annLbls') { await st('lblW', $('#lblW').value); return; }
   if (a === 'annwin') { const n = Math.min(10, Math.max(1, Math.floor(+$('#winN').value || 3))); if (!confirm(`เริ่มประกาศผล ${n} คน ไล่จากอันดับ ${n} ขึ้นไปจนถึง Winner ?`)) return; return act('annwin', {n}); }
   if (a === 'ann') return act(v === 'start' ? 'annstart' : 'annstop', {});
+  if (a === 'vopen') return act('vopen');
+  if (a === 'vclose') return act('vclose');
+  if (a === 'vmv') return act('vmove', {id, dir: v});
+  if (a === 'vdl') { if (!confirm('ลบไฟล์นี้?')) return; return act('vdel', {id}); }
   if (a === 'qord') return act('qord', {id, ob: v === 'n' ? 'n' : 'a'});
   if (a === 'jopen') return act('jopen', {id: ST.p.round, closed: v === '0'});
   if (a === 'qset') { QS = {round: 0, ids: null}; return act('qset', qArgs(id)); }
@@ -709,6 +766,9 @@ const onChange = e => {
   if (t.id === 'auto') return act('settings', {k: 'auto', v: t.checked ? '1' : '0'});
   if (t.dataset && t.dataset.skall) return act('rjskip', {id: +t.dataset.skall, all: true, on: t.checked});
   if (t.dataset && t.dataset.sk) { const [rr, jj] = t.dataset.sk.split(':'); return act('rjskip', {id: +rr, jid: +jj, on: t.checked}); }
+  if (t.id === 'vf') { const fs = [...t.files]; t.value = ''; return vtrUpload(fs); }
+  if (t.dataset && t.dataset.vc) { const cfg = {}; document.querySelectorAll('[data-vc]').forEach(x => { cfg[x.dataset.vc] = x.type === 'checkbox' ? (x.checked ? 1 : 0) : x.value; }); return act('vset', {id: ST.p.round, cfg}); }
+  if (t.dataset && t.dataset.vi) return act('vedit', {id: +t.dataset.id, [t.dataset.vi]: t.value});
   if (t.dataset && t.dataset.t) return act('intotal', {id: +t.dataset.t, on: t.checked});
 };
 

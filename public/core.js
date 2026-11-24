@@ -117,11 +117,32 @@ export function summaryVM(p) {
   const rows = d.ranked.map(r => ({rank: r.rank, pg: multi ? pgOf(r) : null, gone: r.gone, c: {id: r.c.id, no: r.c.no, name: r.c.name, country: r.c.country, img: r.c.img}, per: r.per, jt: r.jt, votes: r.votes, vsc: r.vsc, tot: r.tot, gt: r.gt, pvv: pvOf(r)}));
   return {title, show: show.map(x => ({id: x.id, name: x.name})), single, rows, grp: d.grouped ? d.groups : null, pgv: multi ? gl.map((g, i) => rows.some(r => r.pg[i] != null)) : null, C: CC, pv: !multi && CC.tail <= 1 && rows.some(r => r.pvv != null), jn: p.showJN !== false, n, J: p.J.map(j => ({name: j.name, img: j.img})), agg: p.agg, jw: p.jw, per, sec};
 }
+/* ---------- VTR / จอรูปประกาศเข้ารอบ ---------- */
+export const VXD = {rv: 0, hold: 5, lo: 'ann', ls: 8, au: 1, is: 5, fi: 0.6, fo: 0.6, fx: 0.5, zm: 1};
+export const vxCfg = (p, rid) => ({...VXD, ...((((p.vx || {}).cfg) || {})[rid] || {})});
+// ข้อมูลที่จอต้องใช้วาดโหมดรูปเต็มจอ (ตัวจับเวลา/เฟด/วิ่งสุ่มทำฝั่งจอเอง ไฟล์ vtr.js)
+function qVM(p) {
+  const qv = (p.vx || {}).qv; if (!qv || !qv.m) return null;
+  const rid = qv.rid || p.round, cfg = vxCfg(p, rid), items = ((p.vx || {}).items || []).filter(x => x.rid === rid);
+  const byId = new Map(p.C.map(c => [c.id, c])), ann = p.annOn ? (p.annIds || []) : [];
+  const done = new Set(ann.slice(0, Math.max(0, (+p.annI || 0) + 1))), imgOf = new Map();
+  items.forEach(x => { if (x.k === 'i' && x.cid > 0 && byId.has(x.cid) && !imgOf.has(x.cid)) imgOf.set(x.cid, x.u); });
+  // วิ่งสุ่ม: ทุกคนที่แข่งในรอบนี้และมีรูป ยกเว้นคนที่ประกาศไปแล้ว
+  const pool = [...imgOf].filter(([cid]) => inR(p, rid, byId.get(cid)) && !done.has(cid)).map(([, u]) => u);
+  const held = qv.m === 'draw' && +p.annI >= 0 && ann[+p.annI] ? (imgOf.get(ann[+p.annI]) || null) : null;
+  // VTR: รูป/วิดีโอทั่วไป + ของคนที่ผ่านเข้ารอบ (คนที่ไม่เข้ารอบถูกตัดออก) ส่วนรูปพื้นหลังรายชื่อ (cid = -1) ไม่ขึ้นใน VTR
+  const vtr = items.filter(x => x.cid === 0 || (x.cid > 0 && byId.has(x.cid) && !gr(p, rid, x.cid).out)).map(x => ({k: x.k, u: x.u, sec: x.sec}));
+  let list = ann.map(id => byId.get(id)).filter(Boolean).map(c => ({no: c.no, name: c.name, country: c.country}));
+  if (cfg.lo === 'az') list = list.slice().sort((a, b) => String(a.country || a.name).localeCompare(String(b.country || b.name), 'en', {sensitivity: 'base'}) || String(a.name).localeCompare(String(b.name), 'en', {sensitivity: 'base'}));
+  const bg = (items.find(x => x.cid === -1 && x.k === 'i') || {}).u || null;
+  return {m: qv.m, ts: qv.ts || 0, annI: +p.annI, n: ann.length, cfg, pool, held, vtr, list, bg, col: p.col, big: p.big === 'name' ? 'name' : 'country'};
+}
 function buildDisplay0(p, opts) {
   const force = !!(opts && opts.force);
   const rd = p.rounds.find(x => x.id === p.round) || {name: ''};
   const vm = {col: p.col, L: LB(p), chip: p.showRound !== false && p.mode !== 'ranking' && rd.name ? rd.name : null, logo: null, bar: null, card: null, sum: null, rev: p.rev, t: {intro: tn(p.introSec, 4), hold: tn(p.holdSec, 0)}, z: {bar: tn(p.barScale, 100), card: tn(p.cardScale, 100), sum: tn(p.sumScale, 100)}};
   if (p.showLogo) vm.logo = p.logo || (force ? '' : null);
+  if (!force && p.vx && p.vx.qv && p.vx.qv.m) { const q = qVM(p); if (q) { vm.q = q; vm.chip = null; vm.logo = null; return vm; } }
   if (p.hide && !force) return vm;
   if (p.annOn && !force) { const ac = p.annId ? p.C.find(x => x.id === p.annId) : null; vm.chip = null; if (ac) { const cc = {no: ac.no, name: ac.name, country: ac.country, img: null};
       // ประกาศเข้ารอบตามตั้งค่า "ก่อนเปิดคะแนน จอแสดง": รูปและชื่อ → แถบรูปและชื่อ (ไม่มีช่องคะแนน)
