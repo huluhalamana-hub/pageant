@@ -60,7 +60,7 @@ export function sumData(p, show, opts) {
 
 // ---------- คัดผู้เข้ารอบ + ที่นั่ง Popular Vote (wildcard) ----------
 // ค่าตั้งต่อรอบเก็บที่ p.qcfg = {รหัสรอบ: {n: จำนวนผู้เข้ารอบ "รวมที่นั่งโหวต" แล้ว, pv: ใช้ที่นั่งโหวตในรอบนี้ไหม (ไม่ตั้ง = เปิด)}}
-export const qcfgOf = (p, rid) => { const x = (p.qcfg || {})[rid] || {}; return {n: Math.max(0, Math.floor(+x.n || 0)), pv: x.pv !== false, nm: !!x.nm, ge: !!x.ge, jc: !!x.jc, ob: x.ob === 'n' ? 'n' : 'a'}; };
+export const qcfgOf = (p, rid) => { const x = (p.qcfg || {})[rid] || {}; return {n: Math.max(0, Math.floor(+x.n || 0)), pv: x.pv !== false, nm: !!x.nm, ge: !!x.ge, jc: !!x.jc, ob: x.ob === 'n' ? 'n' : 'a', pk: !!x.pk, pn: Math.max(0, Math.floor(+x.pn || 0))}; };
 const rv4 = v => v == null ? null : Math.round(v * 1e4), nv = v => v == null ? -Infinity : v, cmpDesc = (x, y) => nv(y) > nv(x) ? 1 : nv(y) < nv(x) ? -1 : 0;
 // คำนวณว่าใครควรเข้ารอบ (ใช้แสดงในหน้าแอดมินเท่านั้น ไม่ขึ้นจอจนกว่าแอดมินจะกดประกาศ)
 // 1) เรียงตามคะแนนกรรมการเฉลี่ยของรอบนี้ (เสมอ → ดูโหวต → เลขที่) แล้วตัดที่ n คน
@@ -73,12 +73,14 @@ export function qualPlan(p, rid) {
   for (let i = ix - 1; i >= 0; i--) { const q = qcfgOf(p, p.rounds[i].id); if (q.n > 0 || q.ge) break; if (p.rounds[i].inTotal !== false) from.unshift(p.rounds[i]); }
   const rs = from.concat(ix >= 0 ? [p.rounds[ix]] : []);
   const votesOf = c => { if (p.vmode !== 'round') return c.votes; const v = rs.map(x => gr(p, x.id, c.id).votes).filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) : null; };
+  // รอบโหมดติ๊กเลือกคน: เรียงตามจำนวนกรรมการที่ติ๊กเลือกคนนี้ก่อน (เสมอ → คะแนนเฉลี่ย → โหวต → เลขที่)
+  const pkDone = cfg.pk ? ((p.pkJ || {})[rid] || []).filter(id => actJ(p, rid).some(j => j.id === id)).length : 0;
   const pool = p.C.filter(c => inR(p, rid, c)).map(c => {
-    const s = actJ(p, rid).map(j => gs(p, rid, c.id, j.id)).filter(x => x != null);
+    const s = cfg.pk ? {length: pkDone} : actJ(p, rid).map(j => gs(p, rid, c.id, j.id)).filter(x => x != null);
     const avs = rs.map(x => { const t = actJ(p, x.id).map(j => gs(p, x.id, c.id, j.id)).filter(v => v != null); return t.length ? t.reduce((a, b) => a + b, 0) / t.length : null; }).filter(v => v != null);
-    return {c, cnt: s.length, avg: avs.length ? avs.reduce((a, b) => a + b, 0) / avs.length : null, votes: votesOf(c) ?? null};
-  }).sort((a, b) => cmpDesc(rv4(a.avg), rv4(b.avg)) || cmpDesc(a.votes, b.votes) || a.c.no - b.c.no || a.c.id - b.c.id);
-  const same = (a, b) => rv4(a.avg) === rv4(b.avg) && a.votes === b.votes;
+    return {c, cnt: s.length, pk: cfg.pk ? (p.pk || {})[rid + ':' + c.id] || 0 : 0, avg: avs.length ? avs.reduce((a, b) => a + b, 0) / avs.length : null, votes: votesOf(c) ?? null};
+  }).sort((a, b) => (b.pk - a.pk) || cmpDesc(rv4(a.avg), rv4(b.avg)) || cmpDesc(a.votes, b.votes) || a.c.no - b.c.no || a.c.id - b.c.id);
+  const same = (a, b) => a.pk === b.pk && rv4(a.avg) === rv4(b.avg) && a.votes === b.votes;
   const res = {cfg, from: from.map(x => x.name), pool, nj, sel: new Set(), tag: {}, tie: [], pvId: 0, pvIn: false, pvTie: [], pvNone: false, need: false, all: false, miss: pool.filter(x => x.cnt < nj).length};
   if (!pool.length) return res;
   if (!cfg.n) { res.need = true; pool.forEach(x => res.sel.add(x.c.id)); return res; }

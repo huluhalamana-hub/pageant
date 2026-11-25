@@ -55,8 +55,8 @@ const COP = [
 const NEED = {
   edit: 'annLbls addcs addj editc editj jcode jdel del rdadd rdren rddel logoup logoclr preset aadd adel aph aphx img imgdel edall edsave edcancel edph edphx max jw sumPer sumSec sumScale introSec holdSec barScale cardScale annScale agg vm vmode pre big lang',
   screen: 'hide toggle mode rank cur next prev rev revcur ann jopen',
-  advance: 'out rd qset qord qsave qreset qreload',
-  scores: 'edsc savesc clrsc savevotes'
+  advance: 'out rd qset qord qsave qreset qreload qundo pkset',
+  scores: 'edsc savesc clrsc savevotes pkclear'
 };
 const NEEDOF = {}; Object.entries(NEED).forEach(([k, s]) => s.split(' ').forEach(x => { NEEDOF[x] = k; }));
 const can = k => !ST.co || !!(ST.perms && ST.perms[k]);
@@ -169,28 +169,36 @@ async function vtrUpload(files) {
 }
 function qRoundCfg(p, x) {
   const c = qcfgOf(p, x.id);
-  return `<div data-need="advance" style="margin-top:6px"><div class="row" style="align-items:center"><span class="mu">ผู้เข้ารอบ</span><input data-qn="${x.id}" type="number" min="0" max="1000" step="1" value="${c.n || ''}" placeholder="ว่าง = ไม่คัด" style="max-width:110px;flex:none"><span class="mu">คน</span><label style="margin:0;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" data-qp="${x.id}" ${c.pv ? 'checked' : ''} style="width:auto"> ที่นั่ง Popular Vote</label><button data-a="qset" data-id="${x.id}">บันทึก</button></div><label style="margin:6px 0 0;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" data-qm="${x.id}" ${c.nm ? 'checked' : ''} style="width:auto"> ไม่แสดงคะแนน</label><label style="margin:6px 0 0;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" data-qg="${x.id}" ${c.ge ? 'checked' : ''} style="width:auto"> จบกลุ่มที่รอบนี้ (รอบถัดไปไม่เอาคะแนนรอบนี้มารวม แม้ไม่ได้คัดคน)</label><label style="margin:6px 0 0;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" data-qj="${x.id}" ${c.jc ? 'checked' : ''} style="width:auto"> ปิดรับคะแนนกรรมการรอบนี้ (กรรมการลงไม่ได้ จนกว่าจะเปิดรับ)</label>${p.rounds[0] && p.rounds[0].id !== x.id ? `<div style="margin:8px 0 0;padding:8px;border:1px solid var(--bd);border-radius:10px"><div class="mu" style="margin-bottom:6px">ลำดับให้คะแนนรอบนี้</div><div class="btns" style="margin:0"><button data-a="qord" data-id="${x.id}" data-v="n" class="${c.ob === 'n' ? 'p' : ''}">${c.ob === 'n' ? '● ' : '○ '}ให้คะแนนเรียงตามเลขที่</button><button data-a="qord" data-id="${x.id}" data-v="a" class="${c.ob !== 'n' ? 'p' : ''}">${c.ob !== 'n' ? '● ' : '○ '}ให้คะแนนเรียงลำดับเข้ารอบก่อนหน้า</button></div>${c.ob !== 'n' && !(p.ordR || []).includes(x.id) ? '<p class="mu" style="margin:6px 0 0">ยังไม่มีลำดับประกาศจากรอบก่อน → ตอนนี้เรียงตามเลขที่ไปก่อน</p>' : ''}</div>` : ''}<p class="mu" style="margin:2px 0 0">รอบที่ตั้งจำนวนผู้เข้ารอบจะจบกลุ่มเอง · รอบที่ไม่คัดคน (ทุกคนผ่าน) คะแนนจะรวมกับรอบถัดไปในตารางสรุป</p>${c.nm ? '<p class="mu" style="margin:2px 0 0">กรรมการให้คะแนนปกติและเข้าตารางสรุปปกติ · คนสุดท้ายเฟดแล้ว ถ้ากรรมการส่งครบ จะซ่อนจอแล้วไปรอบถัดไปเอง (ถ้าตั้งจำนวนผู้เข้ารอบไว้ จะรอประกาศเข้ารอบก่อน) · ต้องตั้ง "การ์ดชื่อ" (วินาที) มากกว่า 0</p>' : ''}</div>`;
+  return `<div data-need="advance" style="margin-top:6px"><div class="row" style="align-items:center"><span class="mu">ผู้เข้ารอบ</span><input data-qn="${x.id}" type="number" min="0" max="1000" step="1" value="${c.n || ''}" placeholder="ว่าง = ไม่คัด" style="max-width:110px;flex:none"><span class="mu">คน</span><label style="margin:0;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" data-qp="${x.id}" ${c.pv ? 'checked' : ''} style="width:auto"> ที่นั่ง Popular Vote</label><button data-a="qset" data-id="${x.id}">บันทึก</button></div><label style="margin:6px 0 0;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" data-qm="${x.id}" ${c.nm ? 'checked' : ''} style="width:auto"> ไม่แสดงคะแนน</label><label style="margin:6px 0 0;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" data-qg="${x.id}" ${c.ge ? 'checked' : ''} style="width:auto"> จบกลุ่มที่รอบนี้ (รอบถัดไปไม่เอาคะแนนรอบนี้มารวม แม้ไม่ได้คัดคน)</label><label style="margin:6px 0 0;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" data-qj="${x.id}" ${c.jc ? 'checked' : ''} style="width:auto"> ปิดรับคะแนนกรรมการรอบนี้ (กรรมการลงไม่ได้ จนกว่าจะเปิดรับ)</label><div style="margin:8px 0 0;padding:8px;border:1px solid var(--bd);border-radius:10px"><label style="margin:0;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" data-pkr="${x.id}" ${c.pk ? 'checked' : ''} style="width:auto"> โหมดติ๊กเลือกคน (กรรมการติ๊กเลือกคนที่ผ่าน แทนการกดคะแนน)</label><div class="row" style="margin-top:6px;align-items:center"><span class="mu">กรรมการเลือกได้</span><input data-pkn="${x.id}" type="number" min="0" max="1000" step="1" value="${c.pn || ''}" placeholder="ว่าง = ไม่จำกัด" style="max-width:110px;flex:none"><span class="mu">คน ต่อกรรมการ 1 ท่าน</span><button data-a="pkset" data-id="${x.id}">บันทึก</button></div><p class="mu" style="margin:6px 0 0">เปิดแล้ว กรรมการจะเห็นรายชื่อผู้เข้าประกวดที่เหลือในรอบนี้ทั้งหมดให้ติ๊ก (ไม่ต้องรอแอดมินเลือกคนขึ้นจอทีละคน) ส่งแล้วล็อก · การคัดผู้เข้ารอบจะเรียงตามจำนวนกรรมการที่เลือกคนนั้น</p></div>${p.rounds[0] && p.rounds[0].id !== x.id ? `<div style="margin:8px 0 0;padding:8px;border:1px solid var(--bd);border-radius:10px"><div class="mu" style="margin-bottom:6px">ลำดับให้คะแนนรอบนี้</div><div class="btns" style="margin:0"><button data-a="qord" data-id="${x.id}" data-v="n" class="${c.ob === 'n' ? 'p' : ''}">${c.ob === 'n' ? '● ' : '○ '}ให้คะแนนเรียงตามเลขที่</button><button data-a="qord" data-id="${x.id}" data-v="a" class="${c.ob !== 'n' ? 'p' : ''}">${c.ob !== 'n' ? '● ' : '○ '}ให้คะแนนเรียงลำดับเข้ารอบก่อนหน้า</button></div>${c.ob !== 'n' && !(p.ordR || []).includes(x.id) ? '<p class="mu" style="margin:6px 0 0">ยังไม่มีลำดับประกาศจากรอบก่อน → ตอนนี้เรียงตามเลขที่ไปก่อน</p>' : ''}</div>` : ''}<p class="mu" style="margin:2px 0 0">รอบที่ตั้งจำนวนผู้เข้ารอบจะจบกลุ่มเอง · รอบที่ไม่คัดคน (ทุกคนผ่าน) คะแนนจะรวมกับรอบถัดไปในตารางสรุป</p>${c.nm ? '<p class="mu" style="margin:2px 0 0">กรรมการให้คะแนนปกติและเข้าตารางสรุปปกติ · คนสุดท้ายเฟดแล้ว ถ้ากรรมการส่งครบ จะซ่อนจอแล้วไปรอบถัดไปเอง (ถ้าตั้งจำนวนผู้เข้ารอบไว้ จะรอประกาศเข้ารอบก่อน) · ต้องตั้ง "การ์ดชื่อ" (วินาที) มากกว่า 0</p>' : ''}</div>`;
 }
 function annBar(p) {
   return `<div class="noprint" style="margin:6px 0 10px;padding:8px;border:1px dashed var(--bd);border-radius:10px"><div class="row" style="align-items:center;margin-bottom:4px"><span class="mu">ขนาดการ์ดประกาศบนจอ (% · 100 = ปกติ)</span><input id="annScale" type="number" min="30" max="200" value="${p.annScale || 100}" style="max-width:90px;flex:none"><button data-a="annScale">บันทึก</button></div><div class="row noprint" style="align-items:center;margin:6px 0 2px"><span class="mu">ป้าย Winner (ว่าง = ค่าเริ่มต้น) · ป้ายรองชนะเลิศอันดับ 1–9 ล็อกไว้ ขึ้นแทนข้อความเล็กใต้เส้น (ชื่อใหญ่ → แทนชื่อประเทศ / ประเทศใหญ่ → แทนชื่อคน) รูปแบบบนจอตามตั้งค่า "ก่อนเปิดคะแนน จอแสดง" · กล่องประกาศไม่แสดงรูป</span></div><div class="row"><input id="lblW" placeholder="WINNER" value="${esc(p.lblW || '')}" maxlength="40"><button data-a="annLbls" style="flex:none">บันทึกป้าย Winner</button></div><div class="row" style="align-items:center;margin:6px 0 2px"><span class="mu">ประกาศผลกี่คน (1–10)</span><input id="winN" type="number" min="1" max="10" step="1" value="${p.winN || 3}" style="max-width:90px;flex:none"></div><div class="btns" style="margin-top:6px"><button data-a="annwin">🏆 ประกาศผล (รอง → Winner)</button><button class="p" data-a="ann" data-v="start">▶ เริ่มประกาศเข้ารอบ</button><button data-a="ann" data-v="stop">หยุดประกาศ</button>${p.annOn ? `<button data-a="prev">◀ ก่อนหน้า</button><button class="p" data-a="next">ถัดไป ▶</button>` : ''}</div>${p.annOn ? `<div style="margin-top:8px"><b>ลำดับประกาศ</b><ol style="margin:4px 0 0;padding-left:22px">${(p.annIds || []).map((id, i) => { const c = p.C.find(x => x.id === id); return c ? `<li style="${i === p.annI ? 'color:var(--gold);font-weight:700' : i < p.annI ? 'opacity:.5' : ''}">${esc(c.country ? c.country + ' · ' + c.name : c.name)}${i === p.annI ? ' ◀ กำลังขึ้นจอ' : i === p.annI + 1 ? ' (คนถัดไป)' : ''}</li>` : ''; }).join('')}</ol></div><div class="mu" style="margin-top:6px">กำลังประกาศเข้ารอบ: ขึ้นการ์ดแล้ว ${Math.max(0, p.annI + 1)}/${p.annN} คน · กด "ถัดไป" เพื่อขึ้นการ์ดคนต่อไป (การ์ดค้างตามเวลา "การ์ดชื่อ" ที่ตั้งไว้ แล้วเฟดหายเอง) · พอการ์ดคนสุดท้ายเฟดหาย ระบบจะซ่อนจอแล้วไปรอบถัดไปให้เอง (หรือกดถัดไปหลังคนสุดท้ายเพื่อจบทันที)</div>` : ''}</div>`;
 }
+// สรุปสถานะโหมดติ๊กเลือกคน: กรรมการส่งแล้วกี่คน ใครเลือกใครบ้าง ปุ่มปลดล็อก
+function pkBox(p, rd, pl) {
+  const aj = p.J.filter(j => !(rd.noJ || []).includes(j.id)), done = (p.pkJ || {})[rd.id] || [], cfg = pl.cfg, nmOf = id => { const c = p.C.find(x => x.id === id); return c ? esc(qdisp(c)) : ''; };
+  return `<div style="margin:8px 0;padding:8px;border:1px solid var(--bd);border-radius:10px"><div><b>โหมดติ๊กเลือกคน</b> · กรรมการเลือกแล้ว <b>${aj.filter(j => done.includes(j.id)).length}/${aj.length}</b> ท่าน · เลือกได้ ${cfg.pn ? `ไม่เกิน <b>${cfg.pn}</b> คน` : 'ไม่จำกัดจำนวน'}</div>
+    ${aj.map(j => { const ok = done.includes(j.id), ids = (p.pkBy || {})[rd.id + ':' + j.id] || []; return `<details style="margin-top:4px"><summary>${ok ? '<span class="ok">✓</span>' : '<span class="bad">✗</span>'} ${esc(j.name)} ${ok ? `<span class="mu">(เลือก ${ids.length} คน)</span>` : '<span class="mu">(ยังไม่ส่ง)</span>'}</summary>${ok ? `<div class="mu" style="margin:4px 0 0 18px">${ids.map(nmOf).join(' · ')}</div><div class="btns" style="margin:6px 0 0 18px"><button class="d" data-a="pkclear" data-jid="${j.id}">ปลดล็อกให้เลือกใหม่</button></div>` : ''}</details>`; }).join('')}
+    ${aj.length && done.length < aj.length ? '<p class="bad" style="margin:6px 0 0">กรรมการยังเลือกไม่ครบ ผลด้านล่างคิดจากคนที่ส่งแล้วตอนนี้ (กด "รีเฟรชคะแนนล่าสุด" เพื่อดูล่าสุด)</p>' : ''}</div>`;
+}
 function qualV(p) {
   const rd = p.rounds.find(x => x.id === p.round); if (!rd) return '';
-  const head = `<div class="box" data-need="advance"><h2>คัดผู้เข้ารอบ · ${esc(rd.name)}</h2>${annBar(p)}`;
+  const head = `<div class="box" data-need="advance"><h2>คัดผู้เข้ารอบ · ${esc(rd.name)}</h2>${annBar(p)}${p.undo && p.undo.rid === p.round ? '<div class="btns noprint" style="margin:6px 0 0"><button data-a="qundo">↩ ย้อนกลับการประกาศเข้ารอบล่าสุด</button></div>' : ''}`;
   const cfg = qcfgOf(p, rd.id), pl = qualPlan(p, rd.id), sel = qualSel(p, pl), nm = id => { const c = p.C.find(x => x.id === id); return c ? esc(qdisp(c)) : ''; };
-  let h = head + `<p class="mu" style="margin:0 0 8px">เรียงตามคะแนนกรรมการเฉลี่ยของรอบนี้ แล้วตัดที่จำนวนที่ตั้ง · คนที่โหวตสูงสุดมีสิทธิ์พิเศษ: ถ้าอยู่ในอันดับที่ผ่านอยู่แล้วไม่ต้องทำอะไร ถ้าไม่ถึงจะได้เป็นที่นั่งสุดท้าย และคนอันดับสุดท้ายของคะแนนตกรอบแทน (ไม่ส่งสิทธิ์ต่อให้โหวตอันดับ 2) · เสมอที่ขอบตัด ดูโหวตก่อน ถ้ายังเท่ากันให้แอดมินติ๊กเลือกเอง · ผลนี้เห็นเฉพาะหน้าแอดมิน ยังไม่ขึ้นจอจนกว่าจะกด "ประกาศเข้ารอบ"</p>
+  let h = head + `<p class="mu" style="margin:0 0 8px">${cfg.pk ? 'เรียงตามจำนวนกรรมการที่ติ๊กเลือกคนนั้นในรอบนี้ (เสมอ → คะแนนเฉลี่ย → โหวต) ' : 'เรียงตามคะแนนกรรมการเฉลี่ยของรอบนี้ '}แล้วตัดที่จำนวนที่ตั้ง · คนที่โหวตสูงสุดมีสิทธิ์พิเศษ: ถ้าอยู่ในอันดับที่ผ่านอยู่แล้วไม่ต้องทำอะไร ถ้าไม่ถึงจะได้เป็นที่นั่งสุดท้าย และคนอันดับสุดท้ายของคะแนนตกรอบแทน (ไม่ส่งสิทธิ์ต่อให้โหวตอันดับ 2) · เสมอที่ขอบตัด ดูโหวตก่อน ถ้ายังเท่ากันให้แอดมินติ๊กเลือกเอง · ผลนี้เห็นเฉพาะหน้าแอดมิน ยังไม่ขึ้นจอจนกว่าจะกด "ประกาศเข้ารอบ"</p>
     <p class="mu" style="margin:0 0 6px">ค่าที่ตั้งไว้: ${cfg.n ? `เข้ารอบ <b>${cfg.n}</b> คน (รวมที่นั่ง Popular Vote) · ที่นั่ง Popular Vote <b>${cfg.pv ? 'เปิด' : 'ปิด'}</b>` : '<b>ไม่ได้ตั้งจำนวนผู้เข้ารอบ</b>'} · แก้ได้ที่กล่อง "รอบ" ด้านบน (ช่อง "ผู้เข้ารอบ" ของแต่ละรอบ)</p>`;
+  if (cfg.pk) h += pkBox(p, rd, pl);
   if (!pl.pool.length) return h + '<p class="mu">ไม่มีผู้เข้าประกวดเหลืออยู่ในรอบนี้</p></div>';
   if (pl.need) return h + '<p class="mu">รอบนี้ไม่ได้ตั้งจำนวนผู้เข้ารอบ = ไม่คัดคนออกอัตโนมัติ (รอบสุดท้ายก็ปล่อยว่างได้) ถ้าต้องการให้คัด ไปใส่จำนวนที่กล่อง "รอบ" ด้านบน</p></div>';
   const W = t => `<p class="bad" style="margin:6px 0 0">${t}</p>`;
   if (pl.from && pl.from.length) h += `<p class="mu" style="margin:6px 0 0">คิดคะแนนรวมจากรอบ: <b>${pl.from.map(esc).join(' + ')} + ${esc(rd.name)}</b> (รอบก่อนหน้าไม่ได้คัดคน ทุกคนผ่านมา จึงนับคะแนนรวมกัน)</p>`;
-  if (pl.miss) h += W(`กรรมการยังให้คะแนนไม่ครบ ${pl.miss} คน จากทั้งหมด ${pl.pool.length} คน ผลด้านล่างคิดจากคะแนนที่มีตอนนี้ (ถ้ากรรมการบางท่านไม่มา กดประกาศได้เมื่อพร้อม)`);
+  if (pl.miss && !cfg.pk) h += W(`กรรมการยังให้คะแนนไม่ครบ ${pl.miss} คน จากทั้งหมด ${pl.pool.length} คน ผลด้านล่างคิดจากคะแนนที่มีตอนนี้ (ถ้ากรรมการบางท่านไม่มา กดประกาศได้เมื่อพร้อม)`);
   if (cfg.pv && pl.pvNone) h += W('ยังไม่ได้กรอกโหวตของรอบนี้ (แท็บโหวต) จึงยังไม่มีที่นั่ง Popular Vote ตอนนี้คัดจากคะแนนกรรมการล้วน');
   if (pl.pvTie.length) h += W(`โหวตสูงสุดเท่ากัน ${pl.pvTie.length} คน (${pl.pvTie.map(nm).join(', ')}) ระบบให้คนที่คะแนนกรรมการสูงกว่าก่อน ปรับติ๊กเองได้`);
   if (pl.tie.length) h += W(`เสมอที่ขอบตัดทั้งคะแนนและโหวต: ${pl.tie.map(nm).join(', ')} ระบบเรียงตามเลขที่ไว้ให้ก่อน แอดมินเลือกเองแล้วติ๊กแก้ได้`);
   if (pl.all) h += '<p class="mu" style="margin:6px 0 0">จำนวนที่ตั้งมากกว่าหรือเท่ากับคนที่เหลือในรอบนี้ ทุกคนเข้ารอบ</p>';
   h += `<div style="margin-top:8px">${pl.pool.map((x, i) => { const c = x.c, t = pl.tag[c.id], on = sel.has(c.id), tie = pl.tie.includes(c.id);
-    return `<div class="ci ${on ? '' : 'out'}"><div class="l"><input type="checkbox" data-q="${c.id}" ${on ? 'checked' : ''} style="width:auto;flex:none">${th(c.img, c.name)}<div style="min-width:0"><span class="mu">#${i + 1}</span> <b style="color:var(--gold)">${esc(c.no)}</b> ${esc(qdisp(c))}${t === 'pv' ? ' <span class="chip">ที่นั่ง Popular Vote</span>' : t === 'pvin' ? ' <span class="chip">โหวตสูงสุด (อยู่ในอันดับที่ผ่านอยู่แล้ว)</span>' : ''}${tie ? ' <span class="chip" style="color:var(--bad)">เสมอที่ขอบตัด</span>' : ''}<div class="mu">เฉลี่ย ${x.avg == null ? '–' : fmtn(x.avg)} · กรรมการให้แล้ว ${x.cnt}/${pl.nj} · โหวต ${x.votes == null ? '–' : x.votes}</div></div></div></div>`; }).join('')}</div>
+    return `<div class="ci ${on ? '' : 'out'}"><div class="l"><input type="checkbox" data-q="${c.id}" ${on ? 'checked' : ''} style="width:auto;flex:none">${th(c.img, c.name)}<div style="min-width:0"><span class="mu">#${i + 1}</span> <b style="color:var(--gold)">${esc(c.no)}</b> ${esc(qdisp(c))}${t === 'pv' ? ' <span class="chip">ที่นั่ง Popular Vote</span>' : t === 'pvin' ? ' <span class="chip">โหวตสูงสุด (อยู่ในอันดับที่ผ่านอยู่แล้ว)</span>' : ''}${tie ? ' <span class="chip" style="color:var(--bad)">เสมอที่ขอบตัด</span>' : ''}<div class="mu">${cfg.pk ? `กรรมการเลือก <b style="color:var(--ink)">${x.pk}</b>/${pl.nj} · ` : ''}เฉลี่ย ${x.avg == null ? '–' : fmtn(x.avg)} · ${cfg.pk ? '' : `กรรมการให้แล้ว ${x.cnt}/${pl.nj} · `}โหวต ${x.votes == null ? '–' : x.votes}</div></div></div></div>`; }).join('')}</div>
     <div class="mu" id="qcnt" style="margin-top:6px">${qualCnt(p, pl, sel)}</div>
     <div class="btns" style="margin-top:8px"><button class="p" data-a="qdo">▶ ประกาศเข้ารอบ</button><button data-a="qsave">บันทึกผลเข้า/ตกรอบ (ยังไม่ประกาศ)</button><button data-a="qreset">รีเซ็ตตามที่ระบบคำนวณ</button><button data-a="qreload">รีเฟรชคะแนนล่าสุด</button></div>
     <p class="mu">กด "ประกาศเข้ารอบ" ปุ่มเดียว: ระบบบันทึกว่าใครเข้า/ตกรอบ แล้วสุ่มลำดับและเริ่มประกาศบนจอเหมือนเดิม (กด "ถัดไป" ทีละคน) · หน้านี้ไม่รีเฟรชเอง ถ้ามีคะแนนเข้าเพิ่มให้กด "รีเฟรชคะแนนล่าสุด"</p></div>`;
@@ -203,7 +211,17 @@ async function qualRun(announce) {
   if (pl.need) return alert('ตั้งจำนวนผู้เข้ารอบก่อน แล้วกดบันทึก');
   if (!sel.size) return alert('ยังไม่ได้ติ๊กผู้เข้ารอบ');
   const out = pl.pool.filter(x => !sel.has(x.c.id));
-  if (!confirm(`เข้ารอบ ${sel.size} คน · ตกรอบ ${out.length} คน${out.length ? '\n(ตกรอบ: ' + out.map(x => qdisp(x.c)).join(', ') + ')' : ''}${announce ? '\nจากนั้นเริ่มประกาศเข้ารอบบนจอไลฟ์ทันที' : ''}\nตกลงไหม?`)) return render();
+  // เช็กลิสต์ก่อนประกาศ: เตือนในหน้าต่างยืนยันเดียวกัน (ไม่ขวาง กดตกลงต่อได้)
+  const warns = [], tt = pl.tie || [];
+  if (pl.miss) warns.push(`กรรมการยังให้คะแนนไม่ครบ ${pl.miss} คน (จากทั้งหมด ${pl.pool.length} คน)`);
+  if (pl.cfg.n && !pl.all && sel.size !== pl.cfg.n) warns.push(`ตั้งไว้เข้ารอบ ${pl.cfg.n} คน แต่ติ๊กอยู่ ${sel.size} คน`);
+  if (tt.length > 1 && tt.some(id => sel.has(id)) && tt.some(id => !sel.has(id))) warns.push('เสมอที่ขอบตัด (คะแนนและโหวตเท่ากัน) ตรวจอีกทีว่าเลือกถูกคนแล้ว: ' + pl.pool.filter(x => tt.includes(x.c.id)).map(x => qdisp(x.c)).join(', '));
+  if (announce) {
+    const vc = vxCfg(p, p.round);
+    if (vc.rv) { const have = new Set(((p.vx || {}).items || []).filter(x => x.rid === p.round && x.k === 'i' && x.cid > 0).map(x => x.cid)), nm = pl.pool.filter(x => sel.has(x.c.id) && !have.has(x.c.id)); if (nm.length) warns.push('ยังไม่มีรูปประกาศของ ' + nm.map(x => qdisp(x.c)).join(', ')); }
+    if (p.annOn) warns.push('กำลังประกาศเข้ารอบอยู่ ถ้ากดต่อจะเริ่มประกาศใหม่ตั้งแต่ต้น');
+  }
+  if (!confirm((warns.length ? `⚠ มี ${warns.length} ข้อที่ควรเช็กก่อนประกาศ\n${warns.map(w => '• ' + w).join('\n')}\n\n` : '') + `เข้ารอบ ${sel.size} คน · ตกรอบ ${out.length} คน${out.length ? '\n(ตกรอบ: ' + out.map(x => qdisp(x.c)).join(', ') + ')' : ''}${announce ? '\nจากนั้นเริ่มประกาศเข้ารอบบนจอไลฟ์ทันที' : ''}\nตกลงไหม?`)) return render();
   try { await api('admin/qualify', {ids: [...sel]}); } catch (e) { alert(e.message); try { await load(); } catch (er) {} return render(); }
   QS = {round: 0, ids: null};
   if (announce) return act('annstart', {});
@@ -610,6 +628,7 @@ function pick(logo, cb) {
 const numOrNull = v => { v = String(v ?? '').trim(); return v === '' ? '' : v; };
 const onClick = async e => {
   const fh = e.target.closest('h2.fold'); if (fh) return foldToggle(fh);
+  if (ST.role === 'judge') { const pb = e.target.closest('[data-pk]'); if (pb) return pkToggle(+pb.dataset.pk); if (e.target.closest('[data-pkok]')) return pkSubmit(); }
   const kb = e.target.closest('[data-k]');
   if (kb && !kb.dataset.a) { if (ST.role === 'judge') press(kb.dataset.k); return; }
   const b = e.target.closest('[data-a]'); if (!b) return;
@@ -676,9 +695,12 @@ const onClick = async e => {
   if (a === 'vdl') { if (!confirm('ลบไฟล์นี้?')) return; return act('vdel', {id}); }
   if (a === 'qord') return act('qord', {id, ob: v === 'n' ? 'n' : 'a'});
   if (a === 'jopen') return act('jopen', {id: ST.p.round, closed: v === '0'});
+  if (a === 'pkset') return act('pkset', {id, on: document.querySelector(`[data-pkr="${id}"]`).checked, n: document.querySelector(`[data-pkn="${id}"]`).value});
+  if (a === 'pkclear') { if (!confirm('ปลดล็อกให้กรรมการท่านนี้เลือกใหม่? สิ่งที่เลือกไว้จะถูกลบ')) return; return act('pkclear', {id: ST.p.round, jid: +b.dataset.jid}); }
   if (a === 'qset') { QS = {round: 0, ids: null}; return act('qset', qArgs(id)); }
   if (a === 'qreset') { QS = {round: 0, ids: null}; return render(); }
   if (a === 'qreload') { try { await load(); } catch (er) { alert(er.message); } return render(); }
+  if (a === 'qundo') { if (!confirm('ย้อนกลับการประกาศเข้ารอบล่าสุด?\n- ผลเข้า/ตกรอบกลับเป็นก่อนกดประกาศ\n- ลำดับประกาศที่สุ่มไว้ถูกล้าง และจอหยุดประกาศ\n(คะแนน โหวต และรายชื่อผู้เข้าประกวดไม่ถูกแตะ)')) return; QS = {round: 0, ids: null}; return act('qundo', {}); }
   if (a === 'qsave' || a === 'qdo') return qualRun(a === 'qdo');
   if (a === 'reset') {
     const o = {scores: $('#rs-sc').checked, status: $('#rs-st').checked, votes: $('#rs-vt').checked, confirm: $('#rs-cf').value.trim()};
@@ -762,6 +784,7 @@ const onChange = e => {
   if (['c1', 'c2', 'c3'].includes(t.id)) return act('settings', {k: 'colors', v: ['c1', 'c2', 'c3'].map(i => $('#' + i).value).join(',')});
   if (t.dataset && t.dataset.qp) { QS = {round: 0, ids: null}; const rid = +t.dataset.qp; return act('qset', qArgs(rid, {pv: t.checked})); }
   if (t.dataset && t.dataset.qg) { QS = {round: 0, ids: null}; const rid = +t.dataset.qg; return act('qset', qArgs(rid, {ge: t.checked})); }
+  if (t.dataset && t.dataset.pkr) { const rid = +t.dataset.pkr; return act('pkset', {id: rid, on: t.checked, n: document.querySelector(`[data-pkn="${rid}"]`).value}); }
   if (t.dataset && t.dataset.qj) return act('jopen', {id: +t.dataset.qj, closed: t.checked});
   if (t.dataset && t.dataset.qm) { QS = {round: 0, ids: null}; const rid = +t.dataset.qm; return act('qset', qArgs(rid, {nm: t.checked})); }
   if (t.dataset && t.dataset.q) { const p = ST.p, pl = qualPlan(p, p.round); if (!(QS.round === p.round && QS.ids)) QS = {round: p.round, ids: new Set(pl.sel)}; const i = +t.dataset.q; if (t.checked) QS.ids.add(i); else QS.ids.delete(i); const row = t.closest('.ci'); if (row) row.classList.toggle('out', !t.checked); const q = $('#qcnt'); if (q) q.innerHTML = qualCnt(p, pl, QS.ids); return; }
@@ -791,8 +814,51 @@ function judgeRender() {
   if (jkey !== k2) { jkey = k2; kv = mine == null ? '' : String(mine); jmsg = ''; }
   if (d.skip && !d.ranking) { app.innerHTML = topbar('กรรมการ: ' + esc(d.name)) + `<div class="box" style="text-align:center"><div class="mu">${esc(d.pgName)} · ${esc(d.round)}</div><p class="mu" style="margin-top:14px">รอบนี้คุณไม่ต้องให้คะแนน</p></div>`; return; }
   if (d.ranking) { app.innerHTML = topbar('กรรมการ: ' + esc(d.name)) + rankV(d.ranking, d); return; }
+  if (d.pick && d.pick.on) return pickRender();
   app.innerHTML = topbar('กรรมการ: ' + esc(d.name)) + `<div class="box" style="text-align:center"><div class="mu">${esc(d.pgName)} · ${esc(d.round)}</div>` + (!c ? '<p class="mu">รอผู้ดูแลเลือกผู้เข้าประกวด…</p>' : `${c.img ? `<div class="jph" style="margin-top:8px">${ph(c.img)}</div>` : ''}<div style="font-size:2.2rem;font-weight:700;line-height:1.2;text-transform:uppercase;margin-top:${c.img ? 0 : 14}px">${esc(c.country || c.name)}</div>${c.country ? `<div style="font-size:1.4rem;font-weight:500;line-height:1.25;margin-top:2px;text-transform:uppercase">${esc(c.name)}</div>` : ''}`
     + (c.revealed ? `<p class="mu">เปิดคะแนนแล้ว แก้ไขไม่ได้ คะแนนที่คุณให้: ${mine ?? '-'}</p>` : mine != null ? `<div class="val">${fmtn(mine)}</div><p class="ok" style="margin:6px 0">ส่งคะแนนแล้ว ล็อกเรียบร้อย แก้ไขไม่ได้</p><p class="mu">ถ้าต้องแก้ไข ให้แจ้งผู้ดูแล</p>` : d.closed ? '<p class="mu" style="margin-top:14px">ยังไม่เปิดให้ลงคะแนนรอบนี้ รอผู้ดูแลเปิด…</p>' : `<div class="val">${kv === '' ? '<span class="mu">–</span>' : esc(kv)}</div><div class="mu">คะแนนเต็ม ${d.max}</div><div class="kp">${'123456789'.split('').map(k => `<button data-k="${k}">${k}</button>`).join('')}<button data-k="max">${d.max}</button><button data-k=".">.</button><button data-k="0">0</button><button data-k="del">⌫</button><button class="cf" data-k="ok">ยืนยัน</button></div><p class="bad" style="margin:8px 0 0">${esc(jmsg)}</p>`)) + '</div>';
+}
+/* ---------- กรรมการ: โหมดติ๊กเลือกคน ---------- */
+let pkSel = new Set(), pkKey = '';
+function pickRender() {
+  const d = JD, pk = d.pick, y = window.scrollY, k = d.round + ':' + pk.list.map(x => x.id).join(',');
+  if (pkKey !== k) { pkKey = k; pkSel = new Set(pk.mine); jmsg = ''; }
+  const nm = x => esc(x.country ? x.country + ' · ' + x.name : x.name), top = topbar('กรรมการ: ' + esc(d.name)), hd = `<div class="mu">${esc(d.pgName)} · ${esc(d.round)}</div>`;
+  let h;
+  if (pk.done) {
+    const mine = pk.list.filter(x => pk.mine.includes(x.id));
+    h = `<div class="box" style="text-align:center">${hd}<p class="ok" style="margin:10px 0 4px">ส่งการเลือกแล้ว ล็อกเรียบร้อย (${mine.length} คน) แก้ไขไม่ได้</p><p class="mu">ถ้าต้องแก้ไข ให้แจ้งผู้ดูแล</p></div><div class="box"><b>คนที่คุณเลือก</b>${mine.map(x => `<div class="ci"><div class="l">${th(x.img, x.no)}<div><b style="color:var(--gold)">${esc(x.no)}</b> ${nm(x)}</div></div></div>`).join('')}</div>`;
+  } else if (d.closed) {
+    h = `<div class="box" style="text-align:center">${hd}<p class="mu" style="margin-top:14px">ยังไม่เปิดให้ลงคะแนนรอบนี้ รอผู้ดูแลเปิด…</p></div>`;
+  } else if (!pk.list.length) {
+    h = `<div class="box" style="text-align:center">${hd}<p class="mu" style="margin-top:14px">ไม่มีผู้เข้าประกวดในรอบนี้</p></div>`;
+  } else {
+    const n = pk.n, c = pkSel.size;
+    h = `<div class="box" style="text-align:center">${hd}<div style="font-size:1.2rem;font-weight:700;margin-top:6px">ติ๊กเลือกผู้เข้าประกวด</div><div class="mu">${n ? `เลือกได้ไม่เกิน ${n} คน` : 'เลือกกี่คนก็ได้'} · แตะที่ชื่อเพื่อเลือก/ยกเลิก</div></div>`
+      + `<div>${pk.list.map(x => { const on = pkSel.has(x.id); return `<button class="pkb ${on ? 'p' : ''}" data-pk="${x.id}"><span class="ck">${on ? '✓' : ''}</span>${th(x.img, x.no)}<span style="min-width:0"><b>${esc(x.no)}</b> ${nm(x)}</span></button>`; }).join('')}</div>`
+      + `<div class="pkbar"><div class="mu" style="text-align:center">เลือกแล้ว <b style="color:var(--ink)">${c}</b>${n ? ' / ' + n : ''} คน</div><p class="bad" style="margin:4px 0;text-align:center">${esc(jmsg)}</p><button class="cf big" style="width:100%" data-pkok="1">ยืนยันการเลือก</button></div>`;
+  }
+  app.innerHTML = top + h; window.scrollTo(0, y);
+}
+function pkToggle(id) {
+  const pk = JD && JD.pick; if (!pk || pk.done || JD.closed || jbusy) return;
+  jmsg = '';
+  if (pkSel.has(id)) pkSel.delete(id);
+  else if (pk.n && pkSel.size >= pk.n) jmsg = `เลือกครบ ${pk.n} คนแล้ว ยกเลิกคนอื่นก่อนถ้าจะเปลี่ยน`;
+  else pkSel.add(id);
+  pickRender();
+}
+async function pkSubmit() {
+  const pk = JD && JD.pick; if (!pk || pk.done || JD.closed || jbusy) return;
+  const c = pkSel.size; jmsg = '';
+  if (!c) { jmsg = 'กรุณาเลือกอย่างน้อย 1 คน'; return pickRender(); }
+  if (!confirm((pk.n && c < pk.n ? `คุณเลือกเพียง ${c} จาก ${pk.n} คน
+` : '') + `ยืนยันส่งการเลือก ${c} คน?
+ส่งแล้วแก้ไขเองไม่ได้`)) return;
+  jbusy = true;
+  try { await api('pick', {ids: [...pkSel]}); await judgeLoad(); }
+  catch (e) { jmsg = e.status === 409 || e.status === 400 ? e.message : 'ส่งไม่สำเร็จ กรุณาลองอีกครั้ง'; if (e.status === 409) { try { await judgeLoad(); } catch (x) {} } }
+  jbusy = false; judgeRender();
 }
 async function press(k) {
   const d = JD, c = d.current; if (d.skip || d.closed || !c || c.revealed || d.mine != null || jbusy) return;
