@@ -197,7 +197,7 @@ const ahSet = (env, pg, v) => setS(env, pg, 'ahAt', v);
 async function lastShown(env, pg, s) {
   if (+s.annAt > 0 || !(+s.holdSec > 0) || s.mode !== 'current' || s.hide === '1' || !+s.cur) return false; // กำลังประกาศอยู่ ห้ามซ่อนจอเอง
   const rd = await curRound(env, pg, s); if (!rd) return false;
-  const l = await activeIds(env, pg, rd.id); if (!l.length || l[l.length - 1] !== +s.cur) return false;
+  const l = await orderedIds(env, pg, rd.id, s); if (!l.length || l[l.length - 1] !== +s.cur) return false; // คนสุดท้ายตามลำดับจริงของรอบ (รอบหลังเรียงตามลำดับประกาศเข้ารอบ ไม่ใช่ตามเลขที่)
   const rs = await env.DB.prepare('SELECT revealed FROM results WHERE round_id=? AND contestant_id=?').bind(rd.id, +s.cur).first();
   return !!(rs && rs.revealed);
 }
