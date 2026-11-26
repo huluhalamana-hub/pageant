@@ -459,7 +459,7 @@ function displayMode() {
   app.innerHTML = '<div class="cv" id="cv"></div><div id="qv"></div>';
   const qs = qScreen($('#qv'));
   const cv = $('#cv'), pg = +Q.get('pg') || 0; let last = -1, lastKey = '';
-  const fitD = () => { cv.style.transform = `scale(${Math.min(innerWidth / 1920, innerHeight / 1080)})`; };
+  const fitD = () => { const k = Math.min(innerWidth / 1920, innerHeight / 1080); cv.style.transform = `translate(${(innerWidth - 1920 * k) / 2}px,${(innerHeight - 1080 * k) / 2}px) scale(${k})`; }; // จัดกลางจอเมื่อหน้าต่างไม่ใช่สัดส่วน 16:9
   fitD(); addEventListener('resize', fitD);
   let lastPart = '', lastBid = '', busy = false, gen = 0, timer = 0, expired = '', latest = null, pidx = 0, skey = '';
   // หมดเวลาค้าง: เฟดออกแล้วจอว่าง (ไม่แสดงซ้ำจนกว่าเนื้อหาจะเปลี่ยน)

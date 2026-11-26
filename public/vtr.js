@@ -6,6 +6,7 @@ const CSS = `
 #qv .ql{position:absolute;inset:0;opacity:0;background:#000;overflow:hidden}
 #qv .ql img,#qv .ql video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
 #qv .ql img.bgi{object-fit:cover}
+#qv .ql img{object-fit:cover}
 @keyframes qzoom{from{transform:scale(1)}to{transform:scale(1.05)}}
 #qv .ql img.z{animation:qzoom var(--zs,8s) linear forwards}
 @keyframes qrow{from{opacity:0;transform:translateY(-18px)}to{opacity:1;transform:none}}
