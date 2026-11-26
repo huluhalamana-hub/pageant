@@ -88,7 +88,7 @@ async function vtrSnap(env, pg, s) {
   let items = [];
   try {
     await ensureVtr(env);
-    items = (await env.DB.prepare('SELECT id,rid,kind,mime,name,cid,sec,pos,updated FROM vtr_items WHERE pg=? AND ready=1 ORDER BY pos,id').bind(pg).all()).results.map(x => ({ id: x.id, rid: x.rid, k: x.kind === 'vid' ? 'v' : 'i', cid: x.cid, sec: x.sec, name: x.name, u: `/api/vtr/${x.id}?v=${x.updated}` }));
+    items = (await env.DB.prepare('SELECT id,rid,kind,mime,name,cid,sec,pos,updated FROM vtr_items WHERE pg=? AND ready=1 ORDER BY rid,pos,id').bind(pg).all()).results.map(x => ({ id: x.id, rid: x.rid, k: x.kind === 'vid' ? 'v' : 'i', cid: x.cid, sec: x.sec, name: x.name, u: `/api/vtr/${x.id}?v=${x.updated}` }));
   } catch (e) {}
   const out = {}; for (const k of Object.keys(cfg)) out[k] = vxClean(cfg[k]);
   return { cfg: out, items, qv: qv.m ? qv : {} };
@@ -412,7 +412,7 @@ async function adminAction(env, a, b, pg, role, me) {
       if ((await db.prepare('SELECT COUNT(*) n FROM rounds WHERE pg=?').bind(pg).first()).n < 2) return bad('ต้องมีอย่างน้อย 1 รอบ');
       await db.prepare('DELETE FROM scores WHERE round_id=?').bind(id).run(); await pkWipe(env, 'r', id);
       await db.prepare('DELETE FROM results WHERE round_id=?').bind(id).run();
-      try { await ensureVtr(env); await db.prepare('DELETE FROM vtr_blobs WHERE item IN (SELECT id FROM vtr_items WHERE rid=? AND pg=?)').bind(id, pg).run(); await db.prepare('DELETE FROM vtr_items WHERE rid=? AND pg=?').bind(id, pg).run(); } catch (e) {}
+      try { await ensureVtr(env); const keep = await db.prepare('SELECT id FROM rounds WHERE pg=? AND id<>? ORDER BY id LIMIT 1').bind(pg, id).first(); if (keep) await db.prepare('UPDATE vtr_items SET rid=? WHERE rid=? AND pg=?').bind(keep.id, id, pg).run(); await db.prepare('DELETE FROM vtr_blobs WHERE item IN (SELECT id FROM vtr_items WHERE rid=? AND pg=?)').bind(id, pg).run(); await db.prepare('DELETE FROM vtr_items WHERE rid=? AND pg=?').bind(id, pg).run(); } catch (e) {}
       await db.prepare('DELETE FROM rounds WHERE id=?').bind(id).run();
       if (+s.rank === id) await setS(env, pg, 'rank', 0);
       if (rd && rd.id === id) { const f = await db.prepare('SELECT id FROM rounds WHERE pg=? ORDER BY id LIMIT 1').bind(pg).first(); await setS(env, pg, 'round', f.id); await setS(env, pg, 'cur', await firstContestant(env, pg, f.id)); }
@@ -623,7 +623,7 @@ async function adminAction(env, a, b, pg, role, me) {
       try {
         await ensureVtr(env);
         const cf = vxClean(jparse(s.vx, {})[rd.id]);
-        const n = (await db.prepare("SELECT COUNT(*) n FROM vtr_items WHERE pg=? AND rid=? AND ready=1 AND kind='img' AND cid>0").bind(pg, rd.id).first()).n;
+        const n = (await db.prepare("SELECT COUNT(*) n FROM vtr_items WHERE pg=? AND ready=1 AND kind='img' AND cid>0").bind(pg).first()).n;
         if (cf.rv && n > 0) qvOn = { m: 'draw', rid: rd.id, ts: Date.now() };
       } catch (e) {}
       await setS(env, pg, 'qv', JSON.stringify(qvOn)); break;
