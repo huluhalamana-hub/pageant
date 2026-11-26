@@ -39,11 +39,11 @@ const pkWipe = async (env, kind, ids) => {
   } catch (e) {}
 };
 const jparse = (t, d) => { try { const o = JSON.parse(t); return o && typeof o === 'object' ? o : d; } catch (e) { return d; } };
-const VXD = { rv: 0, hold: 5, lo: 'ann', ll: 'both', ls: 8, au: 1, is: 5, fi: 0.6, fo: 0.6, fx: 0.5, zm: 1 };
+const VXD = { rv: 0, hold: 5, lo: 'ann', ll: 'both', ls: 8, au: 1, is: 5, fi: 0.6, fo: 0.6, fx: 0.5, hf: 0.5, zm: 1 };
 const vxClean = c => {
   const n = (v, lo, hi, d) => { v = +v; return Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v * 10) / 10)) : d; };
   c = c || {};
-  return { rv: c.rv ? 1 : 0, hold: n(c.hold, 1, 60, VXD.hold), lo: c.lo === 'az' ? 'az' : 'ann', ll: ['country', 'name'].includes(c.ll) ? c.ll : 'both', ls: n(c.ls, 0, 120, VXD.ls), au: c.au ? 1 : 0, is: n(c.is, 1, 120, VXD.is), fi: n(c.fi, 0, 5, VXD.fi), fo: n(c.fo, 0, 5, VXD.fo), fx: n(c.fx, 0, 5, VXD.fx), zm: c.zm ? 1 : 0 };
+  return { rv: c.rv ? 1 : 0, hold: n(c.hold, 1, 60, VXD.hold), lo: c.lo === 'az' ? 'az' : 'ann', ll: ['country', 'name'].includes(c.ll) ? c.ll : 'both', ls: n(c.ls, 0, 120, VXD.ls), au: c.au ? 1 : 0, is: n(c.is, 1, 120, VXD.is), fi: n(c.fi, 0, 5, VXD.fi), fo: n(c.fo, 0, 5, VXD.fo), fx: n(c.fx, 0, 5, VXD.fx), hf: n(c.hf, 0, 5, VXD.hf), zm: c.zm ? 1 : 0 };
 };
 const PKEYS = ['edit', 'scores', 'advance', 'screen'];
 const parsePerms = s => { let o = {}; try { o = JSON.parse(s || '{}') || {}; } catch (e) {} const r = {}; PKEYS.forEach(k => (r[k] = !!o[k])); return r; };
