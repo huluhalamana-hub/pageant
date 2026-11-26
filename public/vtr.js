@@ -22,7 +22,7 @@ export function qScreen(host) {
   if (!document.getElementById('qv-css')) { const s = document.createElement('style'); s.id = 'qv-css'; s.textContent = CSS; document.head.appendChild(s); }
   host.innerHTML = '<div class="qs"></div>';
   const st = host.firstChild;
-  let on = false, q = null, off = 0, sig = '', gen = 0, ver = 0, tmr = 0, drw = 0, wt = 0;
+  let on = false, q = null, off = 0, sig = '', gen = 0, ver = 0, tmr = 0, drw = 0, wt = 0, drawIm = null;
   const fit = () => { st.style.transform = `translate(-50%,-50%) scale(${Math.min(innerWidth / 1920, innerHeight / 1080)})`; };
   fit(); addEventListener('resize', fit);
   const cache = new Map();
@@ -87,17 +87,21 @@ export function qScreen(host) {
     }
   };
 
+  // สุ่มรูปใส่ im ทุก 75ms (ใช้ทั้งตอนวิ่งสุ่มและตอนเฟดดำก่อนขึ้นรูปคนที่ประกาศ ให้วิ่งต่อเนื่องไม่ค้าง)
+  const shuffle = (im, pool) => { let last = im.getAttribute('src') || ''; clearInterval(drw); drw = setInterval(() => { let u = pool[Math.floor(Math.random() * pool.length)]; if (pool.length > 1 && u === last) u = pool[(pool.indexOf(u) + 1) % pool.length]; last = u; im.src = u; }, 75); };
   let lastP = '';
   const run = async (entering) => {
     stop(); const g = gen, c = q.cfg, t0 = Date.now(), el = t0 + off - q.ts, {p, next} = phaseOf(q, el);
     const prev = lastP; lastP = p;
     if (p === 'draw') {
-      const pool = q.pool, d = layer('<img alt="">', entering ? c.fi : 0), im = d.firstChild; let last = '';
-      if (!pool.length) im.remove();
-      else drw = setInterval(() => { let u = pool[Math.floor(Math.random() * pool.length)]; if (pool.length > 1 && u === last) u = pool[(pool.indexOf(u) + 1) % pool.length]; last = u; im.src = u; }, 75);
+      const d = layer('<img alt="">', entering ? c.fi : 0), im = d.firstChild;
+      if (!q.pool.length) { im.remove(); drawIm = null; } else { drawIm = im; shuffle(im, q.pool); }
     } else if (p === 'hold') {
       // วิ่งสุ่ม → เฟดดำ → เฟดรูปคนที่ประกาศขึ้นจากดำ (hf = เวลาแต่ละช่วง, 0 = สลับทันทีเหมือนเดิม)
-      if (!entering && prev === 'draw' && c.hf > 0) { layer('', c.hf); await sleep(c.hf * 1000 + 80); if (g !== gen) return; }
+      if (!entering && prev === 'draw' && c.hf > 0) {
+        if (drawIm && drawIm.isConnected && q.pool.length) shuffle(drawIm, q.pool); // รูปยังวิ่งสุ่มต่อระหว่างเฟดดำ
+        layer('', c.hf); await sleep(c.hf * 1000 + 80); clearInterval(drw); if (g !== gen) return;
+      }
       layer(`<img src="${esc(q.held)}" alt="">`, entering ? c.fi : c.hf);
     } else if (p === 'list') {
       layer(listHTML(q), entering ? c.fi : 0.5);
