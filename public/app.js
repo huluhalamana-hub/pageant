@@ -132,6 +132,7 @@ function vtrV(p) {
       <label style="${lbl}"><input type="checkbox" data-vc="au" ${c.au ? 'checked' : ''} style="width:auto"> เข้า VTR อัตโนมัติหลังรายชื่อขึ้น</label>
       <div class="row" style="align-items:center;margin-top:6px"><span class="mu">รูปใน VTR ค้างชิ้นละ</span>${num('is')}<span class="mu">วินาที (วิดีโอเล่นจนจบ)</span></div>
       <div class="row" style="align-items:center;margin-top:6px"><span class="mu">เฟดดำเข้า</span>${num('fi', 60)}<span class="mu">ออก</span>${num('fo', 60)}<span class="mu">เฟดข้ามชิ้น</span>${num('fx', 60)}<span class="mu">วินาที</span></div>
+      <div class="row" style="align-items:center;margin-top:6px"><span class="mu">เฟดดำก่อนขึ้นรูปคนที่ประกาศเข้ารอบ (ออก/เข้าช่วงละ)</span>${num('hf', 60)}<span class="mu">วินาที (0 = สลับทันที)</span></div>
       <label style="${lbl}"><input type="checkbox" data-vc="zm" ${c.zm ? 'checked' : ''} style="width:auto"> รูปใน VTR ซูมเข้าช้าๆ</label>
     </div>
     <div class="btns" data-need-any="screen,advance" style="margin-top:12px"><button class="p" data-a="vopen">▶ เปิด VTR</button><button class="d" data-a="vclose">■ ปิด VTR</button>${qm ? `<span class="ok">· ${VQ[qm] || ''}</span>` : ''}</div>

@@ -120,7 +120,7 @@ export function summaryVM(p) {
   return {title, show: show.map(x => ({id: x.id, name: x.name})), single, rows, grp: d.grouped ? d.groups : null, pgv: multi ? gl.map((g, i) => rows.some(r => r.pg[i] != null)) : null, C: CC, pv: !multi && CC.tail <= 1 && rows.some(r => r.pvv != null), jn: p.showJN !== false, n, J: p.J.map(j => ({name: j.name, img: j.img})), agg: p.agg, jw: p.jw, per, sec};
 }
 /* ---------- VTR / จอรูปประกาศเข้ารอบ ---------- */
-export const VXD = {rv: 0, hold: 5, lo: 'ann', ll: 'both', ls: 8, au: 1, is: 5, fi: 0.6, fo: 0.6, fx: 0.5, zm: 1};
+export const VXD = {rv: 0, hold: 5, lo: 'ann', ll: 'both', ls: 8, au: 1, is: 5, fi: 0.6, fo: 0.6, fx: 0.5, hf: 0.5, zm: 1};
 export const vxCfg = (p, rid) => ({...VXD, ...((((p.vx || {}).cfg) || {})[rid] || {})});
 // ข้อมูลที่จอต้องใช้วาดโหมดรูปเต็มจอ (ตัวจับเวลา/เฟด/วิ่งสุ่มทำฝั่งจอเอง ไฟล์ vtr.js)
 function qVM(p) {

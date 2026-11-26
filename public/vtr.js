@@ -89,14 +89,16 @@ export function qScreen(host) {
 
   let lastP = '';
   const run = async (entering) => {
-    stop(); const g = gen, c = q.cfg, el = Date.now() + off - q.ts, {p, next} = phaseOf(q, el);
+    stop(); const g = gen, c = q.cfg, t0 = Date.now(), el = t0 + off - q.ts, {p, next} = phaseOf(q, el);
     const prev = lastP; lastP = p;
     if (p === 'draw') {
       const pool = q.pool, d = layer('<img alt="">', entering ? c.fi : 0), im = d.firstChild; let last = '';
       if (!pool.length) im.remove();
       else drw = setInterval(() => { let u = pool[Math.floor(Math.random() * pool.length)]; if (pool.length > 1 && u === last) u = pool[(pool.indexOf(u) + 1) % pool.length]; last = u; im.src = u; }, 75);
     } else if (p === 'hold') {
-      layer(`<img src="${esc(q.held)}" alt="">`, entering ? c.fi : 0);
+      // วิ่งสุ่ม → เฟดดำ → เฟดรูปคนที่ประกาศขึ้นจากดำ (hf = เวลาแต่ละช่วง, 0 = สลับทันทีเหมือนเดิม)
+      if (!entering && prev === 'draw' && c.hf > 0) { layer('', c.hf); await sleep(c.hf * 1000 + 80); if (g !== gen) return; }
+      layer(`<img src="${esc(q.held)}" alt="">`, entering ? c.fi : c.hf);
     } else if (p === 'list') {
       layer(listHTML(q), entering ? c.fi : 0.5);
     } else { // vtr: มาจากรายชื่อ/รูป = เฟดดำก่อนแล้วค่อยขึ้น VTR
@@ -104,7 +106,7 @@ export function qScreen(host) {
       if (!entering && prev !== 'vtr') { layer('', c.fo); await sleep(c.fo * 1000 + 80); if (g !== gen) return; }
       runVtr(g, c, fade);
     }
-    if (next > 0) tmr = setTimeout(() => { if (g === gen) run(false); }, next + 30);
+    if (next > 0) tmr = setTimeout(() => { if (g === gen) run(false); }, Math.max(0, next - (Date.now() - t0)) + 30);
   };
 
   const exit = async () => {
