@@ -129,7 +129,7 @@ function qVM(p) {
   // รูปของคน (cid > 0) ใช้ร่วมทุกรอบ: ถ้ารอบนี้มีรูปของคนนั้นใช้ของรอบนี้ ไม่มีก็ใช้ชุดจากรอบล่าสุดที่เคยอัป · ไฟล์ทั่วไป/พื้นหลังก็ใช้ร่วมทุกรอบ (พื้นหลัง: ใช้ของรอบนี้ก่อน ไม่มีก็ใช้อันล่าสุดที่เคยอัป)
   const src = new Map(); all.forEach(x => { if (x.cid > 0) { const o = src.get(x.cid); if (o === undefined || (o !== rid && (x.rid === rid || x.rid > o))) src.set(x.cid, x.rid); } });
   const items = all.filter(x => x.cid > 0 ? src.get(x.cid) === x.rid : true);
-  const byId = new Map(p.C.map(c => [c.id, c])), ann = p.annOn ? (p.annIds || []) : [];
+  const byId = new Map(p.C.map(c => [c.id, c])), ann = Array.isArray(qv.ids) ? qv.ids : p.annOn ? (p.annIds || []) : [];
   const done = new Set(ann.slice(0, Math.max(0, (+p.annI || 0) + 1))), imgOf = new Map();
   items.forEach(x => { if (x.k === 'i' && x.cid > 0 && byId.has(x.cid) && !imgOf.has(x.cid)) imgOf.set(x.cid, x.u); });
   // วิ่งสุ่ม: ทุกคนที่แข่งในรอบนี้และมีรูป ยกเว้นคนที่ประกาศไปแล้ว
