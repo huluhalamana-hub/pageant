@@ -448,7 +448,10 @@ async function adminAction(env, a, b, pg, role, me) {
           const now = Date.now();
           if (b.dir === 'prev') { await setS(env, pg, 'annI', ni); await setS(env, pg, 'qv', JSON.stringify({ m: 'draw', rid: qv.rid, ts: now })); }
           else if (qv.m === 'draw') {
-            if (ni >= ids.length) await setS(env, pg, 'qv', JSON.stringify({ m: 'list', rid: qv.rid, ts: now }));
+            if (ni >= ids.length) { // ประกาศครบ: รายชื่อ/VTR เล่นต่อบนจอเอง (จดรายชื่อไว้ใน qv) แล้วปิดสถานะประกาศ + ไปรอบใหม่ทันที
+              await setS(env, pg, 'qv', JSON.stringify({ m: 'list', rid: qv.rid, ts: now, ids }));
+              await setS(env, pg, 'annAt', 0); await setS(env, pg, 'annEnd', 0); await goNextRound(env, pg, rd); break;
+            }
             else { await setS(env, pg, 'annI', ni); await setS(env, pg, 'qv', JSON.stringify({ m: 'draw', rid: qv.rid, ts: now })); }
           } else if (qv.m === 'list') await setS(env, pg, 'qv', JSON.stringify({ m: 'vtr', rid: qv.rid, ts: now }));
           await setS(env, pg, 'annEnd', 0); break;
