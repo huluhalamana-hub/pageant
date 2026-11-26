@@ -125,7 +125,10 @@ export const vxCfg = (p, rid) => ({...VXD, ...((((p.vx || {}).cfg) || {})[rid] |
 // ข้อมูลที่จอต้องใช้วาดโหมดรูปเต็มจอ (ตัวจับเวลา/เฟด/วิ่งสุ่มทำฝั่งจอเอง ไฟล์ vtr.js)
 function qVM(p) {
   const qv = (p.vx || {}).qv; if (!qv || !qv.m) return null;
-  const rid = qv.rid || p.round, cfg = vxCfg(p, rid), items = ((p.vx || {}).items || []).filter(x => x.rid === rid);
+  const rid = qv.rid || p.round, cfg = vxCfg(p, rid), all = ((p.vx || {}).items || []);
+  // รูปของคน (cid > 0) ใช้ร่วมทุกรอบ: ถ้ารอบนี้มีรูปของคนนั้นใช้ของรอบนี้ ไม่มีก็ใช้ชุดจากรอบล่าสุดที่เคยอัป · ไฟล์ทั่วไป/พื้นหลังก็ใช้ร่วมทุกรอบ (พื้นหลัง: ใช้ของรอบนี้ก่อน ไม่มีก็ใช้อันล่าสุดที่เคยอัป)
+  const src = new Map(); all.forEach(x => { if (x.cid > 0) { const o = src.get(x.cid); if (o === undefined || (o !== rid && (x.rid === rid || x.rid > o))) src.set(x.cid, x.rid); } });
+  const items = all.filter(x => x.cid > 0 ? src.get(x.cid) === x.rid : true);
   const byId = new Map(p.C.map(c => [c.id, c])), ann = p.annOn ? (p.annIds || []) : [];
   const done = new Set(ann.slice(0, Math.max(0, (+p.annI || 0) + 1))), imgOf = new Map();
   items.forEach(x => { if (x.k === 'i' && x.cid > 0 && byId.has(x.cid) && !imgOf.has(x.cid)) imgOf.set(x.cid, x.u); });
@@ -133,10 +136,10 @@ function qVM(p) {
   const pool = [...imgOf].filter(([cid]) => inR(p, rid, byId.get(cid)) && !done.has(cid)).map(([, u]) => u);
   const held = qv.m === 'draw' && +p.annI >= 0 && ann[+p.annI] ? (imgOf.get(ann[+p.annI]) || null) : null;
   // VTR: รูป/วิดีโอทั่วไป + ของคนที่ผ่านเข้ารอบ (คนที่ไม่เข้ารอบถูกตัดออก) ส่วนรูปพื้นหลังรายชื่อ (cid = -1) ไม่ขึ้นใน VTR
-  const vtr = items.filter(x => x.cid === 0 || (x.cid > 0 && byId.has(x.cid) && !gr(p, rid, x.cid).out)).map(x => ({k: x.k, u: x.u, sec: x.sec}));
+  const vtr = items.filter(x => x.cid === 0 || (x.cid > 0 && byId.has(x.cid) && inR(p, rid, byId.get(x.cid)) && !gr(p, rid, x.cid).out)).map(x => ({k: x.k, u: x.u, sec: x.sec}));
   let list = ann.map(id => byId.get(id)).filter(Boolean).map(c => ({no: c.no, name: c.name, country: c.country}));
   if (cfg.lo === 'az') list = list.slice().sort((a, b) => String(a.country || a.name).localeCompare(String(b.country || b.name), 'en', {sensitivity: 'base'}) || String(a.name).localeCompare(String(b.name), 'en', {sensitivity: 'base'}));
-  const bg = (items.find(x => x.cid === -1 && x.k === 'i') || {}).u || null;
+  const bgs = items.filter(x => x.cid === -1 && x.k === 'i'), bg = ((bgs.find(x => x.rid === rid) || bgs[bgs.length - 1]) || {}).u || null;
   return {m: qv.m, ts: qv.ts || 0, annI: +p.annI, n: ann.length, cfg, pool, held, vtr, list, bg, col: p.col, big: p.big === 'name' ? 'name' : 'country'};
 }
 function buildDisplay0(p, opts) {
