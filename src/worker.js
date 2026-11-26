@@ -238,10 +238,24 @@ async function nmAutoNext(env, pg) {
   await goNextRound(env, pg, rd); await bump(env, pg); return true;
 }
 // การ์ดคนสุดท้ายขึ้นจอแล้ว (annEnd = เวลาที่เริ่มขึ้น) พอการ์ดเฟดหายแล้วให้จบการประกาศเอง เซิร์ฟเวอร์เช็กตอนมีคนโพลล์ /api/rev
+// โหมดรูปเต็มจอ: จบการประกาศ → รายชื่อ/VTR เล่นต่อบนจอเอง (จดรายชื่อไว้ใน qv) ปิดสถานะประกาศ แล้วไปรอบใหม่ทันที
+async function qvDetach(env, pg, s, rd, qv, ts) {
+  let ids = []; try { ids = JSON.parse(s.ann) || []; } catch (e) {}
+  await setS(env, pg, 'qv', JSON.stringify({ m: 'list', rid: qv.rid, ts, ids }));
+  await setS(env, pg, 'annAt', 0); await setS(env, pg, 'annEnd', 0); await goNextRound(env, pg, rd);
+}
 async function annAutoEnd(env, pg, at) {
   const s = await getS(env, pg);
   if (!(+s.annAt > 0)) { await setS(env, pg, 'annEnd', 0); return false; }
   if (s.annWin === '1') return false;
+  const qv = jparse(s.qv, {});
+  if (qv.m) { // โหมดรูปเต็มจอ: คนสุดท้ายประกาศแล้ว รูปค้างครบเวลา → ขึ้นรายชื่อ + สลับรอบใหม่เอง
+    if (qv.m !== 'draw') { await setS(env, pg, 'annEnd', 0); return false; }
+    const hold = vxClean(jparse(s.vx, {})[qv.rid]).hold;
+    if (Date.now() < at + hold * 1000 + 800) return false;
+    const rd = await curRound(env, pg, s); if (!rd) return false;
+    await qvDetach(env, pg, s, rd, qv, at + hold * 1000); await bump(env, pg); return true;
+  }
   if (!(+s.introSec > 0) || Date.now() < at + +s.introSec * 1000 + 3500) return false;
   await finishAnn(env, pg); await bump(env, pg); return true;
 }
@@ -455,7 +469,7 @@ async function adminAction(env, a, b, pg, role, me) {
             }
             else { await setS(env, pg, 'annI', ni); await setS(env, pg, 'qv', JSON.stringify({ m: 'draw', rid: qv.rid, ts: now })); }
           } else if (qv.m === 'list') await setS(env, pg, 'qv', JSON.stringify({ m: 'vtr', rid: qv.rid, ts: now }));
-          await setS(env, pg, 'annEnd', 0); break;
+          await setS(env, pg, 'annEnd', b.dir !== 'prev' && qv.m === 'draw' && ni === ids.length - 1 ? Date.now() : 0); break;
         }
         if (ni >= ids.length) await finishAnn(env, pg); else { await setS(env, pg, 'annI', ni); await setS(env, pg, 'annEnd', ni === ids.length - 1 ? Date.now() : 0); }
         break;
