@@ -35,7 +35,7 @@ function resultsV(p) {
   <p class="mu noprint">ไฟล์ CSV เปิดใน Excel หรือ Google Sheets ได้ (ภาษาไทยแสดงถูกต้อง)</p></div>`;
 }
 function historyV(p) {
-  const L = p.log || [], f = v => v == null ? '–' : esc(v), tm = t => new Date(t).toLocaleString('th-TH', {dateStyle: 'short', timeStyle: 'medium'});
+  const L = p.log || [], f = v => v == null ? '–' : esc(v), tm = t => new Date(t).toLocaleString('th-TH', {dateStyle: 'short', timeStyle: 'medium', timeZone: 'Asia/Bangkok'});
   return `<div class="box"><h2>ประวัติการแก้ไขคะแนน</h2><p class="mu">บันทึกทุกครั้งที่แอดมินแก้หรือใส่คะแนนของกรรมการและโหวตในหน้าแอดมิน (ไม่รวมตอนกรรมการส่งคะแนนเอง) บันทึกที่เซิร์ฟเวอร์ ลบหรือแก้ย้อนหลังไม่ได้ เผื่อมีข้อสงสัยจากผู้เข้าประกวด</p>
   ${L.length ? `<div style="overflow-x:auto"><table><thead><tr><th>เวลา</th><th>ผู้แก้</th><th>รอบ</th><th>ผู้เข้าประกวด</th><th>รายการ</th><th class="n">จาก</th><th class="n">เป็น</th></tr></thead><tbody>${L.map(e => `<tr><td>${esc(tm(e.t))}</td><td>${esc(e.who)}</td><td>${esc(e.round)}</td><td>${esc(e.c)}</td><td>${esc(e.what)}</td><td class="n">${f(e.from)}</td><td class="n"><b>${f(e.to)}</b></td></tr>`).join('')}</tbody></table></div>` : '<p class="mu">ยังไม่มีการแก้ไข</p>'}</div>`;
 }
