@@ -182,6 +182,7 @@ const orderedIds = async (env, pg, rid, s) => {
   const ids = await activeIds(env, pg, rid); s = s || await getS(env, pg);
   let q = {}, o = {}; try { q = JSON.parse(s.qcfg) || {}; } catch (e) {} try { o = JSON.parse(s.ord) || {}; } catch (e) {}
   const a = o[rid]; if ((q[rid] || {}).ob === 'n' || !Array.isArray(a) || !a.length) return ids;
+  const fr = await env.DB.prepare('SELECT id FROM rounds WHERE pg=? ORDER BY id LIMIT 1').bind(pg).first(); if (fr && fr.id === +rid) return ids; // รอบแรกของเวที ไม่มีรอบก่อนหน้า เรียงตามเลขที่เสมอ (กันลำดับประกาศเก่าที่ค้างอยู่ เช่นหลังลบรอบ/ทดลองประกาศ)
   const pos = new Map(a.map((x, i) => [x, i]));
   return ids.map((x, i) => ({ x, k: pos.has(x) ? pos.get(x) : a.length, i })).sort((u, v) => u.k - v.k || u.i - v.i).map(u => u.x);
 };
@@ -654,6 +655,7 @@ async function adminAction(env, a, b, pg, role, me) {
       if (vt) { await db.prepare(`UPDATE results SET votes=NULL WHERE round_id IN (${RID})`).bind(pg).run(); await db.prepare('UPDATE contestants SET votes=NULL WHERE pg=?').bind(pg).run(); }
       if (st) {
         await db.prepare(`UPDATE results SET revealed=0, is_out=0 WHERE round_id IN (${RID})`).bind(pg).run();
+        await setS(env, pg, 'ord', '{}'); await setS(env, pg, 'qv', '{}'); await setS(env, pg, 'ahAt', 0); // ลบลำดับประกาศเข้ารอบเก่า/จอรูปที่ค้างด้วย ไม่งั้นลำดับให้คะแนนรอบหลังซ้อมยังเพี้ยน
         const r1 = await db.prepare('SELECT id FROM rounds WHERE pg=? ORDER BY id LIMIT 1').bind(pg).first();
         if (r1) { await setS(env, pg, 'round', r1.id); await setS(env, pg, 'cur', await firstContestant(env, pg, r1.id)); }
         await setS(env, pg, 'hide', '1'); await setS(env, pg, 'ann', '[]'); await setS(env, pg, 'annAt', 0); await setS(env, pg, 'annEnd', 0); await setS(env, pg, 'annI', -1); await setS(env, pg, 'undoQ', '{}');
